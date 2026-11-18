@@ -1,6 +1,6 @@
 {
   "fill": {
-    "automatic-gradient": "srgb:0.07500,0.06000,0.05500,1.00000"
+    "automatic-gradient": "srgb:0.08500,0.06200,0.05000,1.00000"
   },
   "groups": [
     {
@@ -31,6 +31,12 @@
           "glass": true,
           "image-name": "ring.svg",
           "name": "ring"
+        },
+        {
+          "glass": false,
+          "image-name": "dust.svg",
+          "name": "dust",
+          "opacity": 0.8
         }
       ],
       "shadow": {
