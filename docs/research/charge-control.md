@@ -335,3 +335,34 @@ Nothing below was measured on this Mac.
 - Decision taken: keep S-042 as an optional, manual feature, worded as
   "fixes the reading, not the battery", with no schedule and no reminder.
 
+## How fast macOS stops charging when asked (2026-11-19, for S-040)
+
+Raw readings: `heat-probe.log`. The battery was charging under a 90%
+limit at 1.1 to 1.6 A; Hachibu then asked for a lower limit through the
+helper. The menu bar copy was quit during the runs.
+
+| Asked for | At level | pmset reported it after | Current seen stopped after |
+| --- | --- | --- | --- |
+| the level itself, 81% | 81% | 100 s | 160 s (level had risen to 82%, so macOS then drained 1%) |
+| the level itself, 83% | 83% | 60 s | 120 s |
+| one under the level, 83% | 84% | 119 s | not within 120 s; stopped by 3 minutes |
+
+- While the battery is charging, macOS applies a new limit one to two
+  minutes after it accepts it, whether the limit is the level itself or
+  below it. The charging service reports the new limit at once. [D]
+- The battery current in the registry changes in steps about a minute
+  apart, so "current stopped" may be up to a minute late. [D]
+- When the battery is not charging, a new limit applies at once: 15% at
+  83% and 80% at 85% both showed in pmset within the second. [D]
+- So pausing a charge by asking for the level takes one to three minutes
+  to show. S-040 set a bar of under two minutes; this does not meet it.
+
+## A limit of 15% (2026-11-19, for S-042)
+
+- `Hachibu --probe-limit 15` with the battery at 83%, not charging: the
+  charging service and pmset both reported 15% at once. [D]
+- `Hachibu --try calibration 20` at 85%: the status read "Calibrating",
+  macOS held a 15% limit and went on draining (about 0.5 to 1.5 A out),
+  and stopping it brought 80% back at once. [D]
+- Not run: a whole calibration (hours).
+

@@ -17,6 +17,8 @@ extension BatteryMonitor {
         line("before")
         switch name {
         case "topup": toggleTopUp()
+        case "calibration":
+            if let refusal = startCalibration() { print("refused: \(refusal)"); return }
         case "sailing":
             // Sailing is a setting, not a mode: turn it on, watch, turn it off.
             let before = Preferences.shared.sailingRange
@@ -43,10 +45,37 @@ extension BatteryMonitor {
             if mode == .normal { break }
         }
         if mode == .toppingUp { toggleTopUp() }
+        if mode == .calibrating { stopCalibration() }
         for _ in 0..<120 where isBusy || isOverriding {
             try? await Task.sleep(for: .milliseconds(500))
         }
         try? await Task.sleep(for: .seconds(3))
         line("after")
+    }
+
+    /// For `Hachibu --probe-limit <n>`: asks macOS for any limit the helper
+    /// accepts, without saving it as the user's, and prints what the
+    /// charging service and power management then report. Put the limit
+    /// back with `--set-limit` afterwards.
+    func probeLimit(_ value: Int) async -> String {
+        runsModes = false
+        guard HelperRequest.limitRange.contains(value) else { return "refused: \(value) is outside what the helper accepts" }
+        await helper.refresh()
+        let started = Date.now
+        let system = MacLimitSystem()
+        let accepted = value >= 100 ? await system.setOfficial(100) : await system.setThroughHelper(value)
+        guard accepted else { return "not accepted (helper: \(helper.state.title))" }
+        var reported: Int?, enforced: Int?
+        var reportedAfter: Int?, enforcedAfter: Int?
+        for _ in 0..<60 where enforcedAfter == nil {
+            reported = await system.read().limit
+            enforced = await system.enforced()
+            let seconds = Int(Date.now.timeIntervalSince(started).rounded())
+            if reportedAfter == nil, reported == value { reportedAfter = seconds }
+            if enforced == value { enforcedAfter = seconds } else { try? await Task.sleep(for: .seconds(3)) }
+        }
+        return "asked for \(value)%: the charging service reports \(reported.map { "\($0)%" } ?? "no limit")"
+            + " (after \(reportedAfter.map { "\($0)s" } ?? "never")), power management enforces \(enforced.map { "\($0)%" } ?? "none")"
+            + " (after \(enforcedAfter.map { "\($0)s" } ?? "never in 180s"))"
     }
 }

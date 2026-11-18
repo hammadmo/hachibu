@@ -66,6 +66,7 @@ enum Snapshot {
                     model.settingsPreview = BatteryMonitor.preview(fixture.battery, helper: fixture.helper)
                     model.confirmingHelperRemoval = fixture.confirmingRemoval
                     model.showingHelperApproval = fixture.showingApproval
+                    model.showingCalibration = fixture.showingCalibration
                 }
             }
             if wants("history") {
@@ -135,13 +136,15 @@ enum Snapshot {
 struct SettingsFixture {
     /// The pages beyond one per tab.
     static let pages = ["settings-charging-helper", "settings-helper-approval", "settings-helper-running",
-                        "settings-helper-failed", "settings-helper-unavailable", "settings-helper-remove", "settings-helper-allow"]
+                        "settings-helper-failed", "settings-helper-unavailable", "settings-helper-remove", "settings-helper-allow",
+                        "settings-charging-calibrate", "settings-charging-calibrating"]
 
     var tab: SettingsTab = .general
     var battery: PopoverPreview = .holding
     var helper: HelperState = .notInstalled
     var confirmingRemoval = false
     var showingApproval = false
+    var showingCalibration = false
 
     init(page: String) {
         let parts = page.split(separator: "-").dropFirst().map(String.init)
@@ -151,6 +154,8 @@ struct SettingsFixture {
         case "remove": (battery, helper, confirmingRemoval) = (.lowLimit, .running, true)
         case "approval": helper = .needsApproval
         case "allow": (helper, showingApproval) = (.needsApproval, true)
+        case "calibrate": (battery, helper, showingCalibration) = (.lowLimit, .running, true)
+        case "calibrating": (battery, helper, showingCalibration) = (.calibrating, .running, true)
         case "failed": helper = .failed("The helper did not answer.")
         case "unavailable": helper = .unavailable("This copy of Hachibu is not signed with an Apple certificate, which the helper needs.")
         default: break

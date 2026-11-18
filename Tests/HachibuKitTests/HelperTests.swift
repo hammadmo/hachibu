@@ -19,19 +19,21 @@ func helperRequestsAreClosed() {
 
 @Test("Every request survives the trip to the helper unchanged")
 func helperRequestRoundTrip() {
-    for request in [HelperRequest.setLimit(20), .setLimit(100), .cutAdapter, .restoreAdapter, .readStatus] {
+    for request in [HelperRequest.setLimit(15), .setLimit(100), .cutAdapter, .restoreAdapter, .readStatus] {
         #expect(HelperRequest(name: request.name, value: request.value) == request)
     }
 }
 
-@Test("The helper rejects limits outside 20 to 100")
+@Test("The helper accepts 15 to 100 and nothing lower; the slider still stops at 20")
 func helperLimitRange() {
-    for value in [-1, 0, 1, 19, 101, 255, Int.max, Int.min] {
+    for value in [-1, 0, 1, 14, 101, 255, Int.max, Int.min] {
         #expect(HelperRequest(name: "set-limit", value: value) == nil)
     }
-    for value in 20...100 {
+    for value in 15...100 {
         #expect(HelperRequest(name: "set-limit", value: value) == .setLimit(value))
     }
+    #expect(LimitStops.sliderRange == 20...100)
+    #expect(LimitStops.all(official: [80, 100], helperRunning: true).first == 20)
 }
 
 @Test("The slider runs from 20 with the helper and from 80 without it")

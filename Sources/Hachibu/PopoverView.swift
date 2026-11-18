@@ -83,12 +83,19 @@ struct PopoverView: View {
     /// Top Up. While one runs the button reads "Stop".
     private var modeButtons: some View {
         HStack(spacing: Space.sm) {
-            Button(monitor.mode == .toppingUp ? "Stop" : "Top Up") { monitor.toggleTopUp() }
-                .buttonStyle(.kit(.secondary, selected: monitor.mode == .toppingUp))
-                .disabled(monitor.mode != .toppingUp && !monitor.canTopUp)
-                .help(monitor.mode == .toppingUp ? "End the Top Up and go back to your limit"
-                    : "Charge to 100% once, then go back to your limit")
-                .accessibilityLabel(monitor.mode == .toppingUp ? "Stop Top Up" : "Top Up")
+            if monitor.mode == .calibrating {
+                Button("Stop") { monitor.stopCalibration() }
+                    .buttonStyle(.kit(.secondary, selected: true))
+                    .help("End the calibration and go back to your limit")
+                    .accessibilityLabel("Stop calibration")
+            } else {
+                Button(monitor.mode == .toppingUp ? "Stop" : "Top Up") { monitor.toggleTopUp() }
+                    .buttonStyle(.kit(.secondary, selected: monitor.mode == .toppingUp))
+                    .disabled(monitor.mode != .toppingUp && !monitor.canTopUp)
+                    .help(monitor.mode == .toppingUp ? "End the Top Up and go back to your limit"
+                        : "Charge to 100% once, then go back to your limit")
+                    .accessibilityLabel(monitor.mode == .toppingUp ? "Stop Top Up" : "Top Up")
+            }
         }
         .padding(.top, Space.xs)
     }

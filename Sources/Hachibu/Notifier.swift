@@ -29,4 +29,14 @@ enum Notifier {
         let request = UNNotificationRequest(identifier: "full-charge-by-macos", content: content, trigger: nil)
         Task { try? await UNUserNotificationCenter.current().add(request) }
     }
+
+    static func calibrationFinished(limit: Int) {
+        guard !Store.isOverridden, Preferences.shared.notifyCalibrationFinished else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "Calibration finished"
+        content.body = limit < 100 ? "Your limit of \(limit)% is back. macOS now drains the battery down to it."
+            : "The battery is full and there is no limit."
+        let request = UNNotificationRequest(identifier: "calibration-finished", content: content, trigger: nil)
+        Task { try? await UNUserNotificationCenter.current().add(request) }
+    }
 }

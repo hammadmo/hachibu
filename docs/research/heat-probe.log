@@ -1,0 +1,71 @@
+# Heat protection probe, 2026-11-19 01:29
+start: 80% 0 mA pmset=80
+--- run 1: charge under a 90% limit
+limit 90%, Set by Hachibu
+charging: 81% 1249 mA pmset=90; asking macOS to hold 81%
+   t=10s 81% 1249 mA pmset=90
+   t=21s 81% 1249 mA pmset=90
+   t=31s 81% 1249 mA pmset=90
+   t=41s 81% 1249 mA pmset=90
+   t=52s 81% 1249 mA pmset=90
+   t=62s 81% 1318 mA pmset=90
+   t=73s 81% 1318 mA pmset=90
+   t=83s 81% 1318 mA pmset=90
+   t=93s 81% 1318 mA pmset=90
+   t=100s pmset reports 81
+   app: limit 81%, Set by Hachibu
+   app returned after 100s
+   t=104s 82% 1557 mA pmset=81
+   t=114s 82% 1557 mA pmset=81
+   t=125s 82% 1557 mA pmset=81
+   t=135s 82% 1557 mA pmset=81
+   t=145s 82% 1557 mA pmset=81
+   t=156s 82% 1557 mA pmset=81
+   t=160s current stopped: -557 mA at 82%
+run 1 result: level asked 81%, pmset after 100s, current stopped after 160s, ended at 82%
+--- run 2: charge under a 90% limit
+limit 90%, Set by Hachibu
+charging: 83% 536 mA pmset=90; asking macOS to hold 83%
+   t=10s 83% 536 mA pmset=90
+   t=20s 83% 536 mA pmset=90
+   t=31s 83% 536 mA pmset=90
+   t=41s 83% 536 mA pmset=90
+   t=52s 83% 536 mA pmset=90
+   t=60s pmset reports 83
+   t=62s 83% 441 mA pmset=83
+   app: limit 83%, Set by Hachibu
+   app returned after 63s
+   t=72s 83% 441 mA pmset=83
+   t=83s 83% 441 mA pmset=83
+   t=93s 83% 441 mA pmset=83
+   t=103s 83% 441 mA pmset=83
+   t=114s 83% 441 mA pmset=83
+   t=120s current stopped: 0 mA at 83%
+run 2 result: level asked 83%, pmset after 60s, current stopped after 120s, ended at 83%
+--- restore
+limit 80%, Set by Hachibu
+end: 83% 0 mA pmset=80
+# Heat protection probe 2: ask for one percent UNDER the level, 2026-11-19 01:43
+start: 83% -874 mA pmset=80
+--- run 1: charge under a 90% limit
+limit 90%, Set by Hachibu
+charging: 84% 1164 mA pmset=90; asking macOS for 83%, one under the level
+   t=10s 84% 1164 mA pmset=90
+   t=20s 84% 1164 mA pmset=90
+   t=30s 84% 1164 mA pmset=90
+   t=41s 84% 1164 mA pmset=90
+   t=51s 84% 1164 mA pmset=90
+   t=61s 84% 487 mA pmset=90
+   t=72s 84% 487 mA pmset=90
+   t=82s 84% 487 mA pmset=90
+   t=92s 84% 487 mA pmset=90
+   t=102s 84% 487 mA pmset=90
+   t=113s 84% 487 mA pmset=90
+   t=119s pmset reports 83
+   app: asked for 83%: the charging service reports 83% (after 0s), power management enforces 83% (after 119s)
+   app returned after 119s
+   t=123s 85% 1100 mA pmset=83
+run 1 result: level 84%, asked 83%, pmset after 119s, current stopped after never (180s)s, ended at 85%
+--- restore
+limit 80%, Set by Hachibu
+end: 85% 1100 mA pmset=80

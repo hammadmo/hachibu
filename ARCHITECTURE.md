@@ -56,3 +56,6 @@ Neither of those depends on anything else in the project. Rules go in
 - A command-line run puts the limit back before it calls
   `NSApp.terminate`, not from inside the quit.
 - Hachibu never cuts the charger (`docs/research/charge-control.md`).
+- A mode writes down what it asked macOS for (`Preferences.sailingHold`,
+  `Preferences.modeAsk`). At launch a leftover is recognised only by an
+  exact match with what macOS holds, never by guessing.

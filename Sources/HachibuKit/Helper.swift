@@ -19,8 +19,9 @@ public enum HelperID {
 public enum HelperRequest: Equatable, Sendable {
     case setLimit(Int), cutAdapter, restoreAdapter, readStatus
 
-    /// The limits the helper accepts.
-    public static let limitRange = 20...100
+    /// The limits the helper accepts. The slider stops at 20
+    /// (`LimitStops.sliderRange`); only calibration goes down to 15.
+    public static let limitRange = 15...100
 
     public var name: String {
         switch self {
@@ -36,7 +37,7 @@ public enum HelperRequest: Equatable, Sendable {
         return 0
     }
 
-    /// nil for an unknown name, a limit outside 20–100, or a value on a
+    /// nil for an unknown name, a limit outside 15–100, or a value on a
     /// request that takes none.
     public init?(name: String, value: Int) {
         switch name {

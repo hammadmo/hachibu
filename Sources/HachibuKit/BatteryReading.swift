@@ -37,6 +37,10 @@ public struct BatteryReading: Equatable, Sendable {
         self.fullChargeOverride = fullChargeOverride
     }
 
+    /// A stand-in where a reading is needed only to make words that do not
+    /// depend on it.
+    public static let placeholder = BatteryReading(percent: 0, isPluggedIn: true, currentMA: 0)
+
     /// Below this, current into the battery is treated as noise, not charging.
     public static let chargingThresholdMA = 50
 
@@ -60,6 +64,10 @@ public enum BatteryStatus: Equatable, Sendable {
     case charging, holdingAtLimit, fullyCharged, notCharging, usingBattery, onBattery, fullChargeByMacOS
     /// What Hachibu does on request or by a setting.
     case toppingUp, sailing
+    /// A calibration is on one of its steps.
+    case calibrating(CalibrationStep)
+    /// Hot, so macOS is asked to hold the level instead of charging.
+    case pausedForHeat
 
     /// How close to the limit still counts as holding at it.
     public static let holdingMargin = 2
@@ -70,7 +78,8 @@ public enum BatteryStatus: Equatable, Sendable {
                               isSailing: Bool) -> BatteryStatus {
         switch mode {
         case .toppingUp: return reading.fullChargeOverride ? .fullChargeByMacOS : .toppingUp
-        case .normal, .calibrating:
+        case .calibrating: return .calibrating(.charging)
+        case .normal:
             let plain = derive(from: reading, limit: limit)
             // Sailing is only said while nothing flows into the battery.
             return isSailing && (plain == .holdingAtLimit || plain == .notCharging) ? .sailing : plain
@@ -98,6 +107,8 @@ public enum BatteryStatus: Equatable, Sendable {
         case .fullChargeByMacOS: "Full charge by macOS"
         case .toppingUp: "Topping up"
         case .sailing: "Sailing"
+        case .calibrating: "Calibrating"
+        case .pausedForHeat: "Paused for heat"
         }
     }
 
@@ -111,6 +122,14 @@ public enum BatteryStatus: Equatable, Sendable {
             return "\(Watts.text(reading.batteryWatts.map(abs))) from battery, charger connected"
         case .fullChargeByMacOS:
             return "macOS is charging past your limit to keep its estimates accurate"
+        case .calibrating(let step):
+            switch step {
+            case .draining: return "Step 1 of 3: macOS drains the battery to \(ChargeEngine.calibrationFloor)%"
+            case .charging: return "Step 2 of 3: charging to 100%"
+            case .resting: return "Step 3 of 3: resting at 100% for two hours"
+            }
+        case .pausedForHeat:
+            return "The battery is \(reading.temperatureC.map { String(format: "%.1f °C", $0) } ?? "hot"). Charging waits until it cools"
         case .charging, .holdingAtLimit, .fullyCharged, .notCharging, .toppingUp, .sailing:
             return "\(Watts.text(reading.chargerWatts)) from charger"
         }

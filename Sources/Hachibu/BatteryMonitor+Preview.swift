@@ -9,6 +9,8 @@ enum PopoverPreview: String, CaseIterable {
     case topUp = "topup", sailing
     /// macOS charging past the limit on its own.
     case fullCharge = "fullcharge"
+    /// A calibration on its first step, draining toward 15%.
+    case calibrating
 
     static let windowID = "popover-preview"
     static let windowTitle = "Hachibu Popover"
@@ -68,12 +70,20 @@ extension BatteryMonitor {
             fixture.reading?.currentMA = 1_480
             fixture.reading?.chargerWatts = 27.6
             fixture.reading?.fullChargeOverride = true
+        case .calibrating:
+            fixture.reading?.percent = 62
+            fixture.reading?.currentMA = -1_310
+            fixture.limit = LimitState(system: 15, saved: 80)
+            fixture.mode = .calibrating
+            fixture.calibration = .draining
+            fixture.overrideLimit = 15
+            fixture.limitBeforeOverride = 80
         case .lowLimit, .helperMissing:
             fixture.reading?.percent = 70
             fixture.limit = LimitState(system: 70, saved: 70)
             fixture.dayLevels = fixture.dayLevels.map { $0 - 10 }
         }
-        fixture.helper = helper ?? (preview == .lowLimit || preview == .sailing ? .running : .notInstalled)
+        fixture.helper = helper ?? ([.lowLimit, .sailing, .calibrating].contains(preview) ? .running : .notInstalled)
         return BatteryMonitor(fixture: fixture)
     }
 }

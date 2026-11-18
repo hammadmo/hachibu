@@ -58,6 +58,10 @@ final class BatteryMonitor {
     private(set) var modeProblem: String?
     /// A Top Up has reached 100% and keeps it there until unplugged.
     private(set) var isToppedUp = false
+    /// The step a calibration is on. nil when none runs.
+    private(set) var calibrationStep: CalibrationStep?
+    /// A calibration is waiting for the charger to come back.
+    private(set) var isWaitingForCharger = false
 
     /// What stands between the user's limit and what macOS was asked for.
     private(set) var override = LimitOverride.none
@@ -116,7 +120,10 @@ final class BatteryMonitor {
 
     var status: BatteryStatus? {
         // Once topped up, the battery's own state is the truth: "Fully charged".
-        reading.map { BatteryStatus.derive(from: $0, limit: limit.system, mode: isToppedUp ? .normal : mode, isSailing: isSailing) }
+        reading.map { reading in
+            if let calibrationStep, !reading.fullChargeOverride { return BatteryStatus.calibrating(calibrationStep) }
+            return BatteryStatus.derive(from: reading, limit: limit.system, mode: isToppedUp ? .normal : mode, isSailing: isSailing)
+        }
     }
 
     /// The limit the user chose: what a mode goes back to. 100 means none.
@@ -166,6 +173,10 @@ final class BatteryMonitor {
         if !hasLoaded { return "Reading the limit…" }
         if !limitSupported { return "This version of macOS does not offer a charge limit." }
         _ = sliderValue // redraw the caption as soon as a drag starts
+        if mode == .calibrating {
+            return isWaitingForCharger ? "Calibrating. Connect the charger to go on."
+                : "Calibrating. Your limit returns when it is done."
+        }
         if mode == .toppingUp {
             return isToppedUp ? "Topped up. Your limit returns when you unplug."
                 : "Charging to 100% once. Your limit returns when you unplug."
@@ -424,6 +435,9 @@ final class BatteryMonitor {
             // and put the user's limit back; the Mac may be in between.
             if mode == .toppingUp {
                 modeProblem = "The Top Up was stopped: \(reason)."
+            } else if mode == .calibrating {
+                modeProblem = "The calibration was stopped: \(reason)."
+                calibrationStep = nil
             } else {
                 sailingPausedUntil = now.addingTimeInterval(600)
                 modeProblem = "Sailing is paused for ten minutes: \(reason)."
@@ -479,13 +493,51 @@ final class BatteryMonitor {
         runModes()
     }
 
+    var canCalibrate: Bool { calibrationRefusal == nil }
+
+    /// Why a calibration cannot start now, in words for the user. nil when it can.
+    var calibrationRefusal: String? {
+        guard let inputs = chargeInputs(), canChangeLimit else { return "The battery or the limit cannot be read right now." }
+        var trial = engine
+        return trial.startCalibration(inputs)
+    }
+
+    /// Starts a calibration. Returns why not, or nil.
+    @discardableResult
+    func startCalibration() -> String? {
+        guard !isPreview, let inputs = chargeInputs() else { return "The battery cannot be read right now." }
+        let refusal = engine.startCalibration(inputs)
+        if refusal == nil { runModes() }
+        return refusal
+    }
+
+    /// Ends a calibration early; the user's limit is asked for again.
+    func stopCalibration() {
+        guard !isPreview, mode == .calibrating else { return }
+        engine.stop()
+        runModes()
+    }
+
     /// At launch: a limit that is exactly the level Hachibu was holding when
     /// it last ran is taken up again as sailing. Any other limit below the
     /// saved one was set outside Hachibu and is left alone.
     private func adoptSailing() {
         guard !adoptedSailing else { return }
         adoptedSailing = true
-        guard runsModes, !isPreview, let hold = Preferences.shared.sailingHold else { return }
+        guard runsModes, !isPreview else { return }
+        // A Top Up or a calibration that Hachibu did not get to end (a crash,
+        // a forced quit): macOS still holds exactly what it asked for. That
+        // is Hachibu's own leftover, so the user's limit is put back.
+        if let asked = Preferences.shared.modeAsk {
+            Preferences.shared.modeAsk = nil
+            if let saved = limit.saved, saved != asked, limit.effective == asked {
+                override = .restoring(user: saved)
+                restoreRetryAt = .now
+                modeProblem = "Hachibu stopped during a Top Up or a calibration. Your limit is being put back."
+                return
+            }
+        }
+        guard let hold = Preferences.shared.sailingHold else { return }
         guard Capability.sailing, Preferences.shared.sailingRange > 0, override == .none,
               let saved = limit.saved, limit.system == hold, hold < saved else {
             Preferences.shared.sailingHold = nil
@@ -516,10 +568,13 @@ final class BatteryMonitor {
         engine.stop()
         mode = .normal
         isToppedUp = false
+        calibrationStep = nil
+        isWaitingForCharger = false
         modeProblem = nil
         override = .none
         restoreRetryAt = nil
         Preferences.shared.sailingHold = nil
+        Preferences.shared.modeAsk = nil
     }
 
     /// Asks the engine what should be true now and carries it out. A limit
@@ -531,6 +586,12 @@ final class BatteryMonitor {
         mode = plan.mode
         isSailing = plan.isSailing
         isToppedUp = plan.isToppedUp
+        let wasCalibrating = calibrationStep != nil
+        calibrationStep = plan.calibration
+        isWaitingForCharger = plan.isWaitingForCharger
+        if wasCalibrating, plan.calibration == nil, engine.lastEnd == .finished {
+            Notifier.calibrationFinished(limit: inputs.limit)
+        }
         // A mode that is running again has nothing left to explain.
         if plan.mode != .normal || plan.isSailing { modeProblem = nil }
         guard !isBusy, canChangeLimit else { return }
@@ -543,6 +604,8 @@ final class BatteryMonitor {
         // Remembered across launches, so a hold left behind is recognised.
         let hold = plan.isSailing ? overrideLimit : nil
         if Preferences.shared.sailingHold != hold { Preferences.shared.sailingHold = hold }
+        let modeAsk = plan.mode == .normal ? nil : overrideLimit
+        if Preferences.shared.modeAsk != modeAsk { Preferences.shared.modeAsk = modeAsk }
     }
 
     private func ask(_ limit: Int, _ plan: ChargePlan) {
@@ -560,6 +623,7 @@ final class BatteryMonitor {
         guard isOverriding else { return }
         override = .none
         Preferences.shared.sailingHold = nil
+        Preferences.shared.modeAsk = nil
         // Let a request that is mid-call finish first, briefly, so it cannot
         // land after the limit written here.
         setter.supersede()
@@ -620,6 +684,7 @@ final class BatteryMonitor {
         var overrideLimit: Int?
         var limitBeforeOverride: Int?
         var helper = HelperState.notInstalled
+        var calibration: CalibrationStep?
         /// Battery level over the last 24 hours. Empty shows "Collecting data".
         var dayLevels: [Double] = []
     }
@@ -635,6 +700,7 @@ final class BatteryMonitor {
         isWarning = fixture.isWarning
         mode = fixture.mode
         isSailing = fixture.isSailing
+        calibrationStep = fixture.calibration
         if let asked = fixture.overrideLimit, let user = fixture.limitBeforeOverride {
             override = .holding(limit: asked, user: user)
         }

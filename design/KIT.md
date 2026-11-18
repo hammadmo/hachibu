@@ -228,7 +228,8 @@ one secondary button.
 A card 336 wide over a dimmed window (`Ink.scrim`): title, one line of
 explanation, numbered steps, and at most two buttons (ghost, then
 primary) at the trailing edge. A `progress` line replaces the buttons
-while Hachibu is busy. Only for something the person must do outside
+while Hachibu is busy. With `currentStep`, that step is in `labelStrong`
+and the others soften; a `note` under the steps is small print in `meta`. Only for something the person must do outside
 Hachibu, such as allowing the helper in Login Items.
 
 ### Toggle (`.toggleStyle(.kit)`)

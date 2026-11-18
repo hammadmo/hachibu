@@ -20,6 +20,9 @@ final class AppModel {
     var settingsPreview: BatteryMonitor?
     /// The dialog that says how to allow the helper in Login Items.
     var showingHelperApproval = false
+    /// The dialog that explains a calibration before it starts, or shows
+    /// its steps while it runs.
+    var showingCalibration = false
     /// The Helper tab is asking "Remove the helper?".
     var confirmingHelperRemoval = false
 }

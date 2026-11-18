@@ -28,6 +28,8 @@ notifications, and errors.
 | Using battery | Plugged in, yet power is leaving the battery: macOS is draining it toward the limit, or the charger cannot keep up | discharging, draining |
 | Topping up | Charging to 100% once, at the user's request | full charge, override, boost |
 | Sailing | Plugged in, below the limit, and not charging: inside the sailing range | coasting, floating |
+| Calibrating | A calibration is on one of its three steps | recalibrating, cycling |
+| Paused for heat | Hot, so charging waits until the battery cools | throttled, overheated |
 | Paused for heat | Charging stopped because the battery is above the set temperature | heat protection active, overheated |
 | Full charge by macOS | macOS is charging past the limit on its own to keep its estimates accurate | calibration, override, top off |
 | Limit not holding | The battery is charging above the limit and Hachibu did not ask for it | error, failed, limit exceeded |

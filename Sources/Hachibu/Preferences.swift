@@ -18,6 +18,7 @@ final class Preferences {
         static let notifyCalibrationFinished = "notify.calibrationFinished"
         static let sailingRange = "charging.sailingRange"
         static let sailingHold = "charging.sailingHold"
+        static let modeAsk = "charging.modeAsk"
         static let heatProtection = "charging.heatProtection"
         static let heatThreshold = "charging.heatThreshold"
     }
@@ -42,6 +43,14 @@ final class Preferences {
     var sailingHold: Int? {
         didSet {
             if let sailingHold { defaults.set(sailingHold, forKey: Key.sailingHold) } else { defaults.removeObject(forKey: Key.sailingHold) }
+        }
+    }
+    /// The limit a Top Up or a calibration last asked macOS for. nil when
+    /// none runs. If Hachibu stops without putting the user's limit back,
+    /// the next launch finds this and does it.
+    var modeAsk: Int? {
+        didSet {
+            if let modeAsk { defaults.set(modeAsk, forKey: Key.modeAsk) } else { defaults.removeObject(forKey: Key.modeAsk) }
         }
     }
     var heatProtection: Bool { didSet { defaults.set(heatProtection, forKey: Key.heatProtection) } }
@@ -72,6 +81,7 @@ final class Preferences {
         notifyCalibrationFinished = bool(Key.notifyCalibrationFinished, true)
         sailingRange = int(Key.sailingRange, 0)
         sailingHold = store.object(forKey: Key.sailingHold) as? Int
+        modeAsk = store.object(forKey: Key.modeAsk) as? Int
         heatProtection = bool(Key.heatProtection, false)
         heatThreshold = int(Key.heatThreshold, 40)
         opensAtLogin = !Store.isOverridden && SMAppService.mainApp.status == .enabled

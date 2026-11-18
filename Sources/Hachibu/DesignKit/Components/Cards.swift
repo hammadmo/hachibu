@@ -198,6 +198,11 @@ struct KitDialog: View {
     var title: String
     var message: String?
     var steps: [String] = []
+    /// The step under way, counted from 0: it is drawn stronger and the
+    /// others softer. nil draws all steps alike.
+    var currentStep: Int?
+    /// Small print under the steps.
+    var note: String?
     /// Shown instead of the buttons while Hachibu is busy.
     var progress: String?
     var primaryTitle: String
@@ -220,12 +225,18 @@ struct KitDialog: View {
                 VStack(alignment: .leading, spacing: Space.sm) {
                     ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
                         HStack(alignment: .firstTextBaseline, spacing: Space.sm) {
-                            Text("\(index + 1)").kitType(.numeral).foregroundStyle(Ink.accentText)
-                            Text(step).kitType(.body).foregroundStyle(Ink.text)
+                            let dimmed = currentStep != nil && currentStep != index
+                            Text("\(index + 1)").kitType(.numeral).foregroundStyle(dimmed ? Ink.textSoft : Ink.accentText)
+                            Text(step).kitType(currentStep == index ? .labelStrong : .body)
+                                .foregroundStyle(dimmed ? Ink.textSoft : Ink.text)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
+            }
+            if let note {
+                Text(note).kitType(.meta).foregroundStyle(Ink.textSoft)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: Space.sm) {
                 if let progress {

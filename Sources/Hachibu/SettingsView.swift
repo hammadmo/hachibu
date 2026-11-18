@@ -30,6 +30,41 @@ struct SettingsView: View {
         .kitWindow(width: Metric.settingsWidth)
         .overlay {
             if model.showingHelperApproval { HelperApprovalDialog() }
+            if model.showingCalibration { CalibrationDialog() }
+        }
+    }
+}
+
+/// Before a calibration: what it does, what it costs, and what it needs.
+/// While one runs: its three steps, with the current one marked.
+struct CalibrationDialog: View {
+    @Environment(AppModel.self) private var model
+    @Environment(BatteryMonitor.self) private var monitor
+    @State private var refusal: String?
+
+    private static let steps = ["macOS drains the battery to \(ChargeEngine.calibrationFloor)%, staying on the charger.",
+                                "The battery charges to 100%.",
+                                "It rests at 100% for two hours. Then your limit returns."]
+
+    var body: some View {
+        if let step = monitor.calibrationStep {
+            KitDialog(title: "Calibrating",
+                      message: monitor.isWaitingForCharger ? "Waiting for the charger. Connect it to go on."
+                          : "The battery is at \(monitor.reading?.percent ?? 0)%.",
+                      steps: Self.steps, currentStep: CalibrationStep.allCases.firstIndex(of: step),
+                      note: "Keep the charger connected and Hachibu running. The drain waits while the Mac sleeps.",
+                      primaryTitle: "Close", primary: { model.showingCalibration = false },
+                      secondaryTitle: "Stop", secondary: {
+                          monitor.stopCalibration()
+                          model.showingCalibration = false
+                      })
+        } else {
+            KitDialog(title: "Calibrate the battery",
+                      message: "Corrects the percentage and the health reading. It does not improve the battery, and it uses one full charge cycle.",
+                      steps: Self.steps,
+                      note: refusal ?? "Takes several hours. Keep the charger connected and Hachibu running. The drain waits while the Mac sleeps; Hachibu does not keep the Mac awake.",
+                      primaryTitle: "Calibrate", primary: { refusal = monitor.startCalibration() },
+                      secondaryTitle: "Not Now", secondary: { model.showingCalibration = false })
         }
     }
 }
@@ -104,6 +139,7 @@ struct GeneralSettings: View {
 }
 
 struct ChargingSettings: View {
+    @Environment(AppModel.self) private var model
     @Environment(BatteryMonitor.self) private var monitor
     @Bindable private var preferences = Preferences.shared
 
@@ -134,6 +170,24 @@ struct ChargingSettings: View {
                 }
             }
             .disabled(!Capability.sailing || !monitor.helper.isRunning)
+            SettingsSection(title: "Calibration") {
+                if let step = monitor.calibrationStep {
+                    SettingsRow(title: "Calibrating",
+                                detail: BatteryStatus.calibrating(step).detail(for: monitor.reading ?? .placeholder)) {
+                        Button("Show Steps…") { model.showingCalibration = true }
+                            .buttonStyle(.kit(.secondary)).fixedSize()
+                    }
+                } else {
+                    SettingsRow(title: "Calibrate the battery",
+                                detail: monitor.helper.isRunning
+                                    ? "Corrects the battery reading when the percentage or health looks wrong."
+                                    : "Calibration needs the helper.") {
+                        Button("Calibrate…") { model.showingCalibration = true }
+                            .buttonStyle(.kit(.secondary)).fixedSize()
+                            .disabled(!monitor.helper.isRunning)
+                    }
+                }
+            }
             SettingsSection(title: "Heat protection") {
                 SettingsRow(title: "Pause charging when hot", detail: "Charging resumes when the battery cools by 2 °C.") {
                     Toggle("Pause charging when hot", isOn: $preferences.heatProtection).toggleStyle(.kit)

@@ -6,8 +6,9 @@ import SwiftUI
 //   Hachibu                      the app
 //   Hachibu --selftest           check the real functions and quit with 0 or 1 (tools/selftest.sh)
 //   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none; 20 to 100 with the helper), print the result, quit
-//   Hachibu --try topup|sailing <seconds>   run a real Top Up or sailing for that long, print what is measured, stop it, quit
+//   Hachibu --try topup|sailing|calibration <seconds>   run a real Top Up, sailing, or calibration for that long, print what is measured, stop it, quit
 //   Hachibu --restore-charger    ask the helper to reconnect the charger, and print what the battery controller says
+//   Hachibu --probe-limit <n>    ask macOS for any limit the helper accepts (15 to 100) without saving it, and print what macOS then reports
 //   Hachibu --helper-reinstall   take the helper out of macOS and register it again (it does not touch the limit)
 //   Hachibu --helper-status      ask the helper for its state, print it, quit (read-only)
 //   APP_STORE=<file> Hachibu     a test run: no real preferences, login items, notifications, or limit changes
@@ -126,7 +127,7 @@ enum Launch {
     /// True for a run that does one thing and quits. Such a copy leaves
     /// recording, Top Up, and sailing to the copy in the menu bar.
     nonisolated static let isOneShot: Bool = {
-        let flags: Set = ["--set-limit", "--try", "--helper-status", "--helper-reinstall", "--restore-charger", "--selftest"]
+        let flags: Set = ["--set-limit", "--probe-limit", "--try", "--helper-status", "--helper-reinstall", "--restore-charger", "--selftest"]
         return CommandLine.arguments.contains { flags.contains($0) }
     }()
 
@@ -162,6 +163,12 @@ enum Launch {
             }
             open(SettingsView.windowID)
             NSApp.activate()
+        } else if let flag = arguments.firstIndex(of: "--probe-limit"), arguments.indices.contains(flag + 1),
+                  let value = Int(arguments[flag + 1]) {
+            Task {
+                print(await monitor.probeLimit(value))
+                await quit(monitor)
+            }
         } else if let flag = arguments.firstIndex(of: "--try"), arguments.indices.contains(flag + 2),
                   let seconds = Int(arguments[flag + 2]) {
             let what = arguments[flag + 1]

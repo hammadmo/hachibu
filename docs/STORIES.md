@@ -446,7 +446,19 @@ Acceptance:
 - [unit] A pause also holds during a Top Up, and the Top Up continues
   when the battery has cooled.
 - [unit] Heat protection never pauses a full charge by macOS; it cannot.
-Status: todo
+Status: todo, blocked (2026-11-19). Needs a decision from the user.
+- Measured, as the first acceptance line asks: while the battery is
+  charging, macOS applies a new limit 60 to 120 seconds after accepting
+  it, and the current was seen to stop after 120 seconds, 160 seconds, and
+  about three minutes in three runs (`docs/research/charge-control.md`,
+  "How fast macOS stops charging when asked"). That is not under two
+  minutes, so by this story's own rule it is not built.
+- Asking for one percent under the level was no faster, and would drain.
+- The rules are written and unit-tested in `ChargeEngine`
+  (`protectFromHeat`), not switched on: nothing passes a threshold, and
+  the Settings rows stay disabled.
+- To decide: a pause that takes one to three minutes still protects a
+  long hot charge. Build it with that said on screen, or drop it.
 
 ### S-041 Know when macOS is doing a full charge
 As the user, I am told when macOS charges past my limit on its own, and
@@ -510,7 +522,13 @@ Acceptance:
 - [manual] A notification is sent when calibration finishes.
 - [manual] One full run on this Mac, with the time of each step and the
   health figure before and after written into the research file.
-Status: todo
+Status: done (2026-11-19), except the full run. macOS took and enforced
+15% at once. A real 20-second run showed "Calibrating" with a 15% limit
+and gave 80% back on Stop. It is started from Settings > Charging;
+the popover shows the step and a Stop button. If Hachibu stops during a
+calibration or a Top Up, the next launch puts the user's limit back.
+Still to do by hand: one whole calibration, with the time of each step
+and the health figure before and after.
 
 ## M6 System and polish
 
