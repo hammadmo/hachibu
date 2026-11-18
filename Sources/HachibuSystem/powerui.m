@@ -4,6 +4,7 @@
 #import <objc/message.h>
 #import <objc/runtime.h>
 #include "HachibuSystem.h"
+#include <unistd.h>
 
 // macOS's own charge limit, through the private PowerUI framework. The
 // selectors and their types were read from the framework on macOS 27.2;
@@ -126,4 +127,20 @@ bool hb_full_charge_override(void) {
     uint32_t status = notify_get_state(token, &state);
     notify_cancel(token);
     return status == NOTIFY_STATUS_OK && state != 0;
+}
+
+// Limits macOS does not offer by itself. The charging service runs as root
+// and reads these two settings from root's own domain; the notification
+// makes it read them again. Proven on macOS 27.2 with 75%.
+bool hb_root_limit_set(int limit) {
+    if (geteuid() != 0 || limit < 1 || limit > 99) return false;
+    @autoreleasepool {
+        CFStringRef domain = CFSTR("com.apple.smartcharging.topoffprotection");
+        CFPreferencesSetValue(CFSTR("MCLFeatureState"), (__bridge CFNumberRef)@1, domain,
+                              kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+        CFPreferencesSetValue(CFSTR("mclLimitValue"), (__bridge CFNumberRef)@(limit), domain,
+                              kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+        if (!CFPreferencesSynchronize(domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)) return false;
+        return notify_post("com.apple.smartcharging.defaultschanged") == NOTIFY_STATUS_OK;
+    }
 }

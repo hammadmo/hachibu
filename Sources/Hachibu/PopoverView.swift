@@ -16,6 +16,14 @@ struct PopoverView: View {
                           message: "Battery is at \(reading.percent)% and still charging. The limit is \(monitor.limit.valueText).",
                           actionTitle: "Apply Limit Again") { monitor.applyLimitAgain() }
                     .gridProbe("banner", area: "popover")
+            } else if monitor.helperMissing {
+                KitBanner(title: "Helper not running",
+                          message: "A limit of \(monitor.limit.saved ?? 0)% needs the helper. Without it, macOS may charge higher.",
+                          actionTitle: "Fix…") {
+                    model.settingsTab = .helper
+                    open(SettingsView.windowID)
+                }
+                .gridProbe("banner", area: "popover")
             }
             EnsoGauge(percent: monitor.reading?.percent, limit: monitor.limit.system,
                       tone: monitor.isWarning ? .warning : .normal)

@@ -4,7 +4,7 @@ import SwiftUI
 // Hachibu: a menu bar app. No Dock icon and no main window.
 //   Hachibu                      the app
 //   Hachibu --selftest           check the real functions and quit with 0 or 1 (tools/selftest.sh)
-//   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none), print the result, quit
+//   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none; 20 to 100 with the helper), print the result, quit
 //   APP_STORE=<file> Hachibu     a test run: no real preferences, login items, notifications, or limit changes
 //   APP_SNAPSHOT=<dir> Hachibu   save a PNG of the popover states, every Settings tab, and History, in light and dark, then quit
 //   APP_KIT_GALLERY=1 Hachibu    show every design kit part in every state (DesignKit/KitGallery.swift)
@@ -33,6 +33,7 @@ struct HachibuApp: App {
         Window("Hachibu Settings", id: SettingsView.windowID) {
             SettingsView()
                 .environment(model)
+                .environment(model.settingsPreview ?? monitor)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
@@ -110,7 +111,7 @@ enum Launch {
         let arguments = CommandLine.arguments
         if let flag = arguments.firstIndex(of: "--set-limit") {
             guard arguments.indices.contains(flag + 1), let value = Int(arguments[flag + 1]) else {
-                print("usage: Hachibu --set-limit <80|85|90|95|100>")
+                print("usage: Hachibu --set-limit <percent>")
                 NSApp.terminate(nil)
                 return
             }

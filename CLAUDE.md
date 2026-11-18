@@ -13,6 +13,7 @@ Update it when a milestone ends or a decision changes.
 - `Sources/Hachibu/BatteryMonitor.swift` watches the battery and the limit and applies the limit the user chooses. Views read everything from it.
 - `Sources/Hachibu/SystemBattery.swift` reads the real battery (`SystemBattery`) and macOS's own charge limit (`ChargeLimit`).
 - `Sources/HachibuSystem/` C and Objective-C: the battery controller (SMC) and the private PowerUI framework. Read `docs/research/charge-control.md` before touching it.
+- `Sources/HachibuHelper/` the root helper, and `Sources/Hachibu/HelperManager.swift`, the app's side of it. The requests they share are in `Sources/HachibuKit/Helper.swift`. The helper accepts four requests and nothing else; keep that list closed.
 - `Sources/HachibuKit/` rules with no SwiftUI: status, limit source, the "Limit not holding" watch, formatting. Tests in `Tests/HachibuKitTests/`.
 - `Sources/Hachibu/DesignKit/` the design kit. `design/KIT.md` is its spec.
 - `Package.swift` a Swift package. There is no Xcode project.

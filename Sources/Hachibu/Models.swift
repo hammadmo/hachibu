@@ -14,6 +14,10 @@ final class AppModel {
     var historyPreview: HistoryPreview = .recorded
     /// Which fixed state the popover preview window shows (snapshot runs).
     var popoverPreview: PopoverPreview = .holding
+    /// The fixed battery and helper state Settings shows in snapshot runs.
+    var settingsPreview: BatteryMonitor?
+    /// The Helper tab is asking "Remove the helper?".
+    var confirmingHelperRemoval = false
 }
 
 /// Test, snapshot, and self-test runs set APP_STORE to a file in /tmp. In

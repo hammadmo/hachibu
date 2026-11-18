@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import HachibuKit
+import HachibuSystem
 
 /// Checks the app's real functions on this Mac, read-only, and quits with
 /// 0 (all passed) or 1. Run it with tools/selftest.sh, which sets APP_STORE
@@ -74,6 +75,16 @@ enum SelfTest {
         Preferences.shared.savedLimit = nil
         check("clearing the limit removes it", Preferences.shared.storedValue(Preferences.Key.savedLimit) == nil)
 
+        // S-010, S-011: the helper. A test run never reaches it.
+        check("this build carries the helper and its launchd file",
+              ["Contents/MacOS/HachibuHelper", "Contents/Library/LaunchDaemons/\(HelperID.plist)"].allSatisfy {
+                  FileManager.default.fileExists(atPath: Bundle.main.bundleURL.appendingPathComponent($0).path)
+              })
+        check("the charger reads as connected or cut (CHIE)", { var cut = false; return hb_adapter_is_cut(&cut) }())
+        check("root-only writes are refused without root", !hb_root_limit_set(70) && geteuid() != 0)
+        check("the helper started by hand refuses to run", helperExitCode() == 1)
+        check("the real limit is unchanged after the refused write", ChargeLimit.read().limit == limit.limit)
+
         // S-001: the template's sample window is gone; this is a menu bar app.
         check("the app has no Dock icon", NSApp.activationPolicy() == .accessory)
         check("no window is open at launch", NSApp.windows.filter { $0.isVisible && $0.canBecomeMain }.isEmpty)
@@ -81,5 +92,15 @@ enum SelfTest {
         print(failures == 0 ? "SELFTEST PASS" : "SELFTEST FAIL \(failures)")
         exitCode = failures == 0 ? 0 : 1
         NSApp.terminate(nil)
+    }
+
+    /// Runs the bundled helper as the current user. It must quit with 1.
+    private static func helperExitCode() -> Int32 {
+        let process = Process()
+        process.executableURL = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/HachibuHelper")
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return -1 }
+        process.waitUntilExit()
+        return process.terminationStatus
     }
 }

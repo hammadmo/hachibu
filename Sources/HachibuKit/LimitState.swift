@@ -50,6 +50,11 @@ public enum LimitStops {
         return cleaned.sorted()
     }
 
+    /// With the helper running, every whole percent from 20 to 100.
+    public static func all(official: [Int], helperRunning: Bool) -> [Int] {
+        helperRunning ? Array(HelperRequest.limitRange) : normalized(official)
+    }
+
     public static func snap(_ value: Int, to stops: [Int]) -> Int {
         stops.min { abs($0 - value) < abs($1 - value) } ?? value
     }

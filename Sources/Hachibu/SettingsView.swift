@@ -1,4 +1,5 @@
 import AppKit
+import HachibuKit
 import SwiftUI
 
 /// The Settings window (Command-Comma), drawn with the design kit: a hidden
@@ -81,19 +82,25 @@ struct GeneralSettings: View {
 }
 
 struct ChargingSettings: View {
-    @Environment(AppModel.self) private var model
+    @Environment(BatteryMonitor.self) private var monitor
     @Bindable private var preferences = Preferences.shared
 
     var body: some View {
+        @Bindable var monitor = monitor
         VStack(alignment: .leading, spacing: Space.xxl) {
-            if !Capability.helper {
-                HStack(spacing: Space.md) {
-                    Text("Sailing and heat protection need the helper.")
-                        .kitType(.body).foregroundStyle(Ink.textSoft)
-                    Spacer(minLength: 0)
-                    Button("Show Helper") { model.settingsTab = .helper }.buttonStyle(.kit(.ghost))
+            SettingsSection(title: "Limit") {
+                SettingsRow(title: "Limit",
+                            detail: monitor.helper.isRunning ? "Any level from 20% to 100%."
+                                : "From 80% to 100%. Lower limits need the helper.") {
+                    valueSlider($monitor.sliderValue, stops: monitor.stops, scale: 20...100,
+                                label: "Limit", text: monitor.limitValueText)
                 }
-                .padding(.leading, Space.lg)
+                .disabled(!monitor.canChangeLimit)
+            }
+            if !Capability.sailing || !Capability.heatProtection {
+                Text("Sailing and heat protection are not part of this build yet.")
+                    .kitType(.body).foregroundStyle(Ink.textSoft)
+                    .padding(.leading, Space.lg)
             }
             SettingsSection(title: "Sailing") {
                 SettingsRow(title: "Sailing range",
@@ -102,7 +109,7 @@ struct ChargingSettings: View {
                                 label: "Sailing range", text: "\(preferences.sailingRange)%")
                 }
             }
-            .disabled(!Capability.helper)
+            .disabled(!Capability.sailing)
             SettingsSection(title: "Heat protection") {
                 SettingsRow(title: "Pause charging when hot", detail: "Charging resumes when the battery cools by 2 °C.") {
                     Toggle("Pause charging when hot", isOn: $preferences.heatProtection).toggleStyle(.kit)
@@ -113,7 +120,7 @@ struct ChargingSettings: View {
                 }
                 .disabled(!preferences.heatProtection)
             }
-            .disabled(!Capability.helper)
+            .disabled(!Capability.heatProtection)
         }
     }
 
@@ -123,30 +130,125 @@ struct ChargingSettings: View {
             LimitSlider(value: value, stops: stops, scale: scale, label: label, unit: unit)
                 .frame(width: 160)
             Text(text).kitType(.numeral).foregroundStyle(Ink.text)
-                .frame(width: 48, alignment: .trailing)
+                .fixedSize()
+                .frame(minWidth: 48, alignment: .trailing)
         }
     }
 }
 
 struct HelperSettings: View {
+    @Environment(AppModel.self) private var model
+    @Environment(BatteryMonitor.self) private var monitor
+    /// Why the last install or removal failed.
+    @State private var problem: String?
+
+    private var helper: HelperManager { monitor.helper }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xxl) {
             SettingsSection(title: "Advanced charging control") {
-                SettingsRow(title: "Helper") {
-                    StatusPill(text: "Not installed")
+                SettingsRow(title: "Helper", detail: stateDetail) {
+                    StatusPill(text: helper.state.title, tone: tone)
                 }
                 SettingsRow(title: "What it does",
-                            detail: "Lets Hachibu set limits below 80%, discharge while plugged in, and sail. It runs in the background with administrator rights, and macOS asks for your approval once.") {
+                            detail: "Lets Hachibu set limits below 80%. It runs with administrator rights, only while Hachibu needs it, and macOS asks for your approval once.") {
                     EmptyView()
                 }
-                SettingsRow(title: "Install the helper",
-                            detail: Capability.helper ? nil : "The helper is not part of this build yet.") {
-                    Button("Install Helper…") {}.buttonStyle(.kit())
-                        .fixedSize()
-                        .disabled(!Capability.helper)
+                action
+            }
+        }
+        .task { await helper.refresh() }
+        // While macOS waits for the approval, look again every two seconds.
+        .task(id: helper.state) {
+            while helper.state == .needsApproval, !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                await helper.refresh()
+            }
+        }
+        .onDisappear { model.confirmingHelperRemoval = false }
+    }
+
+    private var tone: StatusPill.Tone {
+        switch helper.state {
+        case .running: .good
+        case .needsApproval, .failed: .warning
+        case .checking, .notInstalled, .unavailable: .idle
+        }
+    }
+
+    private var stateDetail: String? {
+        switch helper.state {
+        case .failed(let reason), .unavailable(let reason): reason
+        case .needsApproval: "Allow Hachibu in System Settings > General > Login Items."
+        case .running: "Limits from 20% to 100% are available."
+        case .checking, .notInstalled: nil
+        }
+    }
+
+    @ViewBuilder private var action: some View {
+        switch helper.state {
+        case .checking:
+            EmptyView()
+        case .notInstalled, .unavailable:
+            SettingsRow(title: "Install the helper",
+                        detail: helper.state == .notInstalled ? problem ?? "macOS will ask you to allow it in Login Items." : nil) {
+                Button("Install Helper…") {
+                    Task {
+                        await helper.install()
+                        problem = helper.installProblem
+                    }
+                }
+                .buttonStyle(.kit())
+                .fixedSize()
+                .disabled(helper.state != .notInstalled || helper.isWorking)
+            }
+        case .needsApproval:
+            SettingsRow(title: "Approve the helper", detail: "Turn on Hachibu under \"Allow in the Background\".") {
+                Button("Open Login Items…") { HelperManager.openLoginItems() }
+                    .buttonStyle(.kit())
+                    .fixedSize()
+            }
+        case .running, .failed:
+            if model.confirmingHelperRemoval {
+                SettingsRow(title: "Remove the helper?", detail: removalDetail) {
+                    HStack(spacing: Space.sm) {
+                        Button("Cancel") { model.confirmingHelperRemoval = false }
+                            .buttonStyle(.kit(.ghost))
+                        Button("Remove Helper") {
+                            Task {
+                                problem = await monitor.removeHelper()
+                                model.confirmingHelperRemoval = false
+                            }
+                        }
+                        .buttonStyle(.kit())
+                        .disabled(helper.isWorking)
+                    }
+                    .fixedSize()
+                }
+            } else {
+                SettingsRow(title: "Remove the helper",
+                            detail: problem ?? "Takes the helper out of macOS. You can install it again at any time.") {
+                    Button("Remove Helper…") {
+                        problem = nil
+                        model.confirmingHelperRemoval = true
+                    }
+                    .buttonStyle(.kit(.secondary))
+                    .fixedSize()
                 }
             }
         }
+    }
+
+    /// What removal changes, in the user's numbers.
+    private var removalDetail: String {
+        var changes = "The helper leaves macOS and Login Items."
+        if let held = monitor.limit.system, held < HelperNeed.lowestWithoutHelper {
+            let target = HelperNeed.limitAfterRemoval(current: held, official: monitor.officialStops)
+            changes += " Your limit goes from \(held)% to \(target)%, the lowest macOS holds by itself."
+        } else {
+            changes += " Your limit stays as it is. Limits below 80% will not be available."
+        }
+        return changes
     }
 }
 

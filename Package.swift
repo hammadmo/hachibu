@@ -19,6 +19,9 @@ let package = Package(
             // App code runs on the main thread unless you say otherwise.
             swiftSettings: [.defaultIsolation(MainActor.self)]
         ),
+        // The root helper: a small background program that carries out four
+        // requests from the app and nothing else.
+        .executableTarget(name: "HachibuHelper", dependencies: ["HachibuKit", "HachibuSystem"]),
         .testTarget(name: "HachibuKitTests", dependencies: ["HachibuKit"]),
     ]
 )

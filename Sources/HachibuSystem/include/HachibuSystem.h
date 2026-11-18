@@ -31,4 +31,16 @@ bool hb_limit_disable(char *error, int error_capacity);
 /// True while macOS charges to 100% on its own to keep its estimates accurate.
 bool hb_full_charge_override(void);
 
+// The two writes below need root. Only the helper calls them.
+
+/// Root only. Holds a limit macOS does not offer by itself (1 to 99) by
+/// writing the charging service's own settings and telling it to reload.
+bool hb_root_limit_set(int limit);
+
+/// Root only. Cuts (true) or restores (false) power from the charger.
+bool hb_root_adapter_set(bool cut);
+
+/// Whether the charger is cut. Returns false when it cannot be read.
+bool hb_adapter_is_cut(bool *cut);
+
 #endif

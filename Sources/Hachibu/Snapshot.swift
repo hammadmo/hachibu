@@ -1,12 +1,15 @@
 import AppKit
 import IOKit.pwr_mgt
+import HachibuKit
 import SwiftUI
 
 /// Screenshot mode for agents.
 ///   APP_STORE=/tmp/test.store APP_SNAPSHOT=/tmp/shots ~/Applications/Hachibu.app/Contents/MacOS/Hachibu
 /// writes, in light and dark:
 ///   popover, popover-charging, popover-warning, popover-outside, popover-unavailable   fixed states
+///   popover-low, popover-helper                         a limit below 80% with the helper, and without it
 ///   settings-<tab>                                                                     every Settings tab
+///   settings-charging-helper, settings-helper-<state>   the helper running, and every helper state
 ///   history-day, -week, -month (sample data), history-empty (what it shows today)
 /// then quits. Each PNG gets a -layout.json with the grid probes (tools/check-layout.swift).
 /// APP_SNAPSHOT_PAGES=popover,settings,history limits the groups.
@@ -55,8 +58,11 @@ enum Snapshot {
             }
             if wants("settings") {
                 await each(SettingsView.windowID, title: "Hachibu Settings",
-                           pages: SettingsTab.allCases.map { "settings-\($0.rawValue)" }) { page in
-                    model.settingsTab = SettingsTab(rawValue: String(page.dropFirst("settings-".count))) ?? .general
+                           pages: SettingsTab.allCases.map { "settings-\($0.rawValue)" } + SettingsFixture.pages) { page in
+                    let fixture = SettingsFixture(page: page)
+                    model.settingsTab = fixture.tab
+                    model.settingsPreview = BatteryMonitor.preview(fixture.battery, helper: fixture.helper)
+                    model.confirmingHelperRemoval = fixture.confirmingRemoval
                 }
             }
             if wants("history") {
@@ -112,6 +118,31 @@ enum Snapshot {
         if let data = rep.representation(using: .png, properties: [:]) {
             try? data.write(to: URL(fileURLWithPath: path))
             print("SNAPSHOT \(path) (fallback: no Screen Recording permission)")
+        }
+    }
+}
+
+/// What a Settings snapshot page shows: the tab, and a fixed battery and helper.
+struct SettingsFixture {
+    /// The pages beyond one per tab.
+    static let pages = ["settings-charging-helper", "settings-helper-approval", "settings-helper-running",
+                        "settings-helper-failed", "settings-helper-unavailable", "settings-helper-remove"]
+
+    var tab: SettingsTab = .general
+    var battery: PopoverPreview = .holding
+    var helper: HelperState = .notInstalled
+    var confirmingRemoval = false
+
+    init(page: String) {
+        let parts = page.split(separator: "-").dropFirst().map(String.init)
+        tab = parts.first.flatMap(SettingsTab.init(rawValue:)) ?? .general
+        switch parts.dropFirst().first {
+        case "helper", "running": (battery, helper) = (.lowLimit, .running)
+        case "remove": (battery, helper, confirmingRemoval) = (.lowLimit, .running, true)
+        case "approval": helper = .needsApproval
+        case "failed": helper = .failed("The helper did not answer.")
+        case "unavailable": helper = .unavailable("This copy of Hachibu is not signed with an Apple certificate, which the helper needs.")
+        default: break
         }
     }
 }

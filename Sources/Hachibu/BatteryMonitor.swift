@@ -26,7 +26,10 @@ final class BatteryMonitor {
     /// False until macOS has told us the limit. A failed read keeps the last
     /// known limit and never shows as "no limit".
     private(set) var limitKnown = false
-    private(set) var stops = [80, 85, 90, 95, 100]
+    /// The limits macOS offers by itself.
+    private(set) var officialStops = [80, 85, 90, 95, 100]
+    /// The helper, which adds every whole percent from 20.
+    let helper: HelperManager
     private(set) var isApplying = false
     private(set) var applyProblem: String?
     private(set) var isWarning = false
@@ -67,8 +70,9 @@ final class BatteryMonitor {
     @ObservationIgnored private let isPreview: Bool
     @ObservationIgnored private var healthReadAt: Date?
 
-    init(isPreview: Bool = false) {
+    init(isPreview: Bool = false, helper: HelperManager = HelperManager()) {
         self.isPreview = isPreview
+        self.helper = helper
     }
 
     // MARK: What the views show
@@ -90,6 +94,12 @@ final class BatteryMonitor {
     /// Health as macOS reports it, so the number matches System Settings;
     /// until that arrives, raw capacity over design capacity.
     var healthPercent: Int? { systemHealth ?? reading?.healthPercent }
+
+    /// Where the slider may land.
+    var stops: [Int] { LimitStops.all(official: officialStops, helperRunning: helper.isRunning) }
+
+    /// The saved limit is below 80% and the helper that holds it is not there.
+    var helperMissing: Bool { HelperNeed.isMissing(savedLimit: limit.saved, state: helper.state) }
 
     /// The slider works once the limit is known. Until then a drag would
     /// set a limit without knowing the real one.
@@ -118,6 +128,7 @@ final class BatteryMonitor {
         started = true
         refresh()
         restartTimer()
+        Task { await helper.refresh() }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification,
                                                           object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
@@ -161,9 +172,11 @@ final class BatteryMonitor {
     /// as the slider and reports what macOS confirmed.
     func setLimitFromCommandLine(_ value: Int) async -> String {
         let before = await Task.detached { ChargeLimit.read() }.value
-        let stops = LimitStops.normalized(before.available)
+        await helper.refresh()
+        if !before.available.isEmpty { officialStops = LimitStops.normalized(before.available) }
         guard before.supported, stops.contains(value) else {
-            return "refused: \(value) is not one of \(stops)"
+            return helper.isRunning ? "refused: \(value) is not between 20 and 100"
+                : "refused: \(value) is not one of \(stops). Lower limits need the helper (\(helper.state.title))"
         }
         limitSupported = true
         limitKnown = before.known
@@ -189,7 +202,7 @@ final class BatteryMonitor {
         self.reading = reading
         if let state {
             limitSupported = state.supported
-            if !state.available.isEmpty { stops = LimitStops.normalized(state.available) }
+            if !state.available.isEmpty { officialStops = LimitStops.normalized(state.available) }
             if state.known {
                 limitKnown = true
                 limit = LimitState(system: state.limit, saved: Preferences.shared.savedLimit)
@@ -265,11 +278,18 @@ final class BatteryMonitor {
         isApplying = true
         applyProblem = nil
         epoch += 1
-        let failure = await Task.detached { ChargeLimit.set(value) }.value
+        // macOS sets the limits it offers; any other needs the helper.
+        let needsHelper = value < 100 && !officialStops.contains(value)
         var problem: String?
-        if failure != nil {
+        if needsHelper {
+            if !(await HelperClient.send(.setLimit(value))).succeeded {
+                problem = "The helper did not set this limit. Try again."
+                await helper.refresh()
+            }
+        } else if await Task.detached(operation: { ChargeLimit.set(value) }).value != nil {
             problem = "macOS did not accept this limit. Try again."
-        } else {
+        }
+        if problem == nil {
             // macOS takes a moment to report a new limit. Wait for it, so
             // the popover shows a confirmed value, never a hoped-for one.
             // A read that fails confirms nothing.
@@ -298,10 +318,27 @@ final class BatteryMonitor {
         applyProblem = problem
     }
 
+    /// Removes the helper and everything it did: the charger is reconnected,
+    /// a limit below 80% goes up to the lowest macOS holds by itself, and
+    /// then the helper leaves macOS. Returns why it failed, or nil.
+    func removeHelper() async -> String? {
+        guard !isPreview else { return nil }
+        if helper.isRunning { _ = await HelperClient.send(.restoreAdapter) }
+        if limitKnown, let held = limit.system, held < HelperNeed.lowestWithoutHelper {
+            let target = HelperNeed.limitAfterRemoval(current: held, official: officialStops)
+            setSlider(target)
+            requested += 1
+            await apply(target, request: requested)
+            if applyProblem != nil { return "The limit could not be raised to \(target)%, so the helper was kept." }
+        }
+        return await helper.unregister().map { "macOS did not remove the helper: \($0)" }
+    }
+
     // MARK: Fixed states for snapshots
 
-    static func preview(_ preview: PopoverPreview) -> BatteryMonitor {
-        let monitor = BatteryMonitor(isPreview: true)
+    static func preview(_ preview: PopoverPreview, helper: HelperState? = nil) -> BatteryMonitor {
+        let state = helper ?? (preview == .lowLimit ? .running : .notInstalled)
+        let monitor = BatteryMonitor(isPreview: true, helper: HelperManager(fixed: state))
         let holding = BatteryReading(percent: 80, isPluggedIn: true, currentMA: 0, voltageMV: 12_094,
                                      temperatureC: 34.7, cycleCount: 274, rawMaxCapacityMAh: 3556,
                                      designCapacityMAh: 4382, chargerWatts: 9.2, systemWatts: 7.2)
@@ -331,6 +368,11 @@ final class BatteryMonitor {
             monitor.limit = LimitState(system: 80, saved: 85)
         case .unavailable:
             monitor.limit = LimitState(system: nil, saved: nil)
+        case .lowLimit, .helperMissing:
+            var reading = holding
+            reading.percent = 70
+            monitor.reading = reading
+            monitor.limit = LimitState(system: 70, saved: 70)
         }
         if monitor.reading != nil { monitor.systemHealth = 82 }
         monitor.limitKnown = preview != .unavailable
@@ -342,6 +384,8 @@ final class BatteryMonitor {
 /// The fixed popover states that snapshot runs capture.
 enum PopoverPreview: String, CaseIterable {
     case holding, charging, warning, outside, unavailable
+    /// A limit below 80%, held with the helper; and the same with the helper gone.
+    case lowLimit = "low", helperMissing = "helper"
 
     static let windowID = "popover-preview"
     static let windowTitle = "Hachibu Popover"
