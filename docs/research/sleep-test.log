@@ -14,3 +14,9 @@
 18 20:40-20:49 asleep 8.6 minutes, one dark wake by macOS at 20:40
 18 20:49 76%;ACattached mA=0 charging=No pmset=76 saved=76 helper=running after opening the lid
 # Result: pass. Held exactly at the limit with the lid closed: 76% before and after, no current.
+# Step 3: restart (boot time from `sysctl kern.boottime`: 20:52:35)
+18 20:54 74%;charging mA=424 pmset=76 saved=76 helper=running first reading after the restart
+18 20:55 75%;charging mA=1205 pmset=76
+18 20:57 76%;charging mA=1540 pmset=76
+18 20:58 76%;ACattached mA=0 pmset=76 charging stopped at the limit
+# Result: pass. The limit, the saved limit, and the helper survived the restart. The level was 2% under the limit afterwards, charged up to 76%, and stopped there.

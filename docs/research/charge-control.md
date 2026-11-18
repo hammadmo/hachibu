@@ -250,3 +250,18 @@ set through the helper with `Hachibu --set-limit 60`.
 - Stopped after 45 minutes instead of 60. Not tested: a hold of several
   hours, sleep, lid closed, reboot.
 
+## Sleep, lid, and restart at a 76% limit (2026-11-18, asked for by the user)
+
+Raw readings: `sleep-test.log`. Charger attached; limit set through the
+helper. Short runs, at the user's request.
+
+- Sleep from the Apple menu, 3.5 minutes: level 78% before and after
+  (still draining toward 76), pmset 76, not charging. The drain toward
+  the limit did not continue during sleep. [D]
+- Lid closed, 8.6 minutes: 76% before and after, 0 mA. [D]
+- Restart: pmset reported 76 two minutes after boot, the helper answered,
+  and Hachibu's saved limit was 76. The level read 74% after the restart,
+  charged at up to 1.6 A, and stopped at 76% within four minutes. [D]
+- Not tested: hours asleep, a night with the lid closed, a cold boot
+  after a shutdown, a macOS update.
+
