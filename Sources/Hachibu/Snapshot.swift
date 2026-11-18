@@ -7,6 +7,7 @@ import SwiftUI
 ///   APP_STORE=/tmp/test.store APP_SNAPSHOT=/tmp/shots ~/Applications/Hachibu.app/Contents/MacOS/Hachibu
 /// writes, in light and dark:
 ///   popover, popover-charging, popover-warning, popover-outside, popover-unavailable   fixed states
+///   popover-topup, popover-sailing                      a Top Up running, and sailing under the limit
 ///   popover-low, popover-helper                         a limit below 80% with the helper, and without it
 ///   settings-<tab>                                                                     every Settings tab
 ///   settings-charging-helper, settings-helper-<state>   the helper running, and every helper state

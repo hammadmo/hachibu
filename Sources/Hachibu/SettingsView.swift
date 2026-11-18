@@ -119,19 +119,21 @@ struct ChargingSettings: View {
                 }
                 .disabled(!monitor.canChangeLimit)
             }
-            if !Capability.sailing || !Capability.heatProtection {
-                Text("Sailing and heat protection are not part of this build yet.")
+            if !Capability.heatProtection {
+                Text("Heat protection is not part of this build yet.")
                     .kitType(.body).foregroundStyle(Ink.textSoft)
                     .padding(.leading, Space.lg)
             }
             SettingsSection(title: "Sailing") {
                 SettingsRow(title: "Sailing range",
-                            detail: "How far the battery drifts below the limit before charging again. 0 is off.") {
+                            detail: monitor.helper.isRunning
+                                ? "How far the battery drifts below the limit before charging again. 0 is off."
+                                : "Sailing needs the helper.") {
                     valueSlider($preferences.sailingRange, stops: Array(0...10), scale: 0...10,
                                 label: "Sailing range", text: "\(preferences.sailingRange)%")
                 }
             }
-            .disabled(!Capability.sailing)
+            .disabled(!Capability.sailing || !monitor.helper.isRunning)
             SettingsSection(title: "Heat protection") {
                 SettingsRow(title: "Pause charging when hot", detail: "Charging resumes when the battery cools by 2 °C.") {
                     Toggle("Pause charging when hot", isOn: $preferences.heatProtection).toggleStyle(.kit)

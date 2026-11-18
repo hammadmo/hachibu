@@ -276,6 +276,7 @@ final class BatteryMonitor {
                 limitKnown = true
                 Preferences.shared.reloadSavedLimit()
                 limit = LimitState(system: state.limit, saved: Preferences.shared.savedLimit)
+                adoptSailing()
                 if !isApplying, requested == finished { setSlider(userLimit) }
             } else if !state.supported {
                 limitKnown = false
@@ -439,6 +440,19 @@ final class BatteryMonitor {
         runModes()
     }
 
+    /// At launch: a limit a little under the saved one, inside the sailing
+    /// range, is the level Hachibu was holding when it last ran. Take it up
+    /// again as sailing, not as a limit set outside Hachibu.
+    private func adoptSailing() {
+        guard !adoptedSailing else { return }
+        adoptedSailing = true
+        let range = Preferences.shared.sailingRange
+        guard Capability.sailing, range > 0, overrideLimit == nil,
+              let saved = limit.saved, let held = limit.system, held < saved, held >= saved - range else { return }
+        overrideLimit = held
+        limitBeforeOverride = saved
+    }
+
     var canDischarge: Bool { dischargeRefusal == nil }
 
     /// Why Discharge cannot start now, in words for the button's help. nil when it can.
@@ -530,6 +544,23 @@ final class BatteryMonitor {
         }
         switch name {
         case "topup": toggleTopUp()
+        case "sailing":
+            // Sailing is a setting, not a mode: turn it on, watch, turn it off.
+            let before = Preferences.shared.sailingRange
+            Preferences.shared.sailingRange = 10
+            defer { Preferences.shared.sailingRange = before }
+            for second in 1...max(seconds, 1) {
+                try? await Task.sleep(for: .seconds(1))
+                if second % 10 == 0 || second == seconds { line("t=\(second)s sailing \(isSailing), asked macOS for \(overrideLimit.map(String.init) ?? "nothing")") }
+            }
+            Preferences.shared.sailingRange = before
+            refresh()
+            try? await Task.sleep(for: .seconds(3))
+            for _ in 0..<400 where isApplying || requested != finished || overrideLimit != nil {
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+            line("after")
+            return
         case "discharge": raw(); toggleDischarge()
         default: print("unknown mode \(name)"); return
         }
@@ -619,7 +650,7 @@ final class BatteryMonitor {
     // MARK: Fixed states for snapshots
 
     static func preview(_ preview: PopoverPreview, helper: HelperState? = nil) -> BatteryMonitor {
-        let state = helper ?? (preview == .lowLimit ? .running : .notInstalled)
+        let state = helper ?? (preview == .lowLimit || preview == .sailing ? .running : .notInstalled)
         let monitor = BatteryMonitor(isPreview: true, helper: HelperManager(fixed: state))
         let holding = BatteryReading(percent: 80, isPluggedIn: true, currentMA: 0, voltageMV: 12_094,
                                      temperatureC: 34.7, cycleCount: 274, rawMaxCapacityMAh: 3556,
@@ -660,6 +691,15 @@ final class BatteryMonitor {
             monitor.mode = .toppingUp
             monitor.overrideLimit = 100
             monitor.limitBeforeOverride = 80
+        case .sailing:
+            var reading = holding
+            reading.percent = 77
+            monitor.reading = reading
+            monitor.limit = LimitState(system: 77, saved: 80)
+            monitor.isSailing = true
+            if Store.isOverridden { Preferences.shared.sailingRange = 5 }
+            monitor.overrideLimit = 77
+            monitor.limitBeforeOverride = 80
         case .lowLimit, .helperMissing:
             var reading = holding
             reading.percent = 70
@@ -678,7 +718,7 @@ enum PopoverPreview: String, CaseIterable {
     case holding, charging, warning, outside, unavailable
     /// A limit below 80%, held with the helper; and the same with the helper gone.
     case lowLimit = "low", helperMissing = "helper"
-    case topUp = "topup"
+    case topUp = "topup", sailing
 
     static let windowID = "popover-preview"
     static let windowTitle = "Hachibu Popover"

@@ -98,7 +98,7 @@ final class Preferences {
 /// shown disabled and say so, never as controls that silently do nothing.
 nonisolated enum Capability {
     /// Sailing between two levels (story S-022).
-    static let sailing = false
+    static let sailing = true
     /// Pausing charging when the battery is hot (story S-040).
     static let heatProtection = false
     /// Recording battery samples for the History window (story S-031).

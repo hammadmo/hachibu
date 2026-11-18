@@ -312,7 +312,14 @@ Acceptance:
 - [unit] With limit 80 and range 5, charging resumes at 75 and stops at
   80.
 - [unit] Sailing pauses during Top up and Calibration.
-Status: todo
+Status: done (2026-11-18). Built without the adapter cut, so it does not
+need S-021: inside the range Hachibu asks macOS to hold the level the
+battery is at, and at the bottom of the range it asks for the limit
+again. Tried for real with `Hachibu --try sailing 50` (limit 85%, level
+80%, range 10): macOS held 80%, charging stopped, the status read
+"Sailing", and turning sailing off brought 85% back. Needs the helper.
+Not tried: a held level below 80% (helper limits take up to 90 seconds
+to take effect), a full drift down and recharge, and the slider itself.
 
 ### S-023 Sleep safely during discharge or sailing
 As the user, I close the lid during discharge or sailing; the charger

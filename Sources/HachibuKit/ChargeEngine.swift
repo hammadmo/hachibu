@@ -61,7 +61,7 @@ public struct ChargeEngine: Equatable, Sendable {
     /// Discharge never goes below this, whatever the limit.
     public static let dischargeFloor = 20
 
-    public private(set) var mode = ChargeMode.normal
+    public internal(set) var mode = ChargeMode.normal
     /// Why the last Top Up or Discharge ended. Cleared when one starts.
     public private(set) var lastEnd: ModeEnd?
     /// Sailing: true while charging back up to the limit.
