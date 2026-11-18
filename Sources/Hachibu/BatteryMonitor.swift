@@ -107,11 +107,19 @@ final class BatteryMonitor {
     /// set a limit without knowing the real one.
     var canChangeLimit: Bool { limitSupported && limitKnown }
 
-    var limitValueText: String { limitKnown ? limit.valueText : "–" }
+    /// The limit in words. While the slider is being dragged or a request is
+    /// under way it shows where the slider is; the caption says "Applying…".
+    var limitValueText: String {
+        guard limitKnown else { return "–" }
+        // Read the slider first, always: the view then redraws on every step of a drag.
+        let target = LimitState(system: sliderValue, saved: nil).valueText
+        return isApplying || requested != finished ? target : limit.valueText
+    }
 
     var limitCaption: String {
         if !hasLoaded { return "Reading the limit…" }
         if !limitSupported { return "This version of macOS does not offer a charge limit." }
+        _ = sliderValue // redraw the caption as soon as a drag starts
         if isWaitingForMacOS { return "Applying… macOS can take two minutes." }
         if isApplying || requested != finished { return "Applying…" }
         if let applyProblem { return applyProblem }
