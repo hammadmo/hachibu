@@ -1,7 +1,11 @@
 # Hachibu
 
-A native macOS app in SwiftUI. It runs on this Mac only, with a local
-SwiftData database and no server.
+A native macOS menu bar app in SwiftUI that controls when a MacBook
+charges. It runs on this Mac only, with no server.
+
+Starting a session: read `docs/STATUS.md` first. It says what is done,
+what is next, what is not verified, and the decisions already made.
+Update it when a milestone ends or a decision changes.
 
 ## Layout
 
