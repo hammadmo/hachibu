@@ -29,7 +29,7 @@ extension BatteryMonitor {
             Preferences.shared.sailingRange = before
             refresh()
             try? await Task.sleep(for: .seconds(3))
-            for _ in 0..<400 where isBusy || overrideLimit != nil {
+            for _ in 0..<400 where isBusy || isOverriding {
                 try? await Task.sleep(for: .milliseconds(500))
             }
             line("after")
@@ -43,7 +43,7 @@ extension BatteryMonitor {
             if mode == .normal { break }
         }
         if mode == .toppingUp { toggleTopUp() }
-        for _ in 0..<120 where isBusy || overrideLimit != nil {
+        for _ in 0..<120 where isBusy || isOverriding {
             try? await Task.sleep(for: .milliseconds(500))
         }
         try? await Task.sleep(for: .seconds(3))

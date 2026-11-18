@@ -268,8 +268,11 @@ Depends: S-005
 Acceptance:
 - [snap] While active, the status is "Topping up" and the button reads
   "Stop".
-- [unit] Top up ends when the battery reaches 100%, when the charger is
-  unplugged, or when I click Stop; the saved limit is then applied again.
+- [unit] Top up ends when the charger is unplugged or when I click Stop;
+  the saved limit is then applied again. At 100% it stays on and keeps
+  the battery full. (Changed 2026-11-19, was "ends at 100%": with the
+  limit back, macOS drains to it while still plugged in, so a Top Up left
+  on the charger overnight was gone by morning.)
 - [manual] After unplugging and plugging back in, the limit is back.
 - [manual] Quitting Hachibu during a top up restores the limit first.
 Status: done (2026-11-18. Tried for real with `Hachibu --try topup 20`:

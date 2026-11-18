@@ -208,3 +208,21 @@ func generation() async {
     _ = await running.value
     #expect(setter.generation == before + 2)
 }
+
+@MainActor
+@Test("Superseding a running request without a new one leaves nothing pending")
+func supersedeWhileRunning() async {
+    let mac = FakeMac()
+    mac.enforceAfter = .max
+    let setter = setter(mac)
+    let running = setter.request(70)
+    while !setter.isWaitingForMacOS { await Task.yield() }
+    setter.supersede()
+    #expect(await running.value == .superseded)
+    #expect(!setter.isBusy && !setter.isApplying)
+    // And when nothing was running at all.
+    setter.supersede()
+    #expect(!setter.isBusy)
+    #expect(await setter.request(85).value == .held)
+}
+

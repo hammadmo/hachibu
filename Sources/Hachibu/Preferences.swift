@@ -17,6 +17,7 @@ final class Preferences {
         static let notifyTopUpFinished = "notify.topUpFinished"
         static let notifyCalibrationFinished = "notify.calibrationFinished"
         static let sailingRange = "charging.sailingRange"
+        static let sailingHold = "charging.sailingHold"
         static let heatProtection = "charging.heatProtection"
         static let heatThreshold = "charging.heatThreshold"
     }
@@ -36,6 +37,13 @@ final class Preferences {
     var notifyCalibrationFinished: Bool { didSet { defaults.set(notifyCalibrationFinished, forKey: Key.notifyCalibrationFinished) } }
     /// Percent the battery drifts below the limit before it charges again. 0 is off.
     var sailingRange: Int { didSet { defaults.set(sailingRange, forKey: Key.sailingRange) } }
+    /// The level sailing last asked macOS to hold. nil when none. Kept so
+    /// the next launch can tell its own hold from a limit set elsewhere.
+    var sailingHold: Int? {
+        didSet {
+            if let sailingHold { defaults.set(sailingHold, forKey: Key.sailingHold) } else { defaults.removeObject(forKey: Key.sailingHold) }
+        }
+    }
     var heatProtection: Bool { didSet { defaults.set(heatProtection, forKey: Key.heatProtection) } }
     /// Degrees Celsius.
     var heatThreshold: Int { didSet { defaults.set(heatThreshold, forKey: Key.heatThreshold) } }
@@ -63,6 +71,7 @@ final class Preferences {
         notifyTopUpFinished = bool(Key.notifyTopUpFinished, true)
         notifyCalibrationFinished = bool(Key.notifyCalibrationFinished, true)
         sailingRange = int(Key.sailingRange, 0)
+        sailingHold = store.object(forKey: Key.sailingHold) as? Int
         heatProtection = bool(Key.heatProtection, false)
         heatThreshold = int(Key.heatThreshold, 40)
         opensAtLogin = !Store.isOverridden && SMAppService.mainApp.status == .enabled

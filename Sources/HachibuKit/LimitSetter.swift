@@ -70,6 +70,8 @@ public final class LimitSetter {
 
     private var requested = 0
     private var finished = 0
+    /// Requests queued that have not started or been dropped yet.
+    @ObservationIgnored private var waiting = 0
     @ObservationIgnored private var chain: Task<Void, Never>?
     @ObservationIgnored private let system: any LimitSystem
     @ObservationIgnored private let officialStops: @MainActor () -> [Int]
@@ -90,12 +92,18 @@ public final class LimitSetter {
     public func request(_ limit: Int, after delay: Duration? = nil, waitForEnforcement: Bool = true,
                         settled: @escaping @MainActor (Outcome) -> Void = { _ in }) -> Task<Outcome, Never> {
         requested += 1
+        waiting += 1
         let request = requested
         let previous = chain
         let work = Task { [weak self] () -> Outcome in
             if let delay { await self?.pause(delay) }
             await previous?.value
-            guard let self, request == self.requested else { return .superseded }
+            guard let self else { return .superseded }
+            self.waiting -= 1
+            guard request == self.requested else {
+                self.settleIfIdle()
+                return .superseded
+            }
             let outcome = await self.apply(limit, request: request, waitForEnforcement: waitForEnforcement)
             if outcome != .superseded { settled(outcome) }
             return outcome
@@ -115,7 +123,12 @@ public final class LimitSetter {
     /// Makes every earlier request stale without waiting. For quitting.
     public func supersede() {
         requested += 1
-        finished = isApplying ? finished : requested
+        settleIfIdle()
+    }
+
+    /// With nothing running and nothing waiting, nothing is pending.
+    private func settleIfIdle() {
+        if !isApplying, waiting == 0 { finished = requested }
     }
 
     private func apply(_ limit: Int, request: Int, waitForEnforcement: Bool) async -> Outcome {
@@ -156,6 +169,7 @@ public final class LimitSetter {
         // A newer request is waiting behind this one: let it report instead.
         guard request == requested else {
             isApplying = false
+            settleIfIdle()
             return .superseded
         }
         finished = request

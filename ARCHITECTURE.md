@@ -21,6 +21,8 @@ Neither of those depends on anything else in the project. Rules go in
 - `ChargeEngine` (Kit) decides which limit macOS should hold: the user's,
   none during a Top Up, or the current level while sailing. It changes
   nothing.
+- `LimitOverride` (Kit) remembers the user's limit while a mode has
+  macOS holding another one, until macOS confirms it is back.
 - `LimitSetter` (Kit) carries out limit requests one at a time. Only the
   newest request counts, and a request is "held" only once macOS reports
   it (and, for a helper limit, once pmset enforces it).
@@ -48,8 +50,9 @@ Neither of those depends on anything else in the project. Rules go in
 
 - `APP_STORE` set means nothing real is read for snapshots or changed at
   all. Every new write path checks `Store.isOverridden`.
-- Only the copy in the menu bar runs Top Up and sailing. A one-shot
-  command-line run sets `runsModes = false`.
+- Only the copy in the menu bar runs Top Up and sailing, and records
+  history. One-shot command-line runs do neither (`Launch.isOneShot`);
+  `--try` runs a mode, so quit the menu bar copy before using it.
 - A command-line run puts the limit back before it calls
   `NSApp.terminate`, not from inside the quit.
 - Hachibu never cuts the charger (`docs/research/charge-control.md`).

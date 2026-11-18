@@ -60,3 +60,33 @@ the line there. The limit line is drawn only when the limit did not
 change. Health is placed by its time.
 Rule: a chart point is either something measured or a gap; never fill.
 
+## 2026-11-19 A mode could lose or overwrite the limit (found in review of M3)
+
+Symptoms, all found by reading the code before a user met them:
+- A limit set in System Settings during sailing or a Top Up was shown
+  wrongly and then written over.
+- A limit of the user's a little under the saved one was taken at launch
+  for Hachibu's own sailing hold, and changed without a click.
+- A Top Up that reached 100% on the charger gave the limit back, and
+  macOS drained the battery to it.
+- When putting the user's limit back failed, Hachibu forgot the limit and
+  took what macOS held (100, or a sailing level) for the user's.
+- A reading that flickered by 1% made sailing ask the helper for a new
+  level each time.
+Cause: "a mode has asked macOS for another limit" was two loose
+variables, cleared at the moment the limit was asked back, not when macOS
+confirmed it.
+Fix: one state, `LimitOverride` (none, holding, restoring), with its rules
+and tests in `HachibuKit`. The user's limit is remembered until macOS
+confirms it, asked again every minute if it does not, and dropped only
+for the user's own request or a change made outside Hachibu. A hold is
+recognised at launch only if it is the exact level Hachibu wrote down.
+Sailing moves its hold in steps of two and not at all for "no limit".
+Rules:
+- What macOS holds is the user's limit only when no mode has asked for
+  something else and been confirmed back.
+- Never adopt state at launch by guessing from values; write down what
+  you did and compare.
+- If the system does it for you (macOS drains to a lower limit), do not
+  hand it the chance at the wrong moment.
+

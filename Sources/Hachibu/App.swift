@@ -102,7 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Quitting during a Top Up or while sailing puts the user's limit back first.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let monitor = BatteryMonitor.current, monitor.overrideLimit != nil || monitor.mode != .normal,
+        guard let monitor = BatteryMonitor.current, monitor.isOverriding || monitor.mode != .normal,
               !Store.isOverridden else { return .terminateNow }
         modeLog.notice("quit waits: override \(monitor.overrideLimit ?? -1, privacy: .public), mode \(monitor.mode.rawValue, privacy: .public)")
         Task {
@@ -133,7 +133,7 @@ enum Launch {
     /// Ends a command-line run. The limit is put back here, before the quit
     /// starts: a quit begun from inside a task cannot wait for another task.
     private static func quit(_ monitor: BatteryMonitor) async {
-        if monitor.overrideLimit != nil || monitor.mode != .normal {
+        if monitor.isOverriding || monitor.mode != .normal {
             print("putting the limit back before quitting: Hachibu had asked macOS for "
                 + "\(monitor.overrideLimit.map { "\($0)%" } ?? "nothing"), mode \(monitor.mode.rawValue), yours \(monitor.userLimit)%")
         }
