@@ -5,6 +5,7 @@ import SwiftUI
 //   Hachibu                      the app
 //   Hachibu --selftest           check the real functions and quit with 0 or 1 (tools/selftest.sh)
 //   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none; 20 to 100 with the helper), print the result, quit
+//   Hachibu --helper-reinstall   take the helper out of macOS and register it again (it does not touch the limit)
 //   Hachibu --helper-status      ask the helper for its state, print it, quit (read-only)
 //   APP_STORE=<file> Hachibu     a test run: no real preferences, login items, notifications, or limit changes
 //   APP_SNAPSHOT=<dir> Hachibu   save a PNG of the popover states, every Settings tab, and History, in light and dark, then quit
@@ -118,6 +119,14 @@ enum Launch {
             }
             Task {
                 print(await monitor.setLimitFromCommandLine(value))
+                NSApp.terminate(nil)
+            }
+        } else if arguments.contains("--helper-reinstall") {
+            Task {
+                let removal = await monitor.helper.unregister()
+                print("removed: \(removal ?? "ok"), now \(monitor.helper.state)")
+                await monitor.helper.install()
+                print("installed: \(monitor.helper.installProblem ?? "ok"), now \(monitor.helper.state)")
                 NSApp.terminate(nil)
             }
         } else if arguments.contains("--helper-status") {

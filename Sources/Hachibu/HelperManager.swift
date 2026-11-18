@@ -147,7 +147,17 @@ final class HelperManager {
         guard !isFixed, !isWorking else { return }
         isWorking = true
         let failure: String? = await Task.detached {
-            do { try Self.daemon.register(); return nil } catch { return error.localizedDescription }
+            // Right after a removal macOS can refuse once ("Operation not
+            // permitted") and accept a few seconds later.
+            for attempt in 1...2 {
+                do { try Self.daemon.register(); return nil } catch {
+                    if attempt == 2 || Self.daemon.status != .notRegistered && Self.daemon.status != .notFound {
+                        return error.localizedDescription
+                    }
+                    try? await Task.sleep(for: .seconds(4))
+                }
+            }
+            return nil
         }.value
         isWorking = false
         await refresh(fresh: true)
