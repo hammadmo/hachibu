@@ -1,0 +1,6 @@
+# Sleep, lid, and restart test, started 2026-11-18 20:23 at a 70% limit. Readings by hand before and after each step.
+18 20:22 80%;ACattached mA=0 pmset=70
+18 20:23 80%;ACattached mA=-451 pmset=70
+18 20:24 80%;ACattached mA=-647 pmset=70
+18 20:25 80%;ACattached mA=-643 pmset=70
+# 18 20:26 limit changed to 76% and each step shortened to 5 minutes, at the user's request.
