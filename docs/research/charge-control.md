@@ -366,3 +366,50 @@ helper. The menu bar copy was quit during the runs.
   and stopping it brought 80% back at once. [D]
 - Not run: a whole calibration (hours).
 
+## What temperature should heat protection use? (2026-11-19, web research by a Sonnet subagent, plus this Mac's own history)
+
+Marks: [V] the page was read through a fetch tool that summarises pages;
+[U] uncertain or from a search summary; [D] measured on this Mac.
+
+- Apple gives no battery temperature for Macs, only an ambient range of
+  10 to 35 °C. [V](https://support.apple.com/en-us/102336) For iPhone and
+  iPad it says software may limit charging above 80% when the battery is
+  too warm, with no number.
+  [V](https://www.apple.com/batteries/maximizing-performance/)
+- macOS has a cutoff of its own: in one test on an M1 MacBook Air,
+  charging was disabled when the battery sensor reached 44 °C. One
+  report, not a documented figure.
+  [V](https://eclecticlight.co/2021/01/30/why-your-laptop-mac-may-not-be-recharging/)
+- Battery University calls anything above 30 °C elevated. A year of
+  storage at 40% charge keeps 96% of capacity at 25 °C and 85% at 40 °C;
+  at full charge, 80% and 65%. Charge level matters about as much as
+  temperature: 40% at 40 °C does better than 100% at 25 °C.
+  [V](https://batteryuniversity.com/article/bu-808-how-to-prolong-lithium-based-batteries)
+- The permitted charge window for lithium-ion is 0 to 45 °C.
+  [V](https://batteryuniversity.com/article/bu-410-charging-at-high-and-low-temperatures)
+  That 45 °C is a ceiling and not a healthy target is an inference. The
+  "ageing doubles every 10 °C" rule was not found in a source read. [U]
+- AlDente suggests 35 °C, says load plus fast charging can pass 40 °C,
+  warns that a low threshold can be impractical, and resumes only after
+  the temperature has been under the threshold for five minutes. It
+  documents no default.
+  [V](https://apphousekitchen.com/feature-explanation-heat-protection/)
+  BatFi's README gives no number; the "40 °C" in the comparison table
+  above is not confirmed. [V](https://github.com/rurza/BatFi)
+- This Mac, from Hachibu's own history, 105 samples over 2.2 hours of
+  building and testing in a room at normal temperature: never below
+  35.5 °C; median 36.3; 90% of the time under 37.6; highest 39.9; above
+  38 °C for 6% of the time, above 39 °C for 3%, above 40 °C never. Two
+  samples while charging, both 38.0 °C. [D]
+- No source says how much pausing at 35, 40, or 45 °C helps. The gain is
+  limited to the hours the battery is both hot and charging, and a charge
+  limit already does more for the battery than any heat pause.
+- Reading: 35 °C would pause every charge on this Mac (it is never
+  cooler). 44 °C and above would never act, because macOS stops charging
+  there itself. 40 °C sits just above what this Mac reaches in normal
+  use, so it acts only when something is unusually hot.
+- Recommended: default 40 °C; a range of 36 to 43 °C; pause only after
+  the battery has been above the threshold for three minutes (the pause
+  itself takes one to three minutes, so brief spikes should not start
+  one); resume 2 °C below. A decision for the user.
+
