@@ -1,0 +1,13 @@
+# Compiled probe tools
+probes/smc_probe
+probes/powerui_probe
+probes/powerui_set
+probes/chie_test
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/
+xcuserdata/
+.DS_Store
+.env*
+/shots/
