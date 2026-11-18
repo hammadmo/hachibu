@@ -213,9 +213,9 @@ Acceptance:
   restore adapter, read status. Nothing else is accepted.
 - [manual] The app and helper are signed with a Developer ID
   certificate and the build is notarized.
-Status: todo (2026-11-18: everything but the last line is done and tried.
-The build is signed with an Apple Development certificate, which is
-enough on this Mac; Developer ID and notarization wait for the certificate.)
+Status: done (2026-11-18: signed with Developer ID and accepted by
+Apple's notary. The helper was first tried with an Apple Development
+certificate, which is also enough on the developer's own Mac.)
 
 ### S-011 Set a limit from 20% to 99%
 As the user, with the helper running, I drag the slider to any whole
