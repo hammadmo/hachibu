@@ -8,6 +8,7 @@ struct PopoverView: View {
     @Environment(BatteryMonitor.self) private var monitor
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: Space.lg) {
@@ -98,9 +99,20 @@ struct PopoverView: View {
         }
     }
 
+    /// Opens Settings or History and closes the popover, so the new window
+    /// is not left behind it.
     private func open(_ window: String) {
+        // The popover is the key window while a button in it is clicked.
+        let popover = NSApp.keyWindow
         openWindow(id: window)
         NSApp.activate()
+        dismiss()
+        // In case dismiss leaves it open on some macOS version.
+        Task {
+            if let popover, popover.isVisible, popover.title != "Hachibu Settings", popover.title != HistoryView.windowTitle {
+                popover.close()
+            }
+        }
     }
 }
 
