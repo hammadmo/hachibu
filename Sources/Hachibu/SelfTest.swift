@@ -61,6 +61,7 @@ enum SelfTest {
         // S-004, S-005: macOS's limit.
         let limit = ChargeLimit.read()
         check("the macOS charge limit is supported", limit.supported)
+        check("the current limit can be read", limit.known)
         check("macOS offers limits, and the stops include 100",
               !limit.available.isEmpty && LimitStops.normalized(limit.available).last == 100)
         check("a test run refuses to change the real limit", ChargeLimit.set(85) != nil)

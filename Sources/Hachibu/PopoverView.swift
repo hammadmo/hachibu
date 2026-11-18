@@ -46,11 +46,11 @@ struct PopoverView: View {
             HStack {
                 Text("Limit").foregroundStyle(Ink.textSoft)
                 Spacer()
-                Text(monitor.limit.valueText).foregroundStyle(Ink.text)
+                Text(monitor.limitValueText).foregroundStyle(Ink.text)
             }
             .kitType(.label)
             LimitSlider(value: $monitor.sliderValue, stops: monitor.stops)
-                .disabled(!monitor.limitSupported)
+                .disabled(!monitor.canChangeLimit)
             HStack(spacing: Space.sm) {
                 Text(monitor.limitCaption)
                     .kitType(.meta)

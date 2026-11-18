@@ -57,7 +57,7 @@ public struct BatteryReading: Equatable, Sendable {
 
 /// What the battery is doing, in the glossary's words.
 public enum BatteryStatus: Equatable, Sendable {
-    case charging, holdingAtLimit, fullyCharged, notCharging, onBattery, fullChargeByMacOS
+    case charging, holdingAtLimit, fullyCharged, notCharging, usingBattery, onBattery, fullChargeByMacOS
 
     /// How close to the limit still counts as holding at it.
     public static let holdingMargin = 2
@@ -65,7 +65,10 @@ public enum BatteryStatus: Equatable, Sendable {
     public static func derive(from reading: BatteryReading, limit: Int?) -> BatteryStatus {
         guard reading.isPluggedIn else { return .onBattery }
         if reading.isCharging { return reading.fullChargeOverride ? .fullChargeByMacOS : .charging }
-        if let limit, limit < 100, reading.percent >= limit - holdingMargin { return .holdingAtLimit }
+        // Plugged in, yet power is coming out of the battery: macOS is
+        // draining it toward the limit, or the charger cannot keep up.
+        if reading.currentMA < -BatteryReading.chargingThresholdMA { return .usingBattery }
+        if let limit, limit < 100, abs(reading.percent - limit) <= holdingMargin { return .holdingAtLimit }
         return reading.percent >= 99 ? .fullyCharged : .notCharging
     }
 
@@ -75,6 +78,7 @@ public enum BatteryStatus: Equatable, Sendable {
         case .holdingAtLimit: "Holding at limit"
         case .fullyCharged: "Fully charged"
         case .notCharging: "Not charging"
+        case .usingBattery: "Using battery"
         case .onBattery: "On battery"
         case .fullChargeByMacOS: "Full charge by macOS"
         }
@@ -86,6 +90,8 @@ public enum BatteryStatus: Equatable, Sendable {
         case .onBattery:
             let out = reading.systemWatts ?? reading.batteryWatts.map(abs)
             return "\(Watts.text(out)) out"
+        case .usingBattery:
+            return "\(Watts.text(reading.batteryWatts.map(abs))) from battery, charger connected"
         case .fullChargeByMacOS:
             return "macOS is charging past your limit to keep its estimates accurate"
         case .charging, .holdingAtLimit, .fullyCharged, .notCharging:

@@ -93,29 +93,40 @@ nonisolated enum SystemBattery {
 nonisolated enum ChargeLimit {
     struct State: Equatable, Sendable {
         var supported = false
-        /// The limit macOS is holding. nil when it is off or could not be read.
+        /// False when macOS could not be asked. Then `limit` says nothing:
+        /// a failed read must never look like "the limit is off".
+        var known = false
+        /// The limit macOS is holding. nil when it is off.
         var limit: Int?
         /// The limits macOS offers without administrator rights.
         var available: [Int] = []
     }
 
+    /// Every call into PowerUI goes through this queue, one at a time: its
+    /// client is a single shared object and nothing says it is thread-safe.
+    private static let queue = DispatchQueue(label: "app.hachibu.mac.powerui")
+
     static func read() -> State {
-        guard hb_limit_supported() else { return State() }
-        var limit: Int32 = 0
-        var enabled = false
-        let known = hb_limit_get(&limit, &enabled)
-        var offered = [Int32](repeating: 0, count: 16)
-        let count = Int(hb_limit_available(&offered, 16))
-        return State(supported: true,
-                     limit: known && enabled && limit > 0 && limit < 100 ? Int(limit) : nil,
-                     available: offered.prefix(count).map(Int.init))
+        queue.sync {
+            guard hb_limit_supported() else { return State() }
+            var limit: Int32 = 0
+            var enabled = false
+            let known = hb_limit_get(&limit, &enabled)
+            var offered = [Int32](repeating: 0, count: 16)
+            let count = Int(hb_limit_available(&offered, 16))
+            return State(supported: true, known: known,
+                         limit: known && enabled && limit > 0 && limit < 100 ? Int(limit) : nil,
+                         available: offered.prefix(count).map(Int.init))
+        }
     }
 
     /// Sets the limit; 100 turns it off. Returns nil on success, or why it failed.
     static func set(_ value: Int) -> String? {
         guard !Store.isOverridden else { return "Test runs never change the real limit." }
-        var message = [CChar](repeating: 0, count: 256)
-        let ok = value >= 100 ? hb_limit_disable(&message, 256) : hb_limit_set(Int32(value), &message, 256)
-        return ok ? nil : message.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
+        return queue.sync {
+            var message = [CChar](repeating: 0, count: 256)
+            let ok = value >= 100 ? hb_limit_disable(&message, 256) : hb_limit_set(Int32(value), &message, 256)
+            return ok ? nil : message.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
+        }
     }
 }

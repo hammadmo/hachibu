@@ -24,7 +24,8 @@ notifications, and errors.
 | Holding at limit | Plugged in, at the limit, no current into the battery | limit reached, paused, idle, full |
 | On battery | Not plugged in | unplugged, discharging |
 | Fully charged | Plugged in at 100% with no current into the battery | full, charged |
-| Not charging | Plugged in, below the limit, and no current into the battery | paused, idle, waiting |
+| Not charging | Plugged in, away from the limit, and no current into the battery | paused, idle, waiting |
+| Using battery | Plugged in, yet power is leaving the battery: macOS is draining it toward the limit, or the charger cannot keep up | discharging, draining |
 | Topping up | Charging to 100% once, at the user's request | full charge, override, boost |
 | Discharging | Plugged in but running on the battery, at the user's request, down to the limit | draining, on battery |
 | Sailing | Plugged in and drifting down inside the sailing range | coasting, floating |

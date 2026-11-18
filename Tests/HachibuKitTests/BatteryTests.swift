@@ -28,6 +28,19 @@ func neverHoldingWhileCharging() {
     }
 }
 
+@Test("Holding at limit needs the level near the limit and no power leaving the battery")
+func holdingNeedsAgreement() {
+    // Far above the limit and not charging is not "holding at 80".
+    #expect(BatteryStatus.derive(from: reading(95), limit: 80) == .notCharging)
+    #expect(BatteryStatus.derive(from: reading(82), limit: 80) == .holdingAtLimit)
+    #expect(BatteryStatus.derive(from: reading(83), limit: 80) == .notCharging)
+    // Plugged in but draining is never "holding".
+    #expect(BatteryStatus.derive(from: reading(80, current: -1500), limit: 80) == .usingBattery)
+    #expect(BatteryStatus.derive(from: reading(95, current: -900), limit: 80) == .usingBattery)
+    #expect(BatteryStatus.derive(from: reading(80, current: -BatteryReading.chargingThresholdMA), limit: 80) == .holdingAtLimit)
+    #expect(BatteryStatus.usingBattery.detail(for: reading(80, current: -1500)) == "18 W from battery, charger connected")
+}
+
 @Test("Current under the threshold is noise, not charging")
 func chargingThreshold() {
     #expect(!reading(80, current: BatteryReading.chargingThresholdMA).isCharging)

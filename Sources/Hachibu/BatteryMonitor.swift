@@ -23,6 +23,9 @@ final class BatteryMonitor {
     private(set) var reading: BatteryReading?
     private(set) var limit = LimitState(system: nil, saved: nil)
     private(set) var limitSupported = true
+    /// False until macOS has told us the limit. A failed read keeps the last
+    /// known limit and never shows as "no limit".
+    private(set) var limitKnown = false
     private(set) var stops = [80, 85, 90, 95, 100]
     private(set) var isApplying = false
     private(set) var applyProblem: String?
@@ -55,6 +58,12 @@ final class BatteryMonitor {
     /// slider is not pulled back while a request is waiting.
     @ObservationIgnored private var requested = 0
     @ObservationIgnored private var finished = 0
+    /// Limit requests run one after another, never side by side.
+    @ObservationIgnored private var applyChain: Task<Void, Never>?
+    /// Goes up whenever a limit request starts or ends, so a refresh that
+    /// began before it cannot bring back the old limit.
+    @ObservationIgnored private var epoch = 0
+    @ObservationIgnored private var refreshing = false
     @ObservationIgnored private let isPreview: Bool
     @ObservationIgnored private var healthReadAt: Date?
 
@@ -82,14 +91,22 @@ final class BatteryMonitor {
     /// until that arrives, raw capacity over design capacity.
     var healthPercent: Int? { systemHealth ?? reading?.healthPercent }
 
+    /// The slider works once the limit is known. Until then a drag would
+    /// set a limit without knowing the real one.
+    var canChangeLimit: Bool { limitSupported && limitKnown }
+
+    var limitValueText: String { limitKnown ? limit.valueText : "–" }
+
     var limitCaption: String {
+        if !hasLoaded { return "Reading the limit…" }
         if !limitSupported { return "This version of macOS does not offer a charge limit." }
-        if isApplying { return "Applying…" }
-        return applyProblem ?? limit.sourceText
+        if isApplying || requested != finished { return "Applying…" }
+        if let applyProblem { return applyProblem }
+        return limitKnown ? limit.sourceText : "The limit could not be read. Trying again…"
     }
 
     var limitAction: LimitAction? {
-        guard limitSupported, !isApplying, requested == finished else { return nil }
+        guard canChangeLimit, !isApplying, requested == finished else { return nil }
         if let saved = limit.savedToRestore { return .useSaved(saved) }
         return limit.source == .outside ? .keepSystem : nil
     }
@@ -109,10 +126,15 @@ final class BatteryMonitor {
 
     func refresh() {
         guard !isPreview else { return }
-        Task.detached(priority: .utility) { [weak self] in
-            let reading = SystemBattery.read()
-            let state = ChargeLimit.read()
-            await self?.update(reading: reading, state: state)
+        // One read at a time: a slow read must not pile up behind the timer.
+        if !refreshing {
+            refreshing = true
+            let startedAt = epoch
+            Task.detached(priority: .utility) { [weak self] in
+                let reading = SystemBattery.read()
+                let state = ChargeLimit.read()
+                await self?.finishRefresh(reading: reading, state: state, startedAt: startedAt)
+            }
         }
         if healthReadAt.map({ Date.now.timeIntervalSince($0) > 3600 }) ?? true {
             healthReadAt = .now
@@ -121,6 +143,14 @@ final class BatteryMonitor {
                 await self?.setSystemHealth(health)
             }
         }
+    }
+
+    private func finishRefresh(reading: BatteryReading?, state: ChargeLimit.State, startedAt: Int) {
+        refreshing = false
+        // A limit request started or ended since this read began, so its
+        // limit may be the old one. Take the battery reading, drop the limit.
+        let limitIsCurrent = startedAt == epoch && !isApplying
+        update(reading: reading, state: limitIsCurrent ? state : nil)
     }
 
     private func setSystemHealth(_ value: Int?) {
@@ -135,6 +165,9 @@ final class BatteryMonitor {
         guard before.supported, stops.contains(value) else {
             return "refused: \(value) is not one of \(stops)"
         }
+        limitSupported = true
+        limitKnown = before.known
+        guard before.known else { return "refused: the current limit could not be read" }
         requested += 1
         await apply(value, request: requested)
         return "limit \(limit.valueText), \(limit.sourceText)" + (applyProblem.map { ". \($0)" } ?? "")
@@ -151,13 +184,23 @@ final class BatteryMonitor {
         self.timer = timer
     }
 
-    private func update(reading: BatteryReading?, state: ChargeLimit.State, now: Date = .now) {
+    /// Takes a new battery reading and, when given, a new limit state.
+    private func update(reading: BatteryReading?, state: ChargeLimit.State?, now: Date = .now) {
         self.reading = reading
-        limitSupported = state.supported
-        if !state.available.isEmpty { stops = LimitStops.normalized(state.available) }
-        limit = LimitState(system: state.limit, saved: Preferences.shared.savedLimit)
-        if !isApplying, requested == finished { setSlider(limit.effective) }
-        let justStarted = watch.update(reading: reading, limit: limit.system, now: now)
+        if let state {
+            limitSupported = state.supported
+            if !state.available.isEmpty { stops = LimitStops.normalized(state.available) }
+            if state.known {
+                limitKnown = true
+                limit = LimitState(system: state.limit, saved: Preferences.shared.savedLimit)
+                if !isApplying, requested == finished { setSlider(limit.effective) }
+            } else if !state.supported {
+                limitKnown = false
+                limit = LimitState(system: nil, saved: Preferences.shared.savedLimit)
+            }
+            // Supported but unreadable this time: keep the last known limit.
+        }
+        let justStarted = watch.update(reading: reading, limit: limitKnown ? limit.system : nil, now: now)
         isWarning = watch.isWarning
         hasLoaded = true
         if justStarted, let reading, let held = limit.system {
@@ -194,42 +237,58 @@ final class BatteryMonitor {
             limit = LimitState(system: value, saved: value)
             return
         }
+        // A short pause, so a drag across several stops makes one request.
+        enqueueApply(value, after: .milliseconds(600))
+    }
+
+    private func applyNow(_ value: Int) {
+        guard !isPreview else { return }
+        enqueueApply(value, after: nil)
+    }
+
+    /// Queues a limit request behind any that is still running. Only the
+    /// newest request is carried out; older ones that have not started are dropped.
+    private func enqueueApply(_ value: Int, after delay: Duration?) {
+        guard canChangeLimit else { return }
         requested += 1
         let request = requested
-        Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(600))
+        let previous = applyChain
+        applyChain = Task { [weak self] in
+            if let delay { try? await Task.sleep(for: delay) }
+            await previous?.value
             guard let self, request == self.requested else { return }
             await self.apply(value, request: request)
         }
     }
 
-    private func applyNow(_ value: Int) {
-        guard !isPreview else { return }
-        requested += 1
-        let request = requested
-        Task { [weak self] in await self?.apply(value, request: request) }
-    }
-
     private func apply(_ value: Int, request: Int) async {
         isApplying = true
         applyProblem = nil
+        epoch += 1
         let failure = await Task.detached { ChargeLimit.set(value) }.value
         var problem: String?
         if failure != nil {
             problem = "macOS did not accept this limit. Try again."
         } else {
-            Preferences.shared.savedLimit = value
             // macOS takes a moment to report a new limit. Wait for it, so
             // the popover shows a confirmed value, never a hoped-for one.
+            // A read that fails confirms nothing.
             let target: Int? = value >= 100 ? nil : value
             var confirmed = false
             for _ in 0..<20 where !confirmed {
-                confirmed = await Task.detached { ChargeLimit.read().limit }.value == target
+                let state = await Task.detached { ChargeLimit.read() }.value
+                confirmed = state.known && state.limit == target
                 if !confirmed { try? await Task.sleep(for: .milliseconds(500)) }
             }
-            if !confirmed { problem = "macOS has not confirmed this limit. Try again." }
+            if !confirmed {
+                problem = "macOS has not confirmed this limit. Try again."
+            } else if request == requested {
+                // Saved only once macOS holds it, so "Set by Hachibu" is always true.
+                Preferences.shared.savedLimit = value
+            }
         }
-        // A newer request is on its way: let it report instead.
+        epoch += 1
+        // A newer request is waiting behind this one: let it report instead.
         guard request == requested else { return }
         finished = request
         isApplying = false
@@ -274,6 +333,7 @@ final class BatteryMonitor {
             monitor.limit = LimitState(system: nil, saved: nil)
         }
         if monitor.reading != nil { monitor.systemHealth = 82 }
+        monitor.limitKnown = preview != .unavailable
         monitor.setSlider(monitor.limit.effective)
         return monitor
     }
