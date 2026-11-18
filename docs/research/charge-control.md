@@ -265,3 +265,29 @@ helper. Short runs, at the user's request.
 - Not tested: hours asleep, a night with the lid closed, a cold boot
   after a shutdown, a macOS update.
 
+## Adapter cut with a limit below the level (2026-11-18)
+
+Found while building Discharge (S-021), through `Hachibu --try discharge 12`
+and the helper.
+
+- Limit 70% (helper), level 80%, charger attached. The helper wrote `CHIE`
+  = 08: within 4 s `ExternalConnected` and `AppleRawExternalConnected` were
+  No, `PDTR` 0.5 W, the Mac on "Battery Power". `AdapterDetails` stayed
+  filled in, and SMC `AC-W` read 1, so a charger that is cut can still be
+  told from one that is unplugged. [D]
+- After 12 s the helper wrote `CHIE` = 00 and the key read 00. The Mac
+  stayed on "Battery Power" (`pmset -g ac`: "No adapter attached", `PDTR`
+  0.49 W) for two minutes. `setMCLLimit:80` was accepted by the PowerUI
+  client, but `pmset -g battlimit` kept 70. [D]
+- Turning the limit off (`disableMCL:`) brought AC power back within
+  seconds; setting 80% again then showed 80 in pmset at once. [D]
+- Control, with no cut: limit 70% at level 80% drains at about 0.4 A while
+  the Mac stays on "AC Power" with `ExternalConnected` Yes, and a change to
+  80% shows in pmset at once. [D]
+- Reading: macOS drains to a limit below the level by itself. Cutting the
+  adapter on top of that leaves a state that releasing the cut does not
+  undo. Seen once; not understood. The first cut test (limit 80% at about
+  80%, nothing to drain) restored within 2 s.
+- Decision needed: Discharge by adapter cut is not shipped. macOS's own
+  drain already gives "run on the battery, plugged in, down to the limit".
+

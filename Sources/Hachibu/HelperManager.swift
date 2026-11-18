@@ -7,8 +7,7 @@ import ServiceManagement
 /// opens its own connection and closes it afterwards, so the helper can quit
 /// when nothing is asked of it.
 ///
-/// For M3: the helper reconnects the charger as soon as its last caller
-/// leaves, so a charger cut needs a connection that stays open.
+/// A charger cut needs a connection that stays open: see HelperSession.
 nonisolated enum HelperClient {
     static func send(_ request: HelperRequest) async -> HelperReply {
         guard !Store.isOverridden else { return HelperReply(problem: "Test runs never reach the helper.") }
@@ -27,12 +26,25 @@ nonisolated enum HelperClient {
     }
 
     private static func sendOnce(_ request: HelperRequest, rule: String) async -> HelperReply {
+        let connection = open(rule: rule)
+        defer { connection.invalidate() }
+        return await perform(request, on: connection)
+    }
+
+    fileprivate static func open(rule: String) -> NSXPCConnection {
         let connection = NSXPCConnection(machServiceName: HelperID.service, options: .privileged)
         connection.remoteObjectInterface = NSXPCInterface(with: HelperXPC.self)
         connection.setCodeSigningRequirement(rule)
         connection.resume()
-        defer { connection.invalidate() }
-        return await withCheckedContinuation { continuation in
+        return connection
+    }
+
+    fileprivate static var helperRule: String? {
+        CodeIdentity.teamID().flatMap { CodeIdentity.requirement(identifier: HelperID.service, team: $0) }
+    }
+
+    fileprivate static func perform(_ request: HelperRequest, on connection: NSXPCConnection) async -> HelperReply {
+        await withCheckedContinuation { continuation in
             let once = Once(continuation)
             let proxy = connection.remoteObjectProxyWithErrorHandler { _ in
                 once.finish(HelperReply(problem: "The helper did not answer."))
@@ -65,6 +77,41 @@ nonisolated enum HelperClient {
             waiting?.resume(returning: reply)
         }
     }
+}
+
+/// One connection to the helper that stays open. The helper reconnects the
+/// charger the moment its last caller leaves, so a charger cut lives exactly
+/// as long as this session: close it, quit, or crash, and the charger is back.
+nonisolated final class HelperSession: @unchecked Sendable {
+    private let lock = NSLock()
+    private var connection: NSXPCConnection?
+
+    func send(_ request: HelperRequest) async -> HelperReply {
+        guard !Store.isOverridden else { return HelperReply(problem: "Test runs never reach the helper.") }
+        guard let rule = HelperClient.helperRule else {
+            return HelperReply(problem: "This copy of Hachibu is not signed, so it cannot trust a helper.")
+        }
+        return await HelperClient.perform(request, on: current(rule: rule))
+    }
+
+    private func current(rule: String) -> NSXPCConnection {
+        lock.lock()
+        defer { lock.unlock() }
+        if let connection { return connection }
+        let opened = HelperClient.open(rule: rule)
+        connection = opened
+        return opened
+    }
+
+    func close() {
+        lock.lock()
+        let old = connection
+        connection = nil
+        lock.unlock()
+        old?.invalidate()
+    }
+
+    deinit { connection?.invalidate() }
 }
 
 /// Installs, removes, and watches the helper. The Helper tab and the limit

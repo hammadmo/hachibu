@@ -1,4 +1,5 @@
 import AppKit
+import HachibuSystem
 import SwiftUI
 
 // Hachibu: a menu bar app. No Dock icon and no main window.
@@ -6,6 +7,7 @@ import SwiftUI
 //   Hachibu --selftest           check the real functions and quit with 0 or 1 (tools/selftest.sh)
 //   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none; 20 to 100 with the helper), print the result, quit
 //   Hachibu --try topup|discharge <seconds>   run a real Top Up or Discharge for that long, print what is measured, stop it, quit
+//   Hachibu --restore-charger    ask the helper to reconnect the charger, and print what the battery controller says
 //   Hachibu --helper-reinstall   take the helper out of macOS and register it again (it does not touch the limit)
 //   Hachibu --helper-status      ask the helper for its state, print it, quit (read-only)
 //   APP_STORE=<file> Hachibu     a test run: no real preferences, login items, notifications, or limit changes
@@ -100,7 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Quitting during a Top Up or while sailing puts the user's limit back first.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let monitor = BatteryMonitor.current, monitor.overrideLimit != nil || monitor.mode != .normal,
+        guard let monitor = BatteryMonitor.current, monitor.overrideLimit != nil || monitor.mode != .normal || monitor.adapterCut,
               !Store.isOverridden else { return .terminateNow }
         Task {
             await monitor.restoreBeforeQuit()
@@ -146,6 +148,17 @@ enum Launch {
             let what = arguments[flag + 1]
             Task {
                 await monitor.tryMode(what, seconds: seconds)
+                NSApp.terminate(nil)
+            }
+        } else if arguments.contains("--restore-charger") {
+            Task {
+                var cut = false
+                let readable = hb_adapter_is_cut(&cut)
+                print("before: CHIE readable \(readable), cut \(cut)")
+                let reply = await HelperClient.send(.restoreAdapter)
+                print("helper: \(reply.problem ?? "ok"), reports cut \(reply.adapterCut)")
+                try? await Task.sleep(for: .seconds(3))
+                print("after: CHIE readable \(hb_adapter_is_cut(&cut)), cut \(cut), plugged \(SystemBattery.read()?.isPluggedIn ?? false)")
                 NSApp.terminate(nil)
             }
         } else if arguments.contains("--helper-reinstall") {

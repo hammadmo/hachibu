@@ -6,6 +6,9 @@ import IOKit
 /// Reads the real battery: IOKit's AppleSmartBattery for state, the SMC for
 /// power and temperature. Read-only; safe to call from any thread.
 nonisolated enum SystemBattery {
+    /// The properties behind the last reading, for `Hachibu --try`.
+    nonisolated(unsafe) static var lastRaw: [String: Any] = [:]
+
     static func read() -> BatteryReading? {
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
         guard service != 0 else { return nil }
@@ -13,6 +16,7 @@ nonisolated enum SystemBattery {
         var unmanaged: Unmanaged<CFMutableDictionary>?
         guard IORegistryEntryCreateCFProperties(service, &unmanaged, kCFAllocatorDefault, 0) == kIOReturnSuccess,
               let properties = unmanaged?.takeRetainedValue() as? [String: Any] else { return nil }
+        lastRaw = properties
         return reading(from: properties, chargerWatts: smcFloat("PDTR"), systemWatts: smcFloat("PSTR"),
                        smcTemperature: smcFloat("TB0T"), fullChargeOverride: hb_full_charge_override())
     }
