@@ -12,7 +12,7 @@ notifications, and errors.
 | Battery health | Maximum capacity now, as a percent of the design capacity | condition, capacity, wear |
 | Cycles | The battery's cycle count | charge cycles, count |
 | Power flow | Watts from the charger, used by the Mac, and into or out of the battery | wattage, energy, power draw |
-| Helper | The background service that lets Hachibu set limits below 80% and disconnect the charger | daemon, agent, service, tool |
+| Helper | The background service that lets Hachibu set limits below 80% and sail | daemon, agent, service, tool |
 | Sailing range | How many percent the battery drifts below the limit before it charges again | hysteresis, lower limit, drift |
 | History | Recorded battery level, temperature, and power over time | stats, log, graphs |
 
@@ -27,7 +27,6 @@ notifications, and errors.
 | Not charging | Plugged in, away from the limit, and no current into the battery | paused, idle, waiting |
 | Using battery | Plugged in, yet power is leaving the battery: macOS is draining it toward the limit, or the charger cannot keep up | discharging, draining |
 | Topping up | Charging to 100% once, at the user's request | full charge, override, boost |
-| Discharging | Plugged in but running on the battery, at the user's request, down to the limit | draining, on battery |
 | Sailing | Plugged in, below the limit, and not charging: inside the sailing range | coasting, floating |
 | Paused for heat | Charging stopped because the battery is above the set temperature | heat protection active, overheated |
 | Full charge by macOS | macOS is charging past the limit on its own to keep its estimates accurate | calibration, override, top off |
@@ -43,8 +42,7 @@ notifications, and errors.
 | Keep This Limit | Adopt the limit macOS already holds as Hachibu's own | accept, import |
 | Apply Limit Again | Ask macOS for the limit once more, from the warning banner | retry, fix |
 | Top Up | Start charging to 100% once | charge to full, boost |
-| Discharge | Start running on the battery, while plugged in, down to the limit | drain |
-| Stop | End a Top Up, Discharge, or calibration early | cancel, abort |
+| Stop | End a Top Up or a calibration early | cancel, abort |
 | Calibrate | Run a guided full charge, discharge, and charge | recalibrate, condition |
 | Install Helper / Remove Helper | Add or delete the helper | enable, uninstall, register |
 | Settings, Quit | Apple's words | Preferences, Exit |

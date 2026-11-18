@@ -7,7 +7,9 @@ import ServiceManagement
 /// opens its own connection and closes it afterwards, so the helper can quit
 /// when nothing is asked of it.
 ///
-/// A charger cut needs a connection that stays open: see HelperSession.
+/// The helper reconnects the charger whenever its last caller leaves, so
+/// nothing sent this way can leave the charger cut. Hachibu never asks for
+/// a cut (docs/research/charge-control.md says why).
 nonisolated enum HelperClient {
     static func send(_ request: HelperRequest) async -> HelperReply {
         guard !Store.isOverridden else { return HelperReply(problem: "Test runs never reach the helper.") }
@@ -77,41 +79,6 @@ nonisolated enum HelperClient {
             waiting?.resume(returning: reply)
         }
     }
-}
-
-/// One connection to the helper that stays open. The helper reconnects the
-/// charger the moment its last caller leaves, so a charger cut lives exactly
-/// as long as this session: close it, quit, or crash, and the charger is back.
-nonisolated final class HelperSession: @unchecked Sendable {
-    private let lock = NSLock()
-    private var connection: NSXPCConnection?
-
-    func send(_ request: HelperRequest) async -> HelperReply {
-        guard !Store.isOverridden else { return HelperReply(problem: "Test runs never reach the helper.") }
-        guard let rule = HelperClient.helperRule else {
-            return HelperReply(problem: "This copy of Hachibu is not signed, so it cannot trust a helper.")
-        }
-        return await HelperClient.perform(request, on: current(rule: rule))
-    }
-
-    private func current(rule: String) -> NSXPCConnection {
-        lock.lock()
-        defer { lock.unlock() }
-        if let connection { return connection }
-        let opened = HelperClient.open(rule: rule)
-        connection = opened
-        return opened
-    }
-
-    func close() {
-        lock.lock()
-        let old = connection
-        connection = nil
-        lock.unlock()
-        old?.invalidate()
-    }
-
-    deinit { connection?.invalidate() }
 }
 
 /// Installs, removes, and watches the helper. The Helper tab and the limit

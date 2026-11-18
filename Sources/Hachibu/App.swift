@@ -6,7 +6,7 @@ import SwiftUI
 //   Hachibu                      the app
 //   Hachibu --selftest           check the real functions and quit with 0 or 1 (tools/selftest.sh)
 //   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none; 20 to 100 with the helper), print the result, quit
-//   Hachibu --try topup|discharge <seconds>   run a real Top Up or Discharge for that long, print what is measured, stop it, quit
+//   Hachibu --try topup|sailing <seconds>   run a real Top Up or sailing for that long, print what is measured, stop it, quit
 //   Hachibu --restore-charger    ask the helper to reconnect the charger, and print what the battery controller says
 //   Hachibu --helper-reinstall   take the helper out of macOS and register it again (it does not touch the limit)
 //   Hachibu --helper-status      ask the helper for its state, print it, quit (read-only)
@@ -102,7 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Quitting during a Top Up or while sailing puts the user's limit back first.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let monitor = BatteryMonitor.current, monitor.overrideLimit != nil || monitor.mode != .normal || monitor.adapterCut,
+        guard let monitor = BatteryMonitor.current, monitor.overrideLimit != nil || monitor.mode != .normal,
               !Store.isOverridden else { return .terminateNow }
         Task {
             await monitor.restoreBeforeQuit()

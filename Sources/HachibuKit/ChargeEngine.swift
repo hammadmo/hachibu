@@ -5,21 +5,18 @@ public enum ChargeMode: String, Equatable, Sendable {
     case normal
     /// Charging to 100% once; the limit returns afterwards.
     case toppingUp
-    /// Running on the battery while plugged in, down to the limit.
-    case discharging
     /// A guided full cycle (story S-042). Nothing starts it yet.
     case calibrating
 }
 
-/// Why a Top Up or a Discharge ended.
+/// Why a Top Up ended.
 public enum ModeEnd: Equatable, Sendable {
-    case reachedFull, reachedLimit, reachedFloor, unplugged, stopped, helperLost
+    case reachedFull, unplugged, stopped
 }
 
 /// What the engine looks at on every reading.
 public struct ChargeInputs: Equatable, Sendable {
     public var percent: Int
-    /// A charger is attached, even while Hachibu holds it disconnected.
     public var chargerAttached: Bool
     /// The user's limit. 100 means none.
     public var limit: Int
@@ -41,28 +38,24 @@ public struct ChargePlan: Equatable, Sendable {
     public var mode: ChargeMode
     /// The limit macOS should hold. 100 means none.
     public var limit: Int
-    /// The charger should be held disconnected.
-    public var adapterCut: Bool
     /// Plugged in and drifting down inside the sailing range.
     public var isSailing: Bool
 
-    public init(mode: ChargeMode, limit: Int, adapterCut: Bool = false, isSailing: Bool = false) {
+    public init(mode: ChargeMode, limit: Int, isSailing: Bool = false) {
         self.mode = mode
         self.limit = limit
-        self.adapterCut = adapterCut
         self.isSailing = isSailing
     }
 }
 
-/// Decides, from each reading, which limit macOS should hold and whether
-/// the charger should be cut. It changes nothing itself: BatteryMonitor
-/// carries the plan out.
+/// Decides, from each reading, which limit macOS should hold. It changes
+/// nothing itself: BatteryMonitor carries the plan out. It never cuts the
+/// charger: on macOS 27 that left the Mac on battery after the cut was
+/// released (docs/research/charge-control.md), and macOS already drains to
+/// a limit below the level by itself.
 public struct ChargeEngine: Equatable, Sendable {
-    /// Discharge never goes below this, whatever the limit.
-    public static let dischargeFloor = 20
-
     public internal(set) var mode = ChargeMode.normal
-    /// Why the last Top Up or Discharge ended. Cleared when one starts.
+    /// Why the last Top Up ended. Cleared when one starts.
     public private(set) var lastEnd: ModeEnd?
     /// Sailing: true while charging back up to the limit.
     public private(set) var isRecharging = false
@@ -78,18 +71,6 @@ public struct ChargeEngine: Equatable, Sendable {
         guard inputs.chargerAttached else { return "Connect the charger to top up." }
         guard inputs.percent < 100 else { return "The battery is already full." }
         mode = .toppingUp
-        lastEnd = nil
-        return nil
-    }
-
-    /// Starts a Discharge. Returns why not, in words for the user, or nil.
-    public mutating func startDischarge(_ inputs: ChargeInputs) -> String? {
-        guard mode == .normal else { return "Stop the current mode first." }
-        guard inputs.helperRunning else { return "Discharge needs the helper." }
-        guard inputs.chargerAttached else { return "The Mac is already running on the battery." }
-        guard inputs.percent > inputs.limit else { return "The battery is already at or below the limit." }
-        guard inputs.percent > Self.dischargeFloor else { return "The battery is too low to discharge." }
-        mode = .discharging
         lastEnd = nil
         return nil
     }
@@ -112,30 +93,15 @@ public struct ChargeEngine: Equatable, Sendable {
         switch mode {
         case .toppingUp:
             if !inputs.chargerAttached { end(.unplugged) } else if inputs.percent >= 100 { end(.reachedFull) }
-        case .discharging:
-            if !inputs.helperRunning { end(.helperLost) }
-            else if !inputs.chargerAttached { end(.unplugged) }
-            else if inputs.percent <= inputs.limit { end(.reachedLimit) }
-            else if inputs.percent <= Self.dischargeFloor { end(.reachedFloor) }
         case .normal, .calibrating:
             break
         }
         switch mode {
         case .toppingUp, .calibrating:
             return ChargePlan(mode: mode, limit: 100)
-        case .discharging:
-            return ChargePlan(mode: mode, limit: inputs.limit, adapterCut: true)
         case .normal:
             return sailing(inputs)
         }
-    }
-
-    /// The charger must be reconnected before the Mac sleeps, in every mode.
-    public func planForSleep(_ inputs: ChargeInputs) -> ChargePlan {
-        var copy = self
-        var plan = copy.step(inputs)
-        plan.adapterCut = false
-        return plan
     }
 
     // MARK: Sailing
@@ -164,17 +130,5 @@ public struct ChargeEngine: Equatable, Sendable {
             return ChargePlan(mode: .normal, limit: limit)
         }
         return ChargePlan(mode: .normal, limit: inputs.percent, isSailing: true)
-    }
-}
-
-/// Decides when the helper reconnects the charger on its own: its caller
-/// has been silent for too long, so it may have crashed or hung.
-public enum AdapterWatchdog {
-    public static let silenceLimit: TimeInterval = 30
-    /// How often a caller that holds the charger cut says it is still there.
-    public static let heartbeat: TimeInterval = 10
-
-    public static func shouldRestore(adapterCut: Bool, lastHeard: Date, now: Date) -> Bool {
-        adapterCut && now.timeIntervalSince(lastHeard) >= silenceLimit
     }
 }

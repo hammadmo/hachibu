@@ -45,11 +45,11 @@ final class BatteryMonitor {
     /// True while a limit set through the helper waits to be enforced.
     private(set) var isWaitingForMacOS = false
     private(set) var isWarning = false
-    /// Top Up or Discharge, while one runs.
+    /// Top Up, while one runs.
     private(set) var mode = ChargeMode.normal
     /// Plugged in and drifting down inside the sailing range.
     private(set) var isSailing = false
-    /// Why a Top Up or a Discharge could not start or was cut short.
+    /// Why a Top Up could not start or was cut short.
     private(set) var modeProblem: String?
     /// The limit Hachibu asked macOS for on a mode's behalf, in place of
     /// the user's own: 100 during a Top Up, the current level while sailing.
@@ -58,11 +58,6 @@ final class BatteryMonitor {
     private(set) var limitBeforeOverride: Int?
     @ObservationIgnored private var engine = ChargeEngine()
     @ObservationIgnored private var adoptedSailing = false
-    /// The open connection that keeps the charger cut. nil when it is not.
-    @ObservationIgnored private var session: HelperSession?
-    /// True once the helper confirmed the cut, until it confirmed the restore.
-    private(set) var adapterCut = false
-    @ObservationIgnored private var adapterBusy = false
     /// The monitor of the running app, for the quit handler.
     @ObservationIgnored nonisolated(unsafe) static weak var current: BatteryMonitor?
     /// False until the first reading arrives.
@@ -162,7 +157,6 @@ final class BatteryMonitor {
         _ = sliderValue // redraw the caption as soon as a drag starts
         if let modeProblem { return modeProblem }
         if mode == .toppingUp { return "Charging to 100% once. Your limit returns afterwards." }
-        if mode == .discharging { return "Running on the battery down to the limit." }
         if isWaitingForMacOS, overrideLimit == nil { return "Applying… macOS can take two minutes." }
         if isApplying || requested != finished { return overrideLimit == nil ? "Applying…" : sailingCaption }
         if let applyProblem { return applyProblem }
@@ -323,7 +317,7 @@ final class BatteryMonitor {
             limit = LimitState(system: value, saved: value)
             return
         }
-        // A new limit from the slider ends a Top Up or a Discharge.
+        // A new limit from the slider ends a Top Up.
         engine.stop()
         mode = .normal
         modeProblem = nil
@@ -417,13 +411,12 @@ final class BatteryMonitor {
         applyProblem = problem
     }
 
-    // MARK: Top Up, Discharge, sailing
+    // MARK: Top Up and sailing
 
     /// What the engine looks at. nil until the battery and the limit are known.
     private var chargeInputs: ChargeInputs? {
         guard let reading, limitKnown else { return nil }
-        // While Hachibu holds the charger cut, macOS reports it as gone.
-        return ChargeInputs(percent: reading.percent, chargerAttached: reading.isPluggedIn || adapterCut, limit: userLimit,
+        return ChargeInputs(percent: reading.percent, chargerAttached: reading.isPluggedIn, limit: userLimit,
                             sailingRange: Capability.sailing ? Preferences.shared.sailingRange : 0,
                             helperRunning: helper.isRunning)
     }
@@ -453,53 +446,6 @@ final class BatteryMonitor {
         limitBeforeOverride = saved
     }
 
-    var canDischarge: Bool { dischargeRefusal == nil }
-
-    /// Why Discharge cannot start now, in words for the button's help. nil when it can.
-    var dischargeRefusal: String? {
-        guard let inputs = chargeInputs, canChangeLimit, mode == .normal else { return "Not available right now." }
-        var trial = engine
-        return trial.startDischarge(inputs)
-    }
-
-    /// The Discharge button: starts one, or stops the one that runs.
-    func toggleDischarge() {
-        guard !isPreview, let inputs = chargeInputs else { return }
-        if mode == .discharging { engine.stop() } else { modeProblem = engine.startDischarge(inputs) }
-        runModes()
-    }
-
-    /// Cuts or reconnects the charger through the helper. The cut lives on
-    /// one open connection: if Hachibu goes away, the helper reconnects.
-    private func setAdapter(cut: Bool) {
-        adapterBusy = true
-        Task {
-            if cut {
-                let opened = HelperSession()
-                let reply = await opened.send(.cutAdapter)
-                if reply.succeeded, reply.adapterCut {
-                    session = opened
-                    adapterCut = true
-                    modeLog.notice("charger cut for \(self.mode.rawValue, privacy: .public)")
-                } else {
-                    opened.close()
-                    engine.stop()
-                    mode = .normal
-                    modeProblem = "The helper could not disconnect the charger."
-                    modeLog.error("charger cut failed")
-                }
-            } else {
-                let reply = await session?.send(.restoreAdapter)
-                session?.close()
-                session = nil
-                adapterCut = false
-                modeLog.notice("charger restored, helper confirmed \(reply?.succeeded ?? false, privacy: .public)")
-            }
-            adapterBusy = false
-            refresh()
-        }
-    }
-
     /// Asks the engine what should be true now and carries it out. A limit
     /// is only requested when the plan changes, and never while another
     /// request is under way, so a limit changed outside Hachibu is not fought.
@@ -509,16 +455,13 @@ final class BatteryMonitor {
         mode = plan.mode
         isSailing = plan.isSailing
         if plan.mode != .normal { modeProblem = nil }
-        if engine.lastEnd == .helperLost, adapterCut || session != nil {
-            modeProblem = "The helper stopped, so the charger was reconnected."
-        }
-        if plan.adapterCut != adapterCut, !adapterBusy { setAdapter(cut: plan.adapterCut) }
         let wanted: Int? = plan.limit == inputs.limit ? nil : plan.limit
         guard wanted != overrideLimit, !isApplying, requested == finished, canChangeLimit else { return }
         let goingBackTo = inputs.limit
         if overrideLimit == nil { limitBeforeOverride = inputs.limit }
         overrideLimit = wanted
         if wanted == nil { limitBeforeOverride = nil }
+        modeLog.notice("asked macOS for \(wanted ?? goingBackTo, privacy: .public)%: \(plan.mode.rawValue, privacy: .public)\(plan.isSailing ? ", sailing" : "", privacy: .public)")
         enqueueApply(wanted ?? goingBackTo, after: nil, remember: false)
     }
 
@@ -535,13 +478,6 @@ final class BatteryMonitor {
         await helper.refresh()
         for _ in 0..<20 where !(hasLoaded && limitKnown) { try? await Task.sleep(for: .milliseconds(250)) }
         line("before")
-        func raw() {
-            let p = SystemBattery.lastRaw
-            let keys = ["ExternalConnected", "AppleRawExternalConnected", "IsCharging", "ExternalChargeCapable", "BestAdapterIndex"]
-            let adapter = (p["AdapterDetails"] as? [String: Any]).map { "AdapterDetails(\($0["Watts"] ?? "-") W, \($0.count) keys)" } ?? "AdapterDetails nil"
-            let raw = (p["AppleRawAdapterDetails"] as? [Any]).map { "RawAdapters \($0.count)" } ?? "RawAdapters nil"
-            print("  raw: " + keys.map { "\($0)=\(p[$0].map { "\($0)" } ?? "nil")" }.joined(separator: " ") + " \(adapter) \(raw) PDTR=\(SystemBattery.smcFloat("PDTR").map { String(format: "%.1f", $0) } ?? "nil")")
-        }
         switch name {
         case "topup": toggleTopUp()
         case "sailing":
@@ -561,21 +497,15 @@ final class BatteryMonitor {
             }
             line("after")
             return
-        case "discharge": raw(); toggleDischarge()
         default: print("unknown mode \(name)"); return
         }
         guard mode != .normal else { line("refused"); return }
         for second in 1...max(seconds, 1) {
             try? await Task.sleep(for: .seconds(1))
-            if second % 4 == 0 || second == seconds {
-                line("t=\(second)s")
-                if name == "discharge" { raw() }
-            }
+            if second % 4 == 0 || second == seconds { line("t=\(second)s") }
             if mode == .normal { break }
         }
         if mode == .toppingUp { toggleTopUp() }
-        if mode == .discharging { toggleDischarge() }
-        for _ in 0..<40 where adapterCut || adapterBusy { try? await Task.sleep(for: .milliseconds(250)) }
         for _ in 0..<120 where isApplying || requested != finished || overrideLimit != nil {
             try? await Task.sleep(for: .milliseconds(500))
         }
@@ -595,16 +525,9 @@ final class BatteryMonitor {
     /// Before Hachibu quits: put the user's limit back, without waiting for
     /// macOS to report it. Returns once the request is made.
     func restoreBeforeQuit() async {
-        guard !isPreview, !Store.isOverridden, overrideLimit != nil || mode != .normal || adapterCut else { return }
+        guard !isPreview, !Store.isOverridden, overrideLimit != nil || mode != .normal else { return }
         let target = userLimit
         engine.stop()
-        if adapterCut || session != nil {
-            _ = await session?.send(.restoreAdapter)
-            session?.close()
-            session = nil
-            adapterCut = false
-            modeLog.notice("charger restored before quitting")
-        }
         guard overrideLimit != nil else { return }
         mode = .normal
         overrideLimit = nil

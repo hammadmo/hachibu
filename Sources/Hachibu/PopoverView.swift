@@ -77,7 +77,7 @@ struct PopoverView: View {
         }
     }
 
-    /// Top Up, and beside it Discharge. The one that runs reads "Stop".
+    /// Top Up. While one runs the button reads "Stop".
     private var modeButtons: some View {
         HStack(spacing: Space.sm) {
             Button(monitor.mode == .toppingUp ? "Stop" : "Top Up") { monitor.toggleTopUp() }

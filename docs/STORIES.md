@@ -289,17 +289,15 @@ Acceptance:
 - [unit] Discharge refuses to start at or below the limit, and stops at
   the limit, at 20%, on Stop, or when the charger is unplugged.
 - [manual] If the helper stops for any reason, the adapter is restored.
-Status: todo, blocked (2026-11-18). Needs a decision from the user.
+Status: dropped (2026-11-18, the user's decision).
 - On this Mac macOS already does this by itself: with the limit below the
   level it drains the battery to the limit while staying on AC power.
 - The one real try of the adapter cut (limit 70%, level 80%, cut for 12
-  seconds, then released) left the Mac on battery: the cut key read
-  "released", yet no power came from the charger and a new limit did not
-  take effect, for two minutes, until the limit was turned off. See
-  `docs/research/charge-control.md`, "Adapter cut with a limit below the
-  level".
-- Built and unit-tested, with no button: the rules in `ChargeEngine`, the
-  held helper connection (`HelperSession`), and `Hachibu --try discharge`.
+  seconds, then released) left the Mac on battery for two minutes, until
+  the limit was turned off. See `docs/research/charge-control.md`,
+  "Adapter cut with a limit below the level".
+- The Discharge code was removed. The helper still accepts "cut adapter"
+  and "restore adapter"; nothing in the app sends a cut.
 
 ### S-022 Sail between two levels
 As the user, I set a sailing range in Settings, and the battery drifts
@@ -331,7 +329,7 @@ Acceptance:
   adapter was restored before sleep and cut again after wake.
 - [manual] The Mac is never kept awake by Hachibu.
 - [unit] The sleep handler restores the adapter in every active mode.
-Status: todo, blocked by S-021 (2026-11-18): there is no adapter cut to protect until that story is decided.
+Status: dropped with S-021 (2026-11-18): Hachibu never cuts the adapter, so there is nothing to protect.
 
 ### S-024 Recover after a crash or forced quit
 As the user, I never end up stuck on battery because Hachibu or its
@@ -344,7 +342,7 @@ Acceptance:
 - [manual] Killing the helper restores the adapter when it relaunches.
 - [unit] The helper restores the adapter when its client has been
   silent for 30 seconds.
-Status: todo, blocked by S-021 (2026-11-18): there is no adapter cut to protect until that story is decided.
+Status: dropped with S-021 (2026-11-18): Hachibu never cuts the adapter, so there is nothing to protect.
 
 ## M4 Details: power flow and history
 

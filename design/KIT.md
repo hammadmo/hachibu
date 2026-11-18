@@ -295,8 +295,9 @@ limit is not holding); the gauge; the status line (status, then measured
 watts); the power flow card; the limit block (label and value, slider,
 then the source with one secondary button when there is something to do:
 "Use Hachibu's Limit" or "Keep This Limit"); the stat row; a divider; the
-footer. Top Up, Discharge, and the 24-hour chart join it when they are
-built, not before.
+footer. Under the limit block sits one secondary button, "Top Up", which
+reads "Stop" and is selected while a Top Up runs. The 24-hour chart joins
+when it is built, not before.
 
 ### Footer
 Ghost buttons in a row: "History…", "Settings…", "Quit Hachibu".

@@ -58,8 +58,8 @@ public struct BatteryReading: Equatable, Sendable {
 /// What the battery is doing, in the glossary's words.
 public enum BatteryStatus: Equatable, Sendable {
     case charging, holdingAtLimit, fullyCharged, notCharging, usingBattery, onBattery, fullChargeByMacOS
-    /// The three things Hachibu does on request or by a setting.
-    case toppingUp, discharging, sailing
+    /// What Hachibu does on request or by a setting.
+    case toppingUp, sailing
 
     /// How close to the limit still counts as holding at it.
     public static let holdingMargin = 2
@@ -70,7 +70,6 @@ public enum BatteryStatus: Equatable, Sendable {
                               isSailing: Bool) -> BatteryStatus {
         switch mode {
         case .toppingUp: return reading.fullChargeOverride ? .fullChargeByMacOS : .toppingUp
-        case .discharging: return .discharging
         case .normal, .calibrating:
             let plain = derive(from: reading, limit: limit)
             // Sailing is only said while nothing flows into the battery.
@@ -98,7 +97,6 @@ public enum BatteryStatus: Equatable, Sendable {
         case .onBattery: "On battery"
         case .fullChargeByMacOS: "Full charge by macOS"
         case .toppingUp: "Topping up"
-        case .discharging: "Discharging"
         case .sailing: "Sailing"
         }
     }
@@ -106,7 +104,7 @@ public enum BatteryStatus: Equatable, Sendable {
     /// The measured power, next to the status. A missing value is a dash, never a false 0.
     public func detail(for reading: BatteryReading) -> String {
         switch self {
-        case .onBattery, .discharging:
+        case .onBattery:
             let out = reading.systemWatts ?? reading.batteryWatts.map(abs)
             return "\(Watts.text(out)) out"
         case .usingBattery:
