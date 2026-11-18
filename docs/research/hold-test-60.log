@@ -1,0 +1,30 @@
+# Hold test: limit 60% for one hour, 2026-11-18
+18:30 80%;ACattached mA=0 plugged=Yes pmset=80 before
+limit 60%, Set by Hachibu
+18:30 80%;ACattached mA=0 plugged=Yes pmset=60 
+18:32 80%;ACattached mA=-1433 plugged=Yes pmset=60 
+18:34 80%;ACattached mA=-1360 plugged=Yes pmset=60 
+18:36 79%;ACattached mA=-1280 plugged=Yes pmset=60 
+18:38 78%;ACattached mA=-1243 plugged=Yes pmset=60 
+18:40 77%;ACattached mA=-1293 plugged=Yes pmset=60 
+18:42 75%;ACattached mA=-1307 plugged=Yes pmset=60 
+18:44 74%;ACattached mA=-1274 plugged=Yes pmset=60 
+18:46 73%;ACattached mA=-1251 plugged=Yes pmset=60 
+18:48 72%;ACattached mA=-1004 plugged=Yes pmset=60 
+18:50 70%;ACattached mA=-1100 plugged=Yes pmset=60 
+18:52 69%;ACattached mA=-975 plugged=Yes pmset=60 
+18:54 68%;ACattached mA=-2956 plugged=Yes pmset=60 
+18:56 67%;ACattached mA=-1191 plugged=Yes pmset=60 
+18:58 65%;ACattached mA=-1144 plugged=Yes pmset=60 
+19:00 64%;ACattached mA=-1664 plugged=Yes pmset=60 
+19:02 63%;ACattached mA=-1647 plugged=Yes pmset=60 
+19:04 61%;ACattached mA=-1437 plugged=Yes pmset=60 
+19:06 60%;ACattached mA=-1020 plugged=Yes pmset=60 
+19:08 60%;ACattached mA=0 plugged=Yes pmset=60 
+19:10 60%;ACattached mA=0 plugged=Yes pmset=60 
+19:12 60%;ACattached mA=0 plugged=Yes pmset=60 
+19:14 60%;ACattached mA=0 plugged=Yes pmset=60
+# Stopped by hand at 19:15 at the user's request, after 8 minutes steady at 60%.
+19:15 limit 80%, Set by Hachibu (pmset=80)
+19:16 60%;charging mA=1921 plugged=Yes pmset=80 restored
+# Battery current was logged unsigned by the test script; converted to signed here.

@@ -231,3 +231,22 @@ Decision changes:
 - The helper's caller check (`setConnectionCodeSigningRequirement`) refused
   an unsigned program and one signed ad hoc with Hachibu's identifier
   (XPC error 4097). [D]
+
+## Hold test at 60% (2026-11-18, asked for by the user)
+
+Raw readings: `hold-test-60.log`. Charger attached the whole time; limit
+set through the helper with `Hachibu --set-limit 60`.
+
+- 18:30, battery at 80%: `pmset -g battlimit` reported 60 within the same
+  minute. [D]
+- 18:32 to 19:06: the Mac ran on the battery while plugged in, at 1.0 to
+  1.7 A out of the battery, and the level fell from 80% to 60% in 36
+  minutes. macOS drains to a limit below the current level by itself
+  (`chargeSocLimitDrain = 1`); the helper's adapter cut was not used. [D]
+- 19:08 to 19:14: steady at 60% with 0 mA, charger attached, not
+  charging. The drain stops at the limit. [D]
+- 19:15: limit set back to 80%; pmset showed 80 at once and charging
+  resumed within a minute (1.9 A in). [D]
+- Stopped after 45 minutes instead of 60. Not tested: a hold of several
+  hours, sleep, lid closed, reboot.
+
