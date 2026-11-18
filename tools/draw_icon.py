@@ -4,8 +4,11 @@
 An enso: one brush stroke around a circle, left open. The stroke starts
 with a pool of ink, wavers like a hand-held brush, and ends in dry bristle
 streaks (kasure). Gold dust (nashiji, as on lacquerware) drifts across the
-gap, so the eye finishes the circle that the brush did not. A hand-stamped
-seal with the character for eight sits over the stroke.
+gap, so the eye finishes the circle that the brush did not. Plum blossoms
+(ume), the first flower of the year and a classic lacquer motif, open among
+the dust. Waves (seigaiha, the pattern of calm seas) rise from the bottom
+edge in low relief, tone on tone. A hand-stamped seal with the character for
+eight sits over the stroke.
 
 Usage: tools/draw_icon.py && tools/make_icon.sh
 """
@@ -18,6 +21,7 @@ R = 272          # centerline radius
 T = 104          # brush width at its fullest
 END = 0.80       # the stroke covers this much of the circle
 GOLD, SEAL, PAPER = "#C9A45C", "#B4322A", "#F4E9D6"
+PALE_GOLD, RELIEF = "#E6CB8C", "#4B3A20"
 
 
 def wobble(u, seed):
@@ -117,6 +121,80 @@ def dust():
     return svg(f'<g fill="{GOLD}">{"".join(specks)}</g>')
 
 
+def ring_band(cx, cy, rho, w, a0, a1):
+    """A thin filled arc band (not a stroke) from angle a0 to a1."""
+    n = max(int(abs(a1 - a0) * rho / 6), 4)
+    angles = [a0 + (a1 - a0) * i / n for i in range(n + 1)]
+    out = [(cx + (rho + w / 2) * math.cos(a), cy + (rho + w / 2) * math.sin(a)) for a in angles]
+    inn = [(cx + (rho - w / 2) * math.cos(a), cy + (rho - w / 2) * math.sin(a)) for a in reversed(angles)]
+    return "M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in out + inn) + "Z"
+
+
+def waves():
+    """Seigaiha: rows of overlapping scales, each three concentric arcs.
+    Each arc is drawn only where the rows below do not cover it."""
+    r, parts = 78, []
+    rows = 6
+    for row in range(rows):
+        cy = 1024 + r * 0.25 - row * r / 2
+        shift = r if row % 2 else 0
+        # The pattern rises higher on the left, like a shoreline.
+        for col in range(-1, 9):
+            cx = col * 2 * r + shift
+            crest = 1024 - (rows - 0.4) * r / 2 * (1 - 0.55 * max(cx, 0) / 1024)
+            if cy < crest:
+                continue
+            fade = 1 - 0.5 * row / rows
+            covers = [(cx - r, cy + r / 2), (cx + r, cy + r / 2), (cx, cy + r)]
+            for share, w in [(1.0, 7.0), (0.70, 5.5), (0.40, 4.5)]:
+                rho, run = r * share, []
+                steps = 90
+                for i in range(steps + 1):
+                    a = math.pi + math.pi * i / steps          # the upper half
+                    x, y = cx + rho * math.cos(a), cy + rho * math.sin(a)
+                    seen = all(math.hypot(x - ox, y - oy) >= r - 0.5 for ox, oy in covers)
+                    if seen:
+                        run.append(a)
+                    if (not seen or i == steps) and len(run) > 1:
+                        parts.append(ring_band(cx, cy, rho, w * fade, run[0], run[-1]))
+                    if not seen:
+                        run = []
+    return svg(f'<path fill="{RELIEF}" d="{" ".join(parts)}"/>')
+
+
+def blossom(cx, cy, size, turn, petals=5):
+    """An ume blossom: five round petals, a clear heart, and stamens."""
+    out = []
+    for i in range(petals):
+        a = math.radians(turn) + 2 * math.pi * i / 5
+        px, py = cx + size * 0.62 * math.cos(a), cy + size * 0.62 * math.sin(a)
+        out.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{size * 0.46:.1f}" fill="{PALE_GOLD}"/>')
+    if petals == 5:
+        out.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{size * 0.36:.1f}" fill="{PALE_GOLD}"/>')
+        for i in range(5):
+            a = math.radians(turn + 36) + 2 * math.pi * i / 5
+            sx, sy = cx + size * 0.30 * math.cos(a), cy + size * 0.30 * math.sin(a)
+            out.append(f'<circle cx="{sx:.1f}" cy="{sy:.1f}" r="{size * 0.075:.1f}" fill="{SEAL}"/>')
+        out.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{size * 0.10:.1f}" fill="{SEAL}"/>')
+    return "".join(out)
+
+
+def petal(cx, cy, size, turn):
+    return (f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{size:.1f}" ry="{size * 0.62:.1f}" '
+            f'fill="{PALE_GOLD}" transform="rotate({turn} {cx:.1f} {cy:.1f})"/>')
+
+
+def blossoms():
+    # In the gap, where the dust is: one open flower, one half-turned, loose petals.
+    x1, y1 = point(0.895, 6)
+    x2, y2 = point(0.955, 52)
+    art = blossom(x1, y1, 46, -18) + blossom(x2, y2, 27, 12)
+    for u, off, size, turn in [(0.845, -46, 11, 30), (0.925, -58, 9, -40), (0.985, -20, 8, 70), (0.865, 66, 8, 10)]:
+        x, y = point(u, off)
+        art += petal(x, y, size, turn)
+    return svg(art)
+
+
 SEAL_BOX = (630, 628, 184)   # x, y, size
 SEAL_TILT = -5               # degrees: stamped by hand, never quite square
 
@@ -139,7 +217,8 @@ def eight():
 
 if __name__ == "__main__":
     os.makedirs(ASSETS, exist_ok=True)
-    for name, art in [("ring.svg", ring()), ("dust.svg", dust()), ("seal.svg", seal()), ("eight.svg", eight())]:
+    for name, art in [("ring.svg", ring()), ("dust.svg", dust()), ("waves.svg", waves()),
+                      ("blossoms.svg", blossoms()), ("seal.svg", seal()), ("eight.svg", eight())]:
         with open(os.path.join(ASSETS, name), "w") as f:
             f.write(art)
     print("wrote", ASSETS)

@@ -66,7 +66,7 @@ the one shape that carries the reading.
 | popoverWidth | 320 | fits three power values and two buttons |
 | gaugeSize | 160 | hero; half the popover width |
 | gaugeSmall | 112 | gallery and compact use |
-| gaugeStroke | 10 | brush width at its fullest, at gaugeSize |
+| gaugeStroke | 13 | brush width at its fullest, at gaugeSize; bold enough to carry the brush detail |
 | tickCount / tickLength | 60 / 4 | one tick per 6°, like a dial |
 | limitDot | 3 | radius of the limit mark on the tick ring |
 | sealSize / sealSmall | 20 / 12 | seal mark |
@@ -133,9 +133,15 @@ Settings and History: system chrome.
 
 ### Ensō gauge (`EnsoGauge`)
 Anatomy: tick ring (60 ticks, `Ink.tick`); limit dot on the tick ring at
-the limit's angle (`Ink.seal`); brush arc from 12 o'clock clockwise to
-the battery level, widest near the start and tapering over the last 30%;
-serif numeral centered; seal mark bottom trailing.
+the limit's angle (`Ink.seal`); one brush stroke from 12 o'clock clockwise
+to the battery level; dust after the brush tip; serif numeral centered;
+seal mark bottom trailing, tilted 5° like a hand stamp.
+The stroke is hand-painted, by the same recipe as the app icon
+(`Brush` in `EnsoGauge.swift`, `tools/draw_icon.py`): a pool of ink where
+the brush lands, a slight waver, a drift inward late in the stroke, five
+dry bristle streaks at the end (kasure), and three slivers where the
+surface shows through. Dust (ink spatter in light mode, gold dust in dark)
+drifts from the tip into the gap, never further than a fifth of the circle.
 Size: `gaugeSize` or `gaugeSmall`; stroke and ticks scale with size.
 | State | Ring | Numeral | Limit dot |
 | --- | --- | --- | --- |

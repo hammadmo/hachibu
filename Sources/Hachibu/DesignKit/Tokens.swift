@@ -86,7 +86,7 @@ enum Metric {
     static let popoverWidth: CGFloat = 320
     static let gaugeSize: CGFloat = 160
     static let gaugeSmall: CGFloat = 112
-    static let gaugeStroke: CGFloat = 10
+    static let gaugeStroke: CGFloat = 13
     static let tickCount = 60
     static let tickLength: CGFloat = 4
     static let limitDot: CGFloat = 3
