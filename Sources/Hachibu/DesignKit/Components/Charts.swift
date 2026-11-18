@@ -45,7 +45,7 @@ struct KitChart: View {
             if let hover {
                 ChartMarker(fraction: hover, values: series.map(\.values), bounds: bounds, kind: .rule)
                     .stroke(Ink.textSoft, lineWidth: Metric.hairline)
-                ChartMarker(fraction: hover, values: series.map(\.values), bounds: bounds, kind: .dots)
+                ChartMarker(fraction: hover, values: series.map(\.values), bounds: bounds, kind: .dots, dot: Metric.chartDot)
                     .fill(Ink.accent)
             }
         }
@@ -110,6 +110,7 @@ nonisolated struct ChartMarker: Shape {
     var values: [[Double]]
     var bounds: ClosedRange<Double>
     var kind: Kind
+    var dot: CGFloat = 0
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -122,7 +123,7 @@ nonisolated struct ChartMarker: Shape {
             for line in values where line.count > 1 {
                 let index = Int((fraction * Double(line.count - 1)).rounded())
                 let point = ChartLine.point(index, of: line, bounds: bounds, in: rect)
-                path.addEllipse(in: CGRect(x: point.x - 3, y: point.y - 3, width: 6, height: 6))
+                path.addEllipse(in: CGRect(x: point.x - dot, y: point.y - dot, width: dot * 2, height: dot * 2))
             }
         }
         return path

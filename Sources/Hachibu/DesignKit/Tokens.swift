@@ -119,6 +119,7 @@ enum Metric {
     static let historyWidth: CGFloat = 760
     static let historyEmptyHeight: CGFloat = 320
     static let chartHeight: CGFloat = 120
+    static let chartDot: CGFloat = 3
     static let titleBarInset: CGFloat = 36
     static let tabHeight: CGFloat = 36
     static let tabUnderline: CGFloat = 2

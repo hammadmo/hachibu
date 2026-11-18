@@ -3,7 +3,9 @@ import Testing
 
 @Test("Chart bounds sit on round numbers and hold every value")
 func chartBoundsHoldValues() {
-    #expect(ChartScale.bounds(for: [72, 80, 78], including: [80], step: 10, minimumSpan: 20) == 70...90)
+    // 70...80 is too narrow, so the scale widens around its middle, on tens.
+    #expect(ChartScale.bounds(for: [72, 80, 78], including: [80], step: 10, minimumSpan: 20) == 60...80)
+    #expect(ChartScale.bounds(for: [66, 80], including: [80, 100], step: 10, minimumSpan: 20) == 60...100)
     #expect(ChartScale.bounds(for: [31.2, 36.8], step: 5, minimumSpan: 10) == 30...40)
 }
 
