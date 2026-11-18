@@ -42,6 +42,7 @@ inside. Traffic lights, menus, and alerts stay system everywhere.
 | raised | paperDeep / lacquerRaised | cards |
 | hairline | paperLine / lacquerLine | card borders, slider track, dividers |
 | tick | paperTick / lacquerTick | gauge tick ring |
+| relief | #E3D8C3 / #2B2115 | tone-on-tone decoration: the wave pattern |
 | text | ink / cream | primary text, numerals |
 | textSoft | inkSoft / creamSoft | labels, captions |
 | gauge | ink / gold | the brush ring, slider fill, chart line |
@@ -250,6 +251,18 @@ its detail. It never looks like a working control.
 ### Status pill (`StatusPill`)
 A dot 8 pt and a word in `body`: idle (textSoft), good (accent), warning
 (warning). Never the dot alone.
+
+### Motifs (`Seigaiha`, `UmeBlossom`)
+The two motifs from the app icon, for quiet decoration only. Hidden from
+VoiceOver; they never carry meaning and never sit behind text.
+- Seigaiha (waves, calm seas): scales of radius 24, three arcs each,
+  stroked 1 pt in `Ink.relief`. A band 64 pt tall along the bottom edge of
+  the Settings window, higher on the leading side.
+- Ume (plum blossom): petals in `Ink.accent`, stamens in `Ink.seal`.
+  A sprig (two flowers, three loose petals) at 55% in the top trailing
+  corner of the Settings window; a single 16 pt flower in the middle of
+  the divider on the About tab.
+Not used in the popover: it is dense with numbers.
 
 ### Footer
 Ghost buttons in a row: "History…", "Settings…", "Quit Hachibu".

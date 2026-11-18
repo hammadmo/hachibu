@@ -24,8 +24,19 @@ struct SettingsView: View {
                 }
             }
             .padding(Space.xxl)
+            // Calm seas along the bottom edge, tone on tone, as on the icon.
+            Seigaiha(radius: Metric.waveRadius)
+                .stroke(Ink.relief, lineWidth: Metric.hairline)
+                .frame(height: Metric.waveBand)
+                .accessibilityHidden(true)
         }
         .frame(width: Metric.settingsWidth)
+        .overlay(alignment: .topTrailing) {
+            UmeBlossom(size: Metric.blossom, arrangement: .sprig)
+                .opacity(0.55)
+                .padding(.top, Space.sm)
+                .padding(.trailing, Space.lg)
+        }
         .background(Ink.surface)
         .ignoresSafeArea()
         .background(SettingsChrome())
@@ -175,7 +186,11 @@ struct AboutSettings: View {
             Text("Hara hachi bu: eat until you are eight parts full.\nHachibu stops charging before the battery is full, so it lasts longer.")
                 .kitType(.body).foregroundStyle(Ink.text)
                 .multilineTextAlignment(.center)
-            KitDivider()
+            HStack(spacing: Space.md) {
+                KitDivider()
+                UmeBlossom(size: Metric.blossom)
+                KitDivider()
+            }
             Text("The way to control charging on macOS 27 was documented by the open-source batt project.")
                 .kitType(.meta).foregroundStyle(Ink.textSoft)
                 .multilineTextAlignment(.center)

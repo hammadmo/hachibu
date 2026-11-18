@@ -125,6 +125,8 @@ struct KitGallery: View {
             HStack(spacing: Space.xl) {
                 SealMark()
                 SealMark(size: Metric.sealSmall)
+                UmeBlossom(size: Metric.blossom)
+                UmeBlossom(size: Metric.blossom, arrangement: .sprig)
                 HStack(spacing: Space.sm) {
                     ForEach([100, 80, 50, 20], id: \.self) { EnsoGlyph(percent: $0) }
                     EnsoGlyph(percent: nil)

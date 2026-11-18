@@ -11,6 +11,7 @@ private enum Pigment {
     static let paperDeep: UInt32 = 0xECE5D7
     static let paperLine: UInt32 = 0xDDD3C0
     static let paperTick: UInt32 = 0xCFC3AB
+    static let paperRelief: UInt32 = 0xE3D8C3
     static let ink: UInt32 = 0x1F1B16
     static let inkSoft: UInt32 = 0x6F6558
 
@@ -18,6 +19,7 @@ private enum Pigment {
     static let lacquerRaised: UInt32 = 0x1A1613
     static let lacquerLine: UInt32 = 0x2A2218
     static let lacquerTick: UInt32 = 0x3F3320
+    static let lacquerRelief: UInt32 = 0x2B2115
     static let cream: UInt32 = 0xEADFC8
     static let creamSoft: UInt32 = 0x9A8D75
 
@@ -42,6 +44,8 @@ enum Ink {
     static let raised = Color(light: Pigment.paperDeep, dark: Pigment.lacquerRaised)
     static let hairline = Color(light: Pigment.paperLine, dark: Pigment.lacquerLine)
     static let tick = Color(light: Pigment.paperTick, dark: Pigment.lacquerTick)
+    /// Tone-on-tone decoration, like relief in lacquer: the wave pattern.
+    static let relief = Color(light: Pigment.paperRelief, dark: Pigment.lacquerRelief)
 
     static let text = Color(light: Pigment.ink, dark: Pigment.cream)
     static let textSoft = Color(light: Pigment.inkSoft, dark: Pigment.creamSoft)
@@ -121,6 +125,9 @@ enum Metric {
     static let toggleThumb: CGFloat = 14
     static let statusDot: CGFloat = 8
     static let appIconSize: CGFloat = 96
+    static let waveBand: CGFloat = 64
+    static let waveRadius: CGFloat = 24
+    static let blossom: CGFloat = 16
     static let glyphSize: CGFloat = 14
     static let glyphStroke: CGFloat = 2
 }
