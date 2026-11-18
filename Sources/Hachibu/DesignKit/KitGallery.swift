@@ -6,9 +6,11 @@ import SwiftUI
 /// kit-gallery-light.png and kit-gallery-dark.png, then quits.
 struct KitGallery: View {
     static let enabled = ProcessInfo.processInfo.environment["APP_KIT_GALLERY"] == "1"
-    static let size = CGSize(width: 1240, height: 760)
+    static let size = CGSize(width: 1240, height: 880)
 
     @State private var limit = 80
+    @State private var on = true
+    @State private var off = false
     private let stops = [80, 85, 90, 95, 100]
 
     var body: some View {
@@ -70,9 +72,12 @@ struct KitGallery: View {
 
     private var sliders: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            heading("Limit slider")
+            heading("Slider, toggle, tab")
             Grid(alignment: .leading, horizontalSpacing: Space.md, verticalSpacing: Space.sm) {
                 stateRow("Slider") { LimitSlider(value: $limit, stops: stops) }
+                stateRow("Toggle on") { Toggle("Sample", isOn: $on).toggleStyle(.kit) }
+                stateRow("Toggle off") { Toggle("Sample", isOn: $off).toggleStyle(.kit) }
+                stateRow("Tab") { Button("Charging") {}.buttonStyle(KitTabStyle(isSelected: false)) }
             }
         }
     }

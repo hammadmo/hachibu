@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // Hachibu's design kit. The spec is design/KIT.md.
@@ -34,6 +35,10 @@ private enum Pigment {
 /// gold) value each.
 enum Ink {
     static let surface = Color(light: Pigment.paper, dark: Pigment.lacquer)
+    /// The surface for AppKit, so a window's own background matches the kit.
+    static let surfaceNS = NSColor(name: nil) { appearance in
+        NSColor(hex: appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? Pigment.lacquer : Pigment.paper)
+    }
     static let raised = Color(light: Pigment.paperDeep, dark: Pigment.lacquerRaised)
     static let hairline = Color(light: Pigment.paperLine, dark: Pigment.lacquerLine)
     static let tick = Color(light: Pigment.paperTick, dark: Pigment.lacquerTick)
@@ -60,14 +65,17 @@ enum Ink {
 
 /// Layer 3: type roles. Numerals are serif; everything else is the system sans.
 enum KitType {
-    case gaugeNumeral, gaugeNumeralSmall, numeral, status, label, labelStrong, meta, seal, sealSmall
+    case gaugeNumeral, gaugeNumeralSmall, numeral, title, status, body, label, labelStrong, section, meta, seal, sealSmall
 
     var font: Font {
         switch self {
         case .gaugeNumeral: .system(size: 44, weight: .regular, design: .serif).monospacedDigit()
         case .gaugeNumeralSmall: .system(size: 28, weight: .regular, design: .serif).monospacedDigit()
         case .numeral: .system(size: 15, weight: .regular, design: .serif).monospacedDigit()
+        case .title: .system(size: 22, weight: .regular, design: .serif)
         case .status: .system(size: 14, weight: .medium)
+        case .body: .system(size: 13)
+        case .section: .system(size: 11, weight: .medium)
         case .label: .system(size: 12)
         case .labelStrong: .system(size: 12, weight: .medium)
         case .meta: .system(size: 11).monospacedDigit()
@@ -103,6 +111,16 @@ enum Metric {
     static let hairline: CGFloat = 1
     static let focusRing: CGFloat = 2
     static let iconSize: CGFloat = 14
+    static let settingsWidth: CGFloat = 520
+    static let titleBarInset: CGFloat = 36
+    static let tabHeight: CGFloat = 36
+    static let tabUnderline: CGFloat = 2
+    static let rowHeight: CGFloat = 44
+    static let toggleWidth: CGFloat = 36
+    static let toggleHeight: CGFloat = 20
+    static let toggleThumb: CGFloat = 14
+    static let statusDot: CGFloat = 8
+    static let appIconSize: CGFloat = 96
     static let glyphSize: CGFloat = 14
     static let glyphStroke: CGFloat = 2
 }

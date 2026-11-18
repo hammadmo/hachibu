@@ -6,9 +6,9 @@ deliberately left open is the gauge: the gap is the charge you leave
 unused. Light mode is ink on warm paper. Dark mode is gold on black
 lacquer. A small vermilion seal is the only bright color.
 
-Scope: the popover and the menu bar item are fully kit. Settings and
-History keep system window chrome and system form controls, tinted with
-`Ink.accent`, and use kit type, cards, and charts inside.
+Scope: the popover, the menu bar item, and Settings are fully kit.
+History keeps system window chrome and uses kit type, cards, and charts
+inside. Traffic lights, menus, and alerts stay system everywhere.
 
 ## Tokens
 
@@ -100,7 +100,10 @@ system sans.
 | gaugeNumeral | serif | 44 | regular | the percentage in the ring |
 | gaugeNumeralSmall | serif | 28 | regular | the percentage in a small ring |
 | numeral | serif | 15 | regular | watts and other values |
-| status | sans | 14 | medium | the status line |
+| title | serif | 22 | regular | the app name in About |
+| status | sans | 14 | medium | the status line, tabs |
+| body | sans | 13 | regular | settings rows, paragraphs |
+| section | sans | 11 | medium | settings section titles |
 | label | sans | 12 | regular | controls, captions |
 | labelStrong | sans | 12 | medium | buttons, banner titles |
 | meta | sans | 11 | regular | units, sources, stat rows |
@@ -127,7 +130,11 @@ stroke 2, round caps, drawn as a template (one color, set by the menu bar).
 ## Window
 The popover is a `MenuBarExtra` window: no title bar, `Ink.surface`
 background edge to edge, padding `Space.lg`, width `popoverWidth`.
-Settings and History: system chrome.
+Settings is a plain `Window` with a hidden title bar (a SwiftUI `Settings`
+scene cannot hide its title bar), `Ink.surface` edge to edge, width 520,
+height fitting the tab. Traffic lights stay where macOS puts them; the tab
+bar starts 36 pt down to clear them. Command-Comma opens it.
+History: system chrome.
 
 ## Parts
 
@@ -210,6 +217,39 @@ below the lowest level (in tens) to 100. Under an hour of data:
 Fill `Ink.warningWash`, border `Ink.warning` 1, radius 8. Warning icon
 and title in `Ink.warning` + `labelStrong`; message in `meta` + `text`;
 one secondary button.
+
+### Toggle (`.toggleStyle(.kit)`)
+Size 36 x 20, thumb 14.
+| State | Off | On |
+| --- | --- | --- |
+| rest | outline 1, thumb textSoft | fill, thumb onFill |
+| hover | wash fill | fill 88% |
+| pressed | wash fill, thumb scale 0.88 | thumb scale 0.88 |
+| focused | accent ring 2, offset 2 | same |
+| disabled | 40% | 40% |
+VoiceOver: a system toggle with the row's title.
+
+### Tab bar (`KitTabBar`)
+Text tabs, height 36, `status` type. Left and right arrows move.
+| State | Text | Mark |
+| --- | --- | --- |
+| rest | textSoft | none |
+| hover, pressed | text | wash fill |
+| selected | text | accent underline 2 |
+| focused | text | accent ring 2 |
+| disabled | 40% | none |
+
+### Settings section and row (`SettingsSection`, `SettingsRow`)
+Section: title in `section` + `accentText`, then one card (`Ink.raised`,
+hairline border, radius 8) with hairlines between rows, inset 16.
+Row: min height 44, padding 16 x 12. Title in `body` + `text`; detail in
+`meta` + `textSoft`; the control on the trailing edge.
+A row for something this build cannot do yet is disabled and says why in
+its detail. It never looks like a working control.
+
+### Status pill (`StatusPill`)
+A dot 8 pt and a word in `body`: idle (textSoft), good (accent), warning
+(warning). Never the dot alone.
 
 ### Footer
 Ghost buttons in a row: "History…", "Settings…", "Quit Hachibu".

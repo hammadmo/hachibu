@@ -39,12 +39,29 @@ struct HachibuApp: App {
             }
         }
 
-        Settings {
+        // A plain window, not a Settings scene: SwiftUI gives a Settings scene
+        // a system title bar that cannot be hidden.
+        Window("Hachibu Settings", id: SettingsView.windowID) {
             SettingsView()
                 .environment(model)
                 .themed()
         }
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .commands {
+            CommandGroup(replacing: .appSettings) { OpenSettingsButton() }
+        }
+    }
+}
+
+/// "Settings…" in the app menu, with Command-Comma.
+private struct OpenSettingsButton: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("Settings…") { openWindow(id: SettingsView.windowID) }
+            .keyboardShortcut(",")
     }
 }
 

@@ -10,6 +10,9 @@ struct LimitSlider: View {
     /// stops are available, so the thumb for 80% always sits in one place.
     /// The part below the first stop is drawn dashed: not available yet.
     var scale: ClosedRange<Int> = 20...100
+    /// What VoiceOver calls it, and the unit it reads after the value.
+    var label = "Limit"
+    var unit = "percent"
 
     @Environment(\.forcedPartState) private var forced
     @Environment(\.isEnabled) private var isEnabled
@@ -85,8 +88,8 @@ struct LimitSlider: View {
         }
         .accessibilityRepresentation {
             Slider(value: Binding(get: { Double(value) }, set: { snap(toValue: $0) }),
-                   in: Double(low)...Double(max(high, low + 1))) { Text("Limit") }
-                .accessibilityValue("\(value) percent")
+                   in: Double(low)...Double(max(high, low + 1))) { Text(label) }
+                .accessibilityValue("\(value) \(unit)")
         }
     }
 

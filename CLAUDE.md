@@ -30,7 +30,9 @@ SwiftData database and no server.
 Hachibu has its own design kit. The spec is `design/KIT.md`; the code is
 `Sources/Hachibu/DesignKit/`. Read the spec before building or changing a part.
 
-- The popover and the menu bar item use kit parts only. Settings and History keep system window chrome and system form controls.
+- The popover, the menu bar item, and Settings use kit parts only. History keeps system window chrome.
+- Settings is a plain `Window` with a hidden title bar (`SettingsView.windowID`), not a SwiftUI `Settings` scene. A new tab is a case in `SettingsTab`; a setting is a `SettingsRow` in a `SettingsSection`, saved in `Preferences`.
+- A row for a feature this build cannot do yet is disabled and says why (`Capability`). Never a control that silently does nothing.
 - Views read colors only from `Ink`, fonts only through `.kitType(...)`, sizes from `Metric` and `Space`, motion from `Motion`, icons from `KitIcon`. Never a hex color, `.font(.system...)`, or `systemName:` outside `DesignKit/`.
 - Every part is a real control (a `Button` with a style, a slider with an accessibility representation) and has every state: rest, hover, pressed, selected, focused, disabled, in light and dark.
 - Review a new or changed part in the gallery before it goes into a screen:
@@ -39,7 +41,7 @@ Hachibu has its own design kit. The spec is `design/KIT.md`; the code is
 - Spacing comes from `Space` in `UI/Grid.swift`, on a 4 pt grid. Mark custom pages and cards with `.gridArea` and `.gridProbe`.
 - Meaning never rests on color alone: a warning has an icon and words.
 - Use the words in `docs/GLOSSARY.md` for every string on screen.
-- `ContentUnavailableView` for empty states in Settings and History.
+- `ContentUnavailableView` for empty states in History.
 
 ## Skills
 
