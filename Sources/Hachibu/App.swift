@@ -5,6 +5,7 @@ import SwiftUI
 //   Hachibu                      the app
 //   Hachibu --selftest           check the real functions and quit with 0 or 1 (tools/selftest.sh)
 //   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none; 20 to 100 with the helper), print the result, quit
+//   Hachibu --helper-status      ask the helper for its state, print it, quit (read-only)
 //   APP_STORE=<file> Hachibu     a test run: no real preferences, login items, notifications, or limit changes
 //   APP_SNAPSHOT=<dir> Hachibu   save a PNG of the popover states, every Settings tab, and History, in light and dark, then quit
 //   APP_KIT_GALLERY=1 Hachibu    show every design kit part in every state (DesignKit/KitGallery.swift)
@@ -117,6 +118,12 @@ enum Launch {
             }
             Task {
                 print(await monitor.setLimitFromCommandLine(value))
+                NSApp.terminate(nil)
+            }
+        } else if arguments.contains("--helper-status") {
+            Task {
+                await monitor.helper.refresh()
+                print("helper: \(monitor.helper.state)")
                 NSApp.terminate(nil)
             }
         } else if SelfTest.requested {

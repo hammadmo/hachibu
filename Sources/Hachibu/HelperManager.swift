@@ -77,7 +77,7 @@ final class HelperManager {
     /// Why the last install failed, in words for the user.
     private(set) var installProblem: String?
     @ObservationIgnored private let isFixed: Bool
-    @ObservationIgnored private var checking = false
+    @ObservationIgnored private var inFlight: Task<Void, Never>?
 
     /// The real helper. Test runs never ask macOS about it.
     init() {
@@ -106,11 +106,16 @@ final class HelperManager {
     /// Asks macOS whether the helper is installed and approved, then asks
     /// the helper itself: "Running" is only shown for a helper that answered.
     func refresh() async {
-        guard !isFixed, !checking else { return }
-        checking = true
-        defer { checking = false }
-        let found = await Task.detached { await Self.readState() }.value
-        if !isWorking { state = found }
+        guard !isFixed else { return }
+        // One check at a time; a second caller waits for the one under way.
+        if let inFlight { return await inFlight.value }
+        let check = Task {
+            let found = await Task.detached { await Self.readState() }.value
+            if !isWorking { state = found }
+        }
+        inFlight = check
+        await check.value
+        inFlight = nil
     }
 
     private nonisolated static func readState() async -> HelperState {
