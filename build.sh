@@ -28,18 +28,13 @@ if [[ -z "$identity" ]]; then
 fi
 [[ -n "$identity" ]] || identity=-
 
-swift build -c $config --package-path "$here" --scratch-path "$scratch" 2>&1 | grep -E "error|warning|Build complete" | grep -v "^\[" || true
+# The build's own exit code decides. A failed build must never install the
+# program from the build before it.
+log=$(swift build -c $config --package-path "$here" --scratch-path "$scratch" 2>&1) && built=1 || built=0
+print -r -- "$log" | grep -E "error|warning|Build complete" | grep -v "^\[" || true
 bin="$scratch/$config/$name"
 helper="$scratch/$config/HachibuHelper"
-[[ -x "$bin" && -x "$helper" ]] || { echo "build failed"; exit 1; }
-# swift build can report success while an edited file failed to compile. Catch that.
-# A source file newer than both programs was not compiled into either.
-stale=$(find "$here/Sources" -name '*.swift' -newer "$bin" -newer "$helper" | head -1)
-if [[ -n "$stale" ]]; then
-  echo "build failed: binary is older than $stale"
-  swift build -c $config --package-path "$here" --scratch-path "$scratch" 2>&1 | grep -E "error" | head -20
-  exit 1
-fi
+[[ $built -eq 1 && -x "$bin" && -x "$helper" ]] || { echo "build failed: nothing was installed"; exit 1; }
 
 app="$HOME/Applications/$name.app"
 mkdir -p "$HOME/Applications"

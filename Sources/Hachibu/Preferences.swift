@@ -102,5 +102,5 @@ nonisolated enum Capability {
     /// Pausing charging when the battery is hot (story S-040).
     static let heatProtection = false
     /// Recording battery samples for the History window (story S-031).
-    static let history = false
+    static let history = true
 }

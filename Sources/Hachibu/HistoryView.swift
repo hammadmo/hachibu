@@ -8,11 +8,14 @@ struct HistoryView: View {
     static let windowTitle = "Hachibu History"
 
     @Environment(AppModel.self) private var model
+    /// What was recorded, loaded off the main thread. nil until the first load.
+    @State private var recorded: HistoryData?
+    private var history: HistoryCenter { .shared }
 
     var body: some View {
         @Bindable var model = model
         let range = model.historyRange
-        let data = model.historyPreview == .sample ? HistoryData.sample(range) : HistoryData.recorded(range)
+        let data = model.historyPreview == .sample ? HistoryData.sample(range) : recorded ?? HistoryData()
         VStack(spacing: 0) {
             KitTabBar(tabs: HistoryRange.allCases.map { (id: $0, title: $0.title) },
                       selection: $model.historyRange, label: "Time range")
@@ -25,6 +28,11 @@ struct HistoryView: View {
             .padding(Space.xxl)
         }
         .kitWindow(width: Metric.historyWidth)
+        // Load again when the range changes and whenever a minute is recorded.
+        .task(id: "\(range.rawValue) \(history.revision) \(model.historyLoad)") {
+            guard model.historyPreview == .recorded else { return }
+            recorded = await history.data(for: range)
+        }
     }
 
     private var emptyState: some View {
@@ -44,7 +52,8 @@ struct HistoryView: View {
     }
 
     private func charts(_ data: HistoryData, _ range: HistoryRange) -> some View {
-        let time: (Double) -> String = { range.timeLabel(at: $0, now: data.end) }
+        let time: (Double) -> String = { range.timeLabel(at: $0, from: data.start, to: data.end) }
+        let startLabel = data.startLabel(for: range)
         return Grid(horizontalSpacing: Space.lg, verticalSpacing: Space.lg) {
             GridRow {
                 ChartCard(title: "Battery level",
@@ -53,12 +62,12 @@ struct HistoryView: View {
                                                     step: 10, minimumSpan: 20),
                           guide: data.limit < 100 ? Double(data.limit) : nil,
                           value: { "\(Int($0.rounded()))%" },
-                          time: time, startLabel: range.startLabel)
+                          time: time, startLabel: startLabel)
                 ChartCard(title: "Temperature",
                           series: [.init(id: "temperature", values: data.temperature)],
                           bounds: ChartScale.bounds(for: data.temperature, step: 5, minimumSpan: 10),
                           value: { String(format: "%.1f °C", $0) },
-                          time: time, startLabel: range.startLabel)
+                          time: time, startLabel: startLabel)
             }
             GridRow {
                 ChartCard(title: "Power",
@@ -68,20 +77,20 @@ struct HistoryView: View {
                                                     step: 10, minimumSpan: 20),
                           value: { Watts.text($0) },
                           legend: ["Charger", "Mac"],
-                          time: time, startLabel: range.startLabel)
+                          time: time, startLabel: startLabel)
                 ChartCard(title: "Battery health",
                           series: [.init(id: "health", values: data.health)],
                           bounds: ChartScale.bounds(for: data.health, step: 1, minimumSpan: 4),
                           value: { "\(Int($0.rounded()))%" },
                           summary: data.health.last.map { "\(Int($0.rounded()))% · \(data.cycles) cycles" },
-                          time: time, startLabel: range.startLabel)
+                          time: time, startLabel: startLabel)
             }
         }
     }
 }
 
 /// How far back the History window looks.
-enum HistoryRange: String, CaseIterable, Identifiable {
+nonisolated enum HistoryRange: String, CaseIterable, Identifiable, Sendable {
     case day, week, month
 
     var id: String { rawValue }
@@ -110,13 +119,22 @@ enum HistoryRange: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The time at a point along the range, 0 at its start and 1 at `now`.
-    func timeLabel(at fraction: Double, now: Date) -> String {
-        let date = now.addingTimeInterval(-duration * (1 - fraction))
+    /// The time at a point along the chart, 0 at its start and 1 at its end.
+    func timeLabel(at fraction: Double, from start: Date, to end: Date) -> String {
+        let date = start.addingTimeInterval(end.timeIntervalSince(start) * fraction)
         switch self {
         case .day: return date.formatted(date: .omitted, time: .shortened)
         case .week: return date.formatted(.dateTime.weekday(.abbreviated).hour().minute())
         case .month: return date.formatted(.dateTime.day().month(.abbreviated))
+        }
+    }
+
+    /// How many points a chart of this range draws.
+    var points: Int {
+        switch self {
+        case .day: 97
+        case .week: 169
+        case .month: 121
         }
     }
 }
@@ -127,7 +145,10 @@ enum HistoryPreview { case recorded, sample }
 
 /// Everything the History window draws for one range. Every series has the
 /// same number of points, oldest first.
-struct HistoryData {
+struct HistoryData: Sendable {
+    /// Where the charts begin: the start of the range, or the first thing
+    /// recorded when that is later.
+    var start = Date.now
     var end = Date.now
     var limit = 80
     var cycles = 0
@@ -139,10 +160,33 @@ struct HistoryData {
 
     var isEmpty: Bool { level.count < 2 }
 
-    /// What Hachibu has recorded. Recording arrives with story S-031; until
-    /// then there is nothing to show.
-    static func recorded(_ range: HistoryRange) -> HistoryData {
-        HistoryData()
+    /// The label under the left edge of every chart.
+    func startLabel(for range: HistoryRange) -> String {
+        // Recorded for (nearly) the whole range: "24 hours ago".
+        if end.timeIntervalSince(start) >= range.duration * 0.98 { return range.startLabel }
+        return range == .day ? "Since \(start.formatted(date: .omitted, time: .shortened))"
+            : "Since \(start.formatted(.dateTime.day().month(.abbreviated)))"
+    }
+
+    /// What Hachibu has recorded for a range. Empty with under an hour of data.
+    nonisolated static func recorded(_ range: HistoryRange, from store: HistoryStore, now: Date) -> HistoryData {
+        let from = now.addingTimeInterval(-range.duration)
+        guard let series = HistorySeries.build(samples: store.samples(since: from), window: range.duration,
+                                               now: now, points: range.points) else { return HistoryData() }
+        var data = HistoryData(start: series.start, end: series.end, limit: series.limit)
+        data.level = series.level
+        data.temperature = series.temperature
+        data.chargerWatts = series.chargerWatts
+        data.macWatts = series.macWatts
+        // Health changes slowly: one point per saved day, from the last one
+        // before the chart begins. A single day draws as a level line.
+        let snapshots = store.healthSnapshots()
+        let before = snapshots.last { $0.time < series.start }
+        let shown = (before.map { [$0] } ?? []) + snapshots.filter { $0.time >= series.start && $0.time <= now }
+        data.health = shown.map { Double($0.healthPercent) }
+        if data.health.count == 1 { data.health += data.health }
+        data.cycles = shown.last?.cycles ?? 0
+        return data
     }
 
     /// A believable stretch of battery life, the same every time, for
@@ -150,7 +194,8 @@ struct HistoryData {
     static func sample(_ range: HistoryRange) -> HistoryData {
         let count = range == .day ? 97 : range == .week ? 169 : 121
         let spells: Double = range == .day ? 2 : range == .week ? 6 : 14
-        var data = HistoryData(end: Date(timeIntervalSinceReferenceDate: 816_660_000), limit: 80, cycles: 274)
+        let end = Date(timeIntervalSinceReferenceDate: 816_660_000)
+        var data = HistoryData(start: end.addingTimeInterval(-range.duration), end: end, limit: 80, cycles: 274)
         var level = 80.0
         for index in 0..<count {
             let t = Double(index) / Double(count - 1)

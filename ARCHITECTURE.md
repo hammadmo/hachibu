@@ -27,6 +27,10 @@ Neither of those depends on anything else in the project. Rules go in
 - `BatteryMonitor` (app, main actor) reads the battery on a timer, asks
   the engine, hands requests to the setter, and decides what is saved as
   the user's limit and what the popover says. Views read only from it.
+- `HistoryStore` (Kit) keeps samples in two append-only files;
+  `HistorySeries` turns them into what a chart draws. `HistoryCenter`
+  (app) records one sample a minute from the monitor's readings and loads
+  charts off the main thread.
 - `HelperManager` installs, removes, and watches the helper.
 
 ## Seams

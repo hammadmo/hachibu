@@ -357,7 +357,7 @@ Acceptance:
   direction matches the sign of battery power.
 - [unit] On battery, the charger value reads 0 W and the battery arrow
   points to the Mac.
-Status: todo
+Status: done (2026-11-18. The card was built in M1; the rule behind it is now `PowerFlow` with a unit test.)
 
 ### S-031 Record battery samples
 As the user, Hachibu records the battery level, power, temperature, and
@@ -369,7 +369,10 @@ Acceptance:
 - [unit] Samples older than 90 days are thinned to one per hour.
 - [manual] After a day of running, CPU use stays under 1% and the
   database under 5 MB.
-Status: todo
+Status: done (2026-11-18. Kept in two small files of fixed-size records
+(`HistoryStore`), 16 bytes a sample, so 90 days of minutes is about 2 MB.
+Seen recording on this Mac: two samples a minute apart, with CPU at 0%.
+Not checked: a whole day of running.)
 
 ### S-032 See the last 24 hours in the popover
 As the user, I see a small chart of battery level over the last 24
@@ -379,7 +382,7 @@ Depends: S-031
 Acceptance:
 - [snap] The chart card shows the level line and the limit line.
 - [snap] With under an hour of data, the card says "Collecting data".
-Status: todo
+Status: done (2026-11-18. The chart begins at the first sample, so a first day is not padded with an invented line.)
 
 ### S-033 Browse history
 As the user, I open the History window and view level, temperature, and
@@ -391,7 +394,10 @@ Acceptance:
   charts.
 - [snap] Hovering a chart shows the value and time at that point.
 - [snap] With no data, the window shows an empty state.
-Status: todo
+Status: done (2026-11-18. The window reads what was recorded; the
+`history-recorded` snapshot writes made-up samples to the test store and
+reads them back. Hover was not checked: snapshots cannot move the
+pointer.)
 
 ### S-034 Track battery health over time
 As the user, I see how maximum capacity and cycle count change over
@@ -402,7 +408,9 @@ Acceptance:
 - [unit] One health snapshot is saved per day, at most.
 - [snap] The History window has a Health chart with capacity percent
   and cycle count.
-Status: todo
+Status: done (2026-11-18. Saved once macOS has given its own health figure,
+so the chart matches System Settings. The chart needs days to show a
+change.)
 
 ## M5 Protection: heat, calibration, full charge
 

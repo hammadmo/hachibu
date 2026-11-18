@@ -34,6 +34,8 @@ final class BatteryMonitor {
     private(set) var officialStops = [80, 85, 90, 95, 100]
     /// The helper, which adds every whole percent from 20.
     let helper: HelperManager
+    /// Where readings are recorded, and where the 24-hour chart comes from.
+    let history: HistoryCenter
     /// Carries out limit requests one at a time; only the newest counts.
     @ObservationIgnored private lazy var setter = LimitSetter(system: MacLimitSystem()) { [weak self] in
         self?.officialStops ?? []
@@ -95,9 +97,10 @@ final class BatteryMonitor {
     @ObservationIgnored private let isPreview: Bool
     @ObservationIgnored private var healthReadAt: Date?
 
-    init(isPreview: Bool = false, helper: HelperManager = HelperManager()) {
+    init(isPreview: Bool = false, helper: HelperManager = HelperManager(), history: HistoryCenter = .shared) {
         self.isPreview = isPreview
         self.helper = helper
+        self.history = history
     }
 
     // MARK: What the views show
@@ -281,6 +284,11 @@ final class BatteryMonitor {
             // Supported but unreadable this time: keep the last known limit.
         }
         runModes()
+        if !isPreview, let reading, limitKnown {
+            // The user's limit, not the level sailing holds; and health only
+            // once macOS has given its own figure, the one System Settings shows.
+            history.note(reading, limit: userLimit, health: systemHealth, now: now)
+        }
         let justStarted = watch.update(reading: reading, limit: limitKnown ? limit.system : nil,
                                        suppressed: mode != .normal, now: now)
         isWarning = watch.isWarning
@@ -500,11 +508,14 @@ final class BatteryMonitor {
         var overrideLimit: Int?
         var limitBeforeOverride: Int?
         var helper = HelperState.notInstalled
+        /// Battery level over the last 24 hours. Empty shows "Collecting data".
+        var dayLevels: [Double] = []
     }
 
     /// A monitor that shows a fixture and never reads or changes anything real.
     convenience init(fixture: Fixture) {
-        self.init(isPreview: true, helper: HelperManager(fixed: fixture.helper))
+        self.init(isPreview: true, helper: HelperManager(fixed: fixture.helper),
+                  history: HistoryCenter(fixedDay: fixture.dayLevels))
         hasLoaded = true
         reading = fixture.reading
         limit = fixture.limit

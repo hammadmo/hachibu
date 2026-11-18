@@ -20,6 +20,18 @@ struct PowerFlowCard: View {
     /// Positive while the battery charges, negative while it discharges.
     var battery: Double?
 
+    /// From a reading: off the charger it reads 0 W, and the arrow beside
+    /// the battery points to the Mac while the battery feeds it.
+    init(flow: PowerFlow) {
+        self.init(charger: flow.charger, mac: flow.mac, battery: flow.battery)
+    }
+
+    init(charger: Double?, mac: Double?, battery: Double?) {
+        self.charger = charger
+        self.mac = mac
+        self.battery = battery
+    }
+
     var body: some View {
         HStack(spacing: Space.xs) {
             column("Charger", charger, emphasized: (charger ?? 0) >= 0.05)

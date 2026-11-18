@@ -95,6 +95,28 @@ enum SelfTest {
                   && ChargeLimit.enforcedLimit(inPmsetOutput: "Battery level limits:\n(\n)") == nil)
         if let held = limit.limit { check("power management enforces the limit macOS reports", ChargeLimit.enforced() == held) }
 
+        // S-031: samples go to a /tmp store and come back in time order.
+        let historyFile = URL(fileURLWithPath: HistoryCenter.file.path + "-selftest")
+        try? FileManager.default.removeItem(at: historyFile)
+        let history = HistoryStore(file: historyFile)
+        let base = Date(timeIntervalSince1970: 1_800_000_000)
+        for minute in [3, 1, 2, 0] {
+            history.append(HistorySample(time: base.addingTimeInterval(Double(minute) * 60), percent: 70 + minute,
+                                         isPluggedIn: true, isCharging: false, temperatureC: 31.5, limit: 80))
+        }
+        check("history samples come back from a /tmp store in time order",
+              history.samples().map(\.percent) == [70, 71, 72, 73] && historyFile.path.hasPrefix("/tmp/"))
+        if let reading {
+            let now = HistorySample(time: .now, percent: reading.percent, isPluggedIn: reading.isPluggedIn,
+                                    isCharging: reading.isCharging, temperatureC: reading.temperatureC,
+                                    chargerWatts: reading.chargerWatts, macWatts: reading.systemWatts, limit: 80)
+            check("a real reading fits a history record", HistorySample(encoded: now.encoded()).map {
+                $0.percent == reading.percent && abs(($0.temperatureC ?? 0) - (reading.temperatureC ?? 0)) < 0.06
+            } ?? false)
+        }
+        check("a test run records nothing by itself", !FileManager.default.fileExists(atPath: HistoryCenter.file.path))
+        try? FileManager.default.removeItem(at: historyFile)
+
         // S-001: the template's sample window is gone; this is a menu bar app.
         check("the app has no Dock icon", NSApp.activationPolicy() == .accessory)
         check("no window is open at launch", NSApp.windows.filter { $0.isVisible && $0.canBecomeMain }.isEmpty)

@@ -29,11 +29,13 @@ struct PopoverView: View {
             EnsoGauge(percent: monitor.reading?.percent, limit: monitor.shownLimit,
                       tone: monitor.isWarning ? .warning : .normal)
             StatusLine(title: monitor.statusTitle, detail: monitor.statusDetail, isWarning: monitor.isWarning)
-            PowerFlowCard(charger: monitor.reading?.chargerWatts, mac: monitor.reading?.systemWatts,
-                          battery: monitor.reading?.batteryWatts)
+            PowerFlowCard(flow: PowerFlow(monitor.reading))
                 .gridProbe("power", area: "popover")
             limitBlock
                 .gridProbe("limit", area: "popover")
+            LevelSparkline(levels: monitor.history.dayLevels, limit: monitor.shownLimit)
+                .kitCard()
+                .gridProbe("day", area: "popover")
             StatRow(stats: stats)
                 .gridProbe("stats", area: "popover")
             KitDivider()

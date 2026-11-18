@@ -10,6 +10,8 @@ final class AppModel {
     }
 
     var historyRange: HistoryRange = .day
+    /// Snapshot runs raise this to make the History window load again.
+    var historyLoad = 0
     /// Snapshot runs switch this to sample data.
     var historyPreview: HistoryPreview = .recorded
     /// Which fixed state the popover preview window shows (snapshot runs).

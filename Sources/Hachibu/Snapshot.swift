@@ -11,7 +11,8 @@ import SwiftUI
 ///   popover-low, popover-helper                         a limit below 80% with the helper, and without it
 ///   settings-<tab>                                                                     every Settings tab
 ///   settings-charging-helper, settings-helper-<state>   the helper running, and every helper state
-///   history-day, -week, -month (sample data), history-empty (what it shows today)
+///   history-day, -week, -month (sample data), history-empty (nothing recorded),
+///   history-recorded (made-up samples written to the test store and read back)
 /// then quits. Each PNG gets a -layout.json with the grid probes (tools/check-layout.swift).
 /// APP_SNAPSHOT_PAGES=popover,settings,history limits the groups.
 /// Nothing here reads or changes the real battery: every state is a fixture.
@@ -69,9 +70,15 @@ enum Snapshot {
             }
             if wants("history") {
                 await each(HistoryView.windowID, title: HistoryView.windowTitle,
-                           pages: ["history-day", "history-week", "history-month", "history-empty"]) { page in
+                           pages: ["history-day", "history-week", "history-month", "history-empty",
+                                   "history-recorded"]) { page in
                     let name = String(page.dropFirst("history-".count))
-                    model.historyPreview = name == "empty" ? .recorded : .sample
+                    // The last page goes through the real store: made-up
+                    // samples are written to the test run's file and read back.
+                    if name == "recorded" { HistoryFixture.fill(HistoryCenter.shared.store) }
+                    model.historyPreview = name == "empty" || name == "recorded" ? .recorded : .sample
+                    model.historyLoad += 1
+                    if name == "recorded" { model.historyRange = .day }
                     if let range = HistoryRange(rawValue: name) { model.historyRange = range }
                 }
             }
@@ -147,6 +154,29 @@ struct SettingsFixture {
         case "failed": helper = .failed("The helper did not answer.")
         case "unavailable": helper = .unavailable("This copy of Hachibu is not signed with an Apple certificate, which the helper needs.")
         default: break
+        }
+    }
+}
+
+/// Thirty hours of made-up samples, for the snapshot that reads the store.
+enum HistoryFixture {
+    static func fill(_ store: HistoryStore, now: Date = .now) {
+        guard Store.isOverridden, store.samples().isEmpty else { return }
+        var level = 62.0
+        for minute in stride(from: 30 * 60, through: 0, by: -1) {
+            let t = Double(minute)
+            let onBattery = (400...520).contains(minute) || (1_100...1_190).contains(minute)
+            let charging = !onBattery && level < 79.6
+            level = onBattery ? max(level - 0.22, 30) : min(level + 0.3, 80)
+            store.append(HistorySample(time: now.addingTimeInterval(-t * 60), percent: Int(level.rounded()),
+                                       isPluggedIn: !onBattery, isCharging: charging,
+                                       temperatureC: 30.5 + (charging ? 5 : 2) + sin(t / 37),
+                                       chargerWatts: onBattery ? 0 : charging ? 29 : 8.4,
+                                       macWatts: 7 + 2.5 * abs(sin(t / 23)), limit: 80))
+        }
+        for day in [2, 1, 0] {
+            store.appendHealth(HealthSnapshot(time: now.addingTimeInterval(Double(-day) * 86_400),
+                                              healthPercent: 82, cycles: 274 + (2 - day) / 2))
         }
     }
 }

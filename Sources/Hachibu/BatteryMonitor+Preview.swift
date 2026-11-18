@@ -22,6 +22,7 @@ extension BatteryMonitor {
                                      temperatureC: 34.7, cycleCount: 274, rawMaxCapacityMAh: 3556,
                                      designCapacityMAh: 4382, chargerWatts: 9.2, systemWatts: 7.2)
         var fixture = Fixture(reading: holding, limit: LimitState(system: 80, saved: 80))
+        fixture.dayLevels = [58, 61, 66, 72, 78, 80, 80, 80, 80, 77, 74, 72, 75, 79, 80, 80, 80, 80, 80, 80]
         switch preview {
         case .holding:
             break
@@ -29,6 +30,8 @@ extension BatteryMonitor {
             fixture.reading?.percent = 46
             fixture.reading?.currentMA = 1_950
             fixture.reading?.chargerWatts = 30.6
+            // A first hour: nothing to chart yet.
+            fixture.dayLevels = []
         case .warning:
             fixture.reading?.percent = 86
             fixture.reading?.currentMA = 1_650
@@ -41,6 +44,7 @@ extension BatteryMonitor {
             fixture.reading = nil
             fixture.limit = LimitState(system: nil, saved: nil)
             fixture.limitKnown = false
+            fixture.dayLevels = []
         case .topUp:
             fixture.reading?.percent = 88
             fixture.reading?.currentMA = 1_720
@@ -60,6 +64,7 @@ extension BatteryMonitor {
         case .lowLimit, .helperMissing:
             fixture.reading?.percent = 70
             fixture.limit = LimitState(system: 70, saved: 70)
+            fixture.dayLevels = fixture.dayLevels.map { $0 - 10 }
         }
         fixture.helper = helper ?? (preview == .lowLimit || preview == .sailing ? .running : .notInstalled)
         return BatteryMonitor(fixture: fixture)
