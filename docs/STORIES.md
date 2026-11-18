@@ -410,13 +410,31 @@ Status: todo
 As the user, I set a temperature in Settings; above it, charging pauses
 until the battery cools.
 Screens: settings-charging, popover
-Depends: S-010
+Depends: S-010, S-022
+How (rewritten 2026-11-18, no adapter cut): the same move as sailing.
+While the battery is hot and charging, Hachibu asks macOS to hold the
+level the battery is at; when it has cooled, Hachibu asks for the user's
+limit again. Needs the helper, because the level is rarely a limit macOS
+offers by itself.
+Known from real runs: holding 80% (a limit macOS offers) stopped the
+current within about 10 seconds. A level in between goes through the
+helper, which macOS took 25 to 90 seconds to enforce. So the pause is not
+instant, and the story must say so on screen.
 Acceptance:
+- [manual] First, a probe: with the battery charging at a level macOS
+  does not offer (for example 63%), ask for that level and time how long
+  until the current stops. Build the story only if it is under two
+  minutes; write the measured time into the Settings row.
 - [snap] Settings > Charging has a "Heat protection" toggle and a
-  temperature from 30 to 45 °C; the status reads "Paused for heat".
+  temperature from 30 to 45 °C, disabled with the reason when the helper
+  is not running; the status reads "Paused for heat".
 - [unit] Charging pauses above the threshold and resumes 2 °C below it.
-- [manual] A probe confirms which method pauses charging on this Mac
-  (adapter cut, or lowering the macOS limit) before the story is built.
+- [unit] The level asked for is never below the battery's level, so a
+  pause never makes macOS drain the battery (draining makes heat). If the
+  level rose while macOS was slow to act, the hold moves up to it.
+- [unit] A pause also holds during a Top Up, and the Top Up continues
+  when the battery has cooled.
+- [unit] Heat protection never pauses a full charge by macOS; it cannot.
 Status: todo
 
 ### S-041 Know when macOS is doing a full charge
@@ -433,17 +451,36 @@ Acceptance:
 Status: todo
 
 ### S-042 Calibrate the battery
-As the user, I start a calibration that charges to 100%, discharges to
-15%, charges to 100% again, then restores my limit.
+As the user, I start a calibration that charges to 100%, lets macOS
+drain the battery to 20%, charges to 100% again, then restores my limit.
 Screens: calibration
-Depends: S-020, S-021
+Depends: S-010, S-020
+How (rewritten 2026-11-18, no adapter cut): three limits in a row. No
+limit until 100%; a limit of 20% until the battery is there (macOS drains
+to a limit below the level by itself, staying on AC power); no limit
+until 100% again; then the user's limit. 20% replaces the earlier 15%:
+it is the lowest limit the helper sets.
+Known from real runs: macOS drained 80% to 60% in 36 minutes awake, so
+100% to 20% should take two to three hours. In 3.5 minutes of sleep the
+level did not fall, so the drain seems to stop while the Mac sleeps.
+Worth asking before building: macOS already runs its own full charge
+every few weeks "to keep its estimates accurate" (S-041), and Apple does
+not ask for calibration on these batteries. This story may add little.
 Acceptance:
-- [snap] A sheet shows the steps, the current step, and a Cancel button.
-- [unit] Steps advance at the right levels; Cancel or unplugging
-  restores the adapter and the limit.
+- [snap] A sheet shows the three steps, the current step, the level, and
+  a Cancel button.
+- [unit] Steps advance at 100%, at 20%, and at 100%; then the user's
+  limit is asked for again.
+- [unit] Cancel restores the user's limit at once. Unplugging pauses the
+  step and it continues when the charger is back.
+- [unit] Sailing and heat protection are paused while it runs (heat
+  protection: decide when S-040 is built).
 - [manual] A notification is sent when calibration finishes.
-- [snap] The sheet warns that it takes several hours and that the Mac
-  must stay awake and plugged in.
+- [snap] The sheet says it takes several hours, that the charger must
+  stay connected, and that the drain waits while the Mac sleeps. Hachibu
+  does not keep the Mac awake.
+- [manual] One full run on this Mac, with the times of each step written
+  into `docs/research/charge-control.md`.
 Status: todo
 
 ## M6 System and polish
