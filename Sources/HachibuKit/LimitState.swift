@@ -50,9 +50,12 @@ public enum LimitStops {
         return cleaned.sorted()
     }
 
+    /// The lowest and highest limit a person can choose.
+    public static let sliderRange = 20...100
+
     /// With the helper running, every whole percent from 20 to 100.
     public static func all(official: [Int], helperRunning: Bool) -> [Int] {
-        helperRunning ? Array(HelperRequest.limitRange) : normalized(official)
+        helperRunning ? Array(sliderRange) : normalized(official)
     }
 
     public static func snap(_ value: Int, to stops: [Int]) -> Int {
@@ -86,6 +89,25 @@ public struct LimitWatch: Equatable, Sendable {
         let was = isWarning
         isWarning = now.timeIntervalSince(since) >= Self.delay
         return isWarning && !was
+    }
+}
+
+/// Notices the moment macOS begins a full charge of its own, so it can be
+/// announced once. A full charge already under way when Hachibu starts is
+/// not announced: Hachibu did not see it begin.
+public struct FullChargeWatch: Equatable, Sendable {
+    public private(set) var isActive = false
+    private var hasSeenAReading = false
+
+    public init() {}
+
+    /// Feed every reading. Returns true at the moment a full charge starts.
+    public mutating func update(isFullCharge: Bool) -> Bool {
+        defer {
+            isActive = isFullCharge
+            hasSeenAReading = true
+        }
+        return isFullCharge && !isActive && hasSeenAReading
     }
 }
 

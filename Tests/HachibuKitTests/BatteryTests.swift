@@ -151,3 +151,34 @@ func menuBarMark() {
     #expect(MenuBarMark.level(80).title(showPercentage: false) == nil)
     #expect(MenuBarMark.unknown.title(showPercentage: true) == "–")
 }
+
+@Test("A full charge by macOS is announced once, when it starts")
+func fullChargeAnnouncedOnce() {
+    var watch = FullChargeWatch()
+    let announced = [false, true, true, true, false, true].map { watch.update(isFullCharge: $0) }
+    #expect(announced == [false, true, false, false, false, true])
+}
+
+@Test("A full charge already under way at launch is not announced")
+func fullChargeAtLaunch() {
+    var watch = FullChargeWatch()
+    let announced = [true, true].map { watch.update(isFullCharge: $0) }
+    #expect(announced == [false, false])
+    #expect(watch.isActive)
+}
+
+@Test("During a full charge by macOS the status says so, and Limit not holding stays off")
+func fullChargeStatus() {
+    let charging = reading(93, current: 1500, override: true)
+    #expect(BatteryStatus.derive(from: charging, limit: 80) == .fullChargeByMacOS)
+    #expect(BatteryStatus.fullChargeByMacOS.title == "Full charge by macOS")
+    #expect(BatteryStatus.fullChargeByMacOS.detail(for: charging).contains("macOS"))
+    // Even during a Top Up, the truth is that macOS is the one charging.
+    #expect(BatteryStatus.derive(from: charging, limit: nil, mode: .toppingUp, isSailing: false) == .fullChargeByMacOS)
+    var watch = LimitWatch()
+    let start = Date(timeIntervalSince1970: 0)
+    _ = watch.update(reading: charging, limit: 80, now: start)
+    _ = watch.update(reading: charging, limit: 80, now: start.addingTimeInterval(3600))
+    #expect(!watch.isWarning)
+}
+

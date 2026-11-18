@@ -7,6 +7,8 @@ enum PopoverPreview: String, CaseIterable {
     /// A limit below 80%, held with the helper; and the same with the helper gone.
     case lowLimit = "low", helperMissing = "helper"
     case topUp = "topup", sailing
+    /// macOS charging past the limit on its own.
+    case fullCharge = "fullcharge"
 
     static let windowID = "popover-preview"
     static let windowTitle = "Hachibu Popover"
@@ -61,6 +63,11 @@ extension BatteryMonitor {
             fixture.limitBeforeOverride = 80
             // The caption reads the range from the test run's own settings.
             if Store.isOverridden { Preferences.shared.sailingRange = 5 }
+        case .fullCharge:
+            fixture.reading?.percent = 91
+            fixture.reading?.currentMA = 1_480
+            fixture.reading?.chargerWatts = 27.6
+            fixture.reading?.fullChargeOverride = true
         case .lowLimit, .helperMissing:
             fixture.reading?.percent = 70
             fixture.limit = LimitState(system: 70, saved: 70)

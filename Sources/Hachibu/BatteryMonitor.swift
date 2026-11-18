@@ -98,6 +98,7 @@ final class BatteryMonitor {
     }
 
     @ObservationIgnored private var watch = LimitWatch()
+    @ObservationIgnored private var fullCharge = FullChargeWatch()
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var syncing = false
     @ObservationIgnored private var started = false
@@ -298,6 +299,9 @@ final class BatteryMonitor {
             // Supported but unreadable this time: keep the last known limit.
         }
         runModes(now: now)
+        if !isPreview, let reading, fullCharge.update(isFullCharge: reading.fullChargeOverride) {
+            Notifier.fullChargeByMacOS(limit: userLimit)
+        }
         if !isPreview, let reading {
             // The user's limit, not the level sailing holds (none while the
             // limit cannot be read); and health only once macOS has given its

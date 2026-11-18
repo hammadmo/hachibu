@@ -459,7 +459,10 @@ Acceptance:
   `com.apple.system.powersources.chargingtofulloverride`.
 - [manual] One notification when it starts; the "Limit not holding"
   warning stays off.
-Status: todo
+Status: done (2026-11-19. The status and its reason are in the
+`popover-fullcharge` snapshot; the notice is sent once when a full charge
+starts, not for one already under way at launch. Not seen for real: macOS
+does this every few weeks, so the notification itself is unconfirmed.)
 
 ### S-042 Calibrate the battery
 As the user, when the percentage or the health figure looks wrong, I
