@@ -272,7 +272,9 @@ Acceptance:
   unplugged, or when I click Stop; the saved limit is then applied again.
 - [manual] After unplugging and plugging back in, the limit is back.
 - [manual] Quitting Hachibu during a top up restores the limit first.
-Status: todo
+Status: done (2026-11-18. Tried for real with `Hachibu --try topup 20`:
+the limit went off and came back to 80%. Still to try by hand: the
+button itself, unplug and plug back in, and Quit during a Top Up.)
 
 ### S-021 Discharge to the limit while plugged in
 As the user, I click "Discharge" and the Mac runs on battery, still

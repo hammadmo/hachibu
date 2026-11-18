@@ -5,6 +5,7 @@ import SwiftUI
 //   Hachibu                      the app
 //   Hachibu --selftest           check the real functions and quit with 0 or 1 (tools/selftest.sh)
 //   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none; 20 to 100 with the helper), print the result, quit
+//   Hachibu --try topup|discharge <seconds>   run a real Top Up or Discharge for that long, print what is measured, stop it, quit
 //   Hachibu --helper-reinstall   take the helper out of macOS and register it again (it does not touch the limit)
 //   Hachibu --helper-status      ask the helper for its state, print it, quit (read-only)
 //   APP_STORE=<file> Hachibu     a test run: no real preferences, login items, notifications, or limit changes
@@ -97,6 +98,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Closing Settings or History must not quit the menu bar app.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
+    /// Quitting during a Top Up or while sailing puts the user's limit back first.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let monitor = BatteryMonitor.current, monitor.overrideLimit != nil || monitor.mode != .normal,
+              !Store.isOverridden else { return .terminateNow }
+        Task {
+            await monitor.restoreBeforeQuit()
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+
     /// The self-test's result becomes the exit code, after a normal quit.
     func applicationWillTerminate(_ notification: Notification) {
         if SelfTest.requested { exit(SelfTest.exitCode) }
@@ -129,6 +141,13 @@ enum Launch {
             }
             open(SettingsView.windowID)
             NSApp.activate()
+        } else if let flag = arguments.firstIndex(of: "--try"), arguments.indices.contains(flag + 2),
+                  let seconds = Int(arguments[flag + 2]) {
+            let what = arguments[flag + 1]
+            Task {
+                await monitor.tryMode(what, seconds: seconds)
+                NSApp.terminate(nil)
+            }
         } else if arguments.contains("--helper-reinstall") {
             Task {
                 let removal = await monitor.helper.unregister()

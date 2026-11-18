@@ -58,9 +58,25 @@ public struct BatteryReading: Equatable, Sendable {
 /// What the battery is doing, in the glossary's words.
 public enum BatteryStatus: Equatable, Sendable {
     case charging, holdingAtLimit, fullyCharged, notCharging, usingBattery, onBattery, fullChargeByMacOS
+    /// The three things Hachibu does on request or by a setting.
+    case toppingUp, discharging, sailing
 
     /// How close to the limit still counts as holding at it.
     public static let holdingMargin = 2
+
+    /// The status while a mode is active. A mode names what Hachibu is
+    /// doing; the watts beside it are still the measured ones.
+    public static func derive(from reading: BatteryReading, limit: Int?, mode: ChargeMode,
+                              isSailing: Bool) -> BatteryStatus {
+        switch mode {
+        case .toppingUp: return reading.fullChargeOverride ? .fullChargeByMacOS : .toppingUp
+        case .discharging: return .discharging
+        case .normal, .calibrating:
+            let plain = derive(from: reading, limit: limit)
+            // Sailing is only said while nothing flows into the battery.
+            return isSailing && (plain == .holdingAtLimit || plain == .notCharging) ? .sailing : plain
+        }
+    }
 
     public static func derive(from reading: BatteryReading, limit: Int?) -> BatteryStatus {
         guard reading.isPluggedIn else { return .onBattery }
@@ -81,20 +97,23 @@ public enum BatteryStatus: Equatable, Sendable {
         case .usingBattery: "Using battery"
         case .onBattery: "On battery"
         case .fullChargeByMacOS: "Full charge by macOS"
+        case .toppingUp: "Topping up"
+        case .discharging: "Discharging"
+        case .sailing: "Sailing"
         }
     }
 
     /// The measured power, next to the status. A missing value is a dash, never a false 0.
     public func detail(for reading: BatteryReading) -> String {
         switch self {
-        case .onBattery:
+        case .onBattery, .discharging:
             let out = reading.systemWatts ?? reading.batteryWatts.map(abs)
             return "\(Watts.text(out)) out"
         case .usingBattery:
             return "\(Watts.text(reading.batteryWatts.map(abs))) from battery, charger connected"
         case .fullChargeByMacOS:
             return "macOS is charging past your limit to keep its estimates accurate"
-        case .charging, .holdingAtLimit, .fullyCharged, .notCharging:
+        case .charging, .holdingAtLimit, .fullyCharged, .notCharging, .toppingUp, .sailing:
             return "\(Watts.text(reading.chargerWatts)) from charger"
         }
     }

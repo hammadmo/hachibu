@@ -40,6 +40,21 @@ final class BatteryMonitor {
     /// True while a limit set through the helper waits to be enforced.
     private(set) var isWaitingForMacOS = false
     private(set) var isWarning = false
+    /// Top Up or Discharge, while one runs.
+    private(set) var mode = ChargeMode.normal
+    /// Plugged in and drifting down inside the sailing range.
+    private(set) var isSailing = false
+    /// Why a Top Up or a Discharge could not start or was cut short.
+    private(set) var modeProblem: String?
+    /// The limit Hachibu asked macOS for on a mode's behalf, in place of
+    /// the user's own: 100 during a Top Up, the current level while sailing.
+    private(set) var overrideLimit: Int?
+    /// The user's limit while `overrideLimit` stands in for it.
+    private(set) var limitBeforeOverride: Int?
+    @ObservationIgnored private var engine = ChargeEngine()
+    @ObservationIgnored private var adoptedSailing = false
+    /// The monitor of the running app, for the quit handler.
+    @ObservationIgnored nonisolated(unsafe) static weak var current: BatteryMonitor?
     /// False until the first reading arrives.
     private(set) var hasLoaded = false
     /// Battery health as System Settings shows it, read about once an hour.
@@ -85,8 +100,17 @@ final class BatteryMonitor {
     // MARK: What the views show
 
     var status: BatteryStatus? {
-        reading.map { BatteryStatus.derive(from: $0, limit: limit.system) }
+        reading.map { BatteryStatus.derive(from: $0, limit: limit.system, mode: mode, isSailing: isSailing) }
     }
+
+    /// The limit the user chose: what a mode goes back to. 100 means none.
+    var userLimit: Int {
+        if overrideLimit != nil, let limitBeforeOverride { return limitBeforeOverride }
+        return limit.effective
+    }
+
+    /// The limit to draw on the gauge. nil means none.
+    var shownLimit: Int? { userLimit >= 100 ? nil : userLimit }
 
     var statusTitle: String {
         if isWarning { return "Limit not holding" }
@@ -118,6 +142,7 @@ final class BatteryMonitor {
         guard limitKnown else { return "–" }
         // Read the slider first, always: the view then redraws on every step of a drag.
         let target = LimitState(system: sliderValue, saved: nil).valueText
+        if overrideLimit != nil { return LimitState(system: userLimit, saved: nil).valueText }
         return isApplying || requested != finished ? target : limit.valueText
     }
 
@@ -125,14 +150,23 @@ final class BatteryMonitor {
         if !hasLoaded { return "Reading the limit…" }
         if !limitSupported { return "This version of macOS does not offer a charge limit." }
         _ = sliderValue // redraw the caption as soon as a drag starts
-        if isWaitingForMacOS { return "Applying… macOS can take two minutes." }
-        if isApplying || requested != finished { return "Applying…" }
+        if let modeProblem { return modeProblem }
+        if mode == .toppingUp { return "Charging to 100% once. Your limit returns afterwards." }
+        if mode == .discharging { return "Running on the battery down to the limit." }
+        if isWaitingForMacOS, overrideLimit == nil { return "Applying… macOS can take two minutes." }
+        if isApplying || requested != finished { return overrideLimit == nil ? "Applying…" : sailingCaption }
         if let applyProblem { return applyProblem }
+        if overrideLimit != nil { return sailingCaption }
         return limitKnown ? limit.sourceText : "The limit could not be read. Trying again…"
     }
 
+    private var sailingCaption: String {
+        let range = Preferences.shared.sailingRange
+        return "Sailing between \(max(userLimit - range, 20))% and \(userLimit)%."
+    }
+
     var limitAction: LimitAction? {
-        guard canChangeLimit, !isApplying, requested == finished else { return nil }
+        guard canChangeLimit, !isApplying, requested == finished, overrideLimit == nil, mode == .normal else { return nil }
         if let saved = limit.savedToRestore { return .useSaved(saved) }
         return limit.source == .outside ? .keepSystem : nil
     }
@@ -142,6 +176,7 @@ final class BatteryMonitor {
     func start() {
         guard !started, !isPreview else { return }
         started = true
+        Self.current = self
         refresh()
         restartTimer()
         Task { await helper.refresh() }
@@ -231,14 +266,16 @@ final class BatteryMonitor {
                 limitKnown = true
                 Preferences.shared.reloadSavedLimit()
                 limit = LimitState(system: state.limit, saved: Preferences.shared.savedLimit)
-                if !isApplying, requested == finished { setSlider(limit.effective) }
+                if !isApplying, requested == finished { setSlider(userLimit) }
             } else if !state.supported {
                 limitKnown = false
                 limit = LimitState(system: nil, saved: Preferences.shared.savedLimit)
             }
             // Supported but unreadable this time: keep the last known limit.
         }
-        let justStarted = watch.update(reading: reading, limit: limitKnown ? limit.system : nil, now: now)
+        runModes()
+        let justStarted = watch.update(reading: reading, limit: limitKnown ? limit.system : nil,
+                                       suppressed: mode != .normal, now: now)
         isWarning = watch.isWarning
         hasLoaded = true
         if justStarted, let reading, let held = limit.system {
@@ -275,6 +312,10 @@ final class BatteryMonitor {
             limit = LimitState(system: value, saved: value)
             return
         }
+        // A new limit from the slider ends a Top Up or a Discharge.
+        engine.stop()
+        mode = .normal
+        modeProblem = nil
         // A short pause, so a drag across several stops makes one request.
         enqueueApply(value, after: .milliseconds(600))
     }
@@ -286,7 +327,7 @@ final class BatteryMonitor {
 
     /// Queues a limit request behind any that is still running. Only the
     /// newest request is carried out; older ones that have not started are dropped.
-    private func enqueueApply(_ value: Int, after delay: Duration?) {
+    private func enqueueApply(_ value: Int, after delay: Duration?, remember: Bool = true) {
         guard canChangeLimit else { return }
         requested += 1
         let request = requested
@@ -295,11 +336,13 @@ final class BatteryMonitor {
             if let delay { try? await Task.sleep(for: delay) }
             await previous?.value
             guard let self, request == self.requested else { return }
-            await self.apply(value, request: request)
+            await self.apply(value, request: request, remember: remember)
         }
     }
 
-    private func apply(_ value: Int, request: Int) async {
+    /// `remember` is false for a limit a mode asks for: it is not the
+    /// user's choice, so it is never saved as theirs.
+    private func apply(_ value: Int, request: Int, remember: Bool = true) async {
         isApplying = true
         applyProblem = nil
         lateLimit = nil
@@ -328,7 +371,7 @@ final class BatteryMonitor {
             }
             // A limit set through the helper is accepted at once but enforced
             // a minute or two later. Wait until power management reports it.
-            if confirmed, needsHelper {
+            if confirmed, needsHelper, remember || value < 100 {
                 isWaitingForMacOS = true
                 var enforced = false
                 for _ in 0..<48 where !enforced && request == requested {
@@ -338,16 +381,20 @@ final class BatteryMonitor {
                 isWaitingForMacOS = false
                 if !enforced, request == requested {
                     problem = "macOS accepted this limit but is not enforcing it yet."
-                    lateLimit = value
+                    if remember { lateLimit = value }
                 }
             }
             if !confirmed {
                 problem = "macOS has not confirmed this limit. Try again."
-            } else if request == requested, problem == nil {
+            } else if request == requested, problem == nil, remember {
                 // Saved only once macOS holds it, so "Set by Hachibu" is always true.
                 Preferences.shared.savedLimit = value
+                overrideLimit = nil
+                limitBeforeOverride = nil
             }
         }
+        // A mode's limit did not take: end the mode instead of pretending.
+        if problem != nil, !remember, request == requested { abandonModes() }
         epoch += 1
         // A newer request is waiting behind this one: let it report instead.
         guard request == requested else { return }
@@ -357,6 +404,103 @@ final class BatteryMonitor {
         let state = await Task.detached { ChargeLimit.read() }.value
         update(reading: reading, state: state)
         applyProblem = problem
+    }
+
+    // MARK: Top Up, Discharge, sailing
+
+    /// What the engine looks at. nil until the battery and the limit are known.
+    private var chargeInputs: ChargeInputs? {
+        guard let reading, limitKnown else { return nil }
+        return ChargeInputs(percent: reading.percent, chargerAttached: reading.isPluggedIn, limit: userLimit,
+                            sailingRange: Capability.sailing ? Preferences.shared.sailingRange : 0,
+                            helperRunning: helper.isRunning)
+    }
+
+    var canTopUp: Bool {
+        guard let inputs = chargeInputs, canChangeLimit, mode == .normal else { return false }
+        return inputs.limit < 100 && inputs.chargerAttached && inputs.percent < 100
+    }
+
+    /// The Top Up button: starts one, or stops the one that runs.
+    func toggleTopUp() {
+        guard !isPreview, let inputs = chargeInputs else { return }
+        if mode == .toppingUp { engine.stop() } else { modeProblem = engine.startTopUp(inputs) }
+        runModes()
+    }
+
+    /// Asks the engine what should be true now and carries it out. A limit
+    /// is only requested when the plan changes, and never while another
+    /// request is under way, so a limit changed outside Hachibu is not fought.
+    private func runModes() {
+        guard !isPreview, let inputs = chargeInputs else { return }
+        let plan = engine.step(inputs)
+        mode = plan.mode
+        isSailing = plan.isSailing
+        if plan.mode != .normal { modeProblem = nil }
+        let wanted: Int? = plan.limit == inputs.limit ? nil : plan.limit
+        guard wanted != overrideLimit, !isApplying, requested == finished, canChangeLimit else { return }
+        let goingBackTo = inputs.limit
+        if overrideLimit == nil { limitBeforeOverride = inputs.limit }
+        overrideLimit = wanted
+        if wanted == nil { limitBeforeOverride = nil }
+        enqueueApply(wanted ?? goingBackTo, after: nil, remember: false)
+    }
+
+    /// For `Hachibu --try`: runs a real mode for a while through the same
+    /// path as the buttons, printing what is measured, then stops it and
+    /// waits until the user's limit is back.
+    func tryMode(_ name: String, seconds: Int) async {
+        func line(_ label: String) {
+            let r = reading
+            print("\(label): \(statusTitle), \(r?.percent ?? -1)%, \(r?.currentMA ?? 0) mA, plugged \(r?.isPluggedIn ?? false), "
+                + "macOS limit \(limit.valueText), yours \(userLimit)%, mode \(mode.rawValue)\(modeProblem.map { ", " + $0 } ?? "")")
+        }
+        popoverIsOpen = true
+        await helper.refresh()
+        for _ in 0..<20 where !(hasLoaded && limitKnown) { try? await Task.sleep(for: .milliseconds(250)) }
+        line("before")
+        switch name {
+        case "topup": toggleTopUp()
+        default: print("unknown mode \(name)"); return
+        }
+        guard mode != .normal else { line("refused"); return }
+        for second in 1...max(seconds, 1) {
+            try? await Task.sleep(for: .seconds(1))
+            if second % 4 == 0 || second == seconds { line("t=\(second)s") }
+            if mode == .normal { break }
+        }
+        if mode == .toppingUp { toggleTopUp() }
+        for _ in 0..<120 where isApplying || requested != finished || overrideLimit != nil {
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+        try? await Task.sleep(for: .seconds(3))
+        line("after")
+    }
+
+    private func abandonModes() {
+        engine.stop()
+        mode = .normal
+        isSailing = false
+        overrideLimit = nil
+        limitBeforeOverride = nil
+        modeProblem = "macOS did not change the limit, so this was stopped."
+    }
+
+    /// Before Hachibu quits: put the user's limit back, without waiting for
+    /// macOS to report it. Returns once the request is made.
+    func restoreBeforeQuit() async {
+        guard !isPreview, !Store.isOverridden, overrideLimit != nil || mode != .normal else { return }
+        let target = userLimit
+        engine.stop()
+        mode = .normal
+        overrideLimit = nil
+        limitBeforeOverride = nil
+        requested += 1
+        if target < 100, !officialStops.contains(target) {
+            _ = await HelperClient.send(.setLimit(target))
+        } else {
+            _ = await Task.detached { ChargeLimit.set(target) }.value
+        }
     }
 
     /// Removes the helper and everything it did: the charger is reconnected,
@@ -423,6 +567,16 @@ final class BatteryMonitor {
             monitor.limit = LimitState(system: 80, saved: 85)
         case .unavailable:
             monitor.limit = LimitState(system: nil, saved: nil)
+        case .topUp:
+            var reading = holding
+            reading.percent = 88
+            reading.currentMA = 1_720
+            reading.chargerWatts = 29.8
+            monitor.reading = reading
+            monitor.limit = LimitState(system: nil, saved: 80)
+            monitor.mode = .toppingUp
+            monitor.overrideLimit = 100
+            monitor.limitBeforeOverride = 80
         case .lowLimit, .helperMissing:
             var reading = holding
             reading.percent = 70
@@ -431,7 +585,7 @@ final class BatteryMonitor {
         }
         if monitor.reading != nil { monitor.systemHealth = 82 }
         monitor.limitKnown = preview != .unavailable
-        monitor.setSlider(monitor.limit.effective)
+        monitor.setSlider(monitor.userLimit)
         return monitor
     }
 }
@@ -441,6 +595,7 @@ enum PopoverPreview: String, CaseIterable {
     case holding, charging, warning, outside, unavailable
     /// A limit below 80%, held with the helper; and the same with the helper gone.
     case lowLimit = "low", helperMissing = "helper"
+    case topUp = "topup"
 
     static let windowID = "popover-preview"
     static let windowTitle = "Hachibu Popover"

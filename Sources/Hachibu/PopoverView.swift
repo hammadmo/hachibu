@@ -26,7 +26,7 @@ struct PopoverView: View {
                 }
                 .gridProbe("banner", area: "popover")
             }
-            EnsoGauge(percent: monitor.reading?.percent, limit: monitor.limit.system,
+            EnsoGauge(percent: monitor.reading?.percent, limit: monitor.shownLimit,
                       tone: monitor.isWarning ? .warning : .normal)
             StatusLine(title: monitor.statusTitle, detail: monitor.statusDetail, isWarning: monitor.isWarning)
             PowerFlowCard(charger: monitor.reading?.chargerWatts, mac: monitor.reading?.systemWatts,
@@ -73,7 +73,21 @@ struct PopoverView: View {
                 }
             }
             .frame(minHeight: Metric.buttonHeight)
+            modeButtons
         }
+    }
+
+    /// Top Up, and beside it Discharge. The one that runs reads "Stop".
+    private var modeButtons: some View {
+        HStack(spacing: Space.sm) {
+            Button(monitor.mode == .toppingUp ? "Stop" : "Top Up") { monitor.toggleTopUp() }
+                .buttonStyle(.kit(.secondary, selected: monitor.mode == .toppingUp))
+                .disabled(monitor.mode != .toppingUp && !monitor.canTopUp)
+                .help(monitor.mode == .toppingUp ? "End the Top Up and go back to your limit"
+                    : "Charge to 100% once, then go back to your limit")
+                .accessibilityLabel(monitor.mode == .toppingUp ? "Stop Top Up" : "Top Up")
+        }
+        .padding(.top, Space.xs)
     }
 
     private var stats: [StatRow.Stat] {
