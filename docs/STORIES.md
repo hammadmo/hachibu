@@ -452,7 +452,7 @@ Status: todo
 
 ### S-042 Calibrate the battery
 As the user, when the percentage or the health figure looks wrong, I
-start a calibration: macOS drains the battery to 20%, charges it to 100%,
+start a calibration: macOS drains the battery to 15%, charges it to 100%,
 rests there for two hours, then my limit returns.
 Screens: calibration
 Depends: S-010, S-020
@@ -463,13 +463,18 @@ in a narrow range; Apple only says macOS charges to 100% now and then to
 keep its estimates accurate, which gives no deep discharge. Evidence of
 real trouble on Apple silicon is anecdotal. So: manual, optional, no
 schedule, no reminder, and the sheet says what it costs.
-How (no adapter cut): limits in a row. A limit of 20% until the battery
+How (no adapter cut): limits in a row. A limit of 15% until the battery
 is there (macOS drains to a limit below the level by itself, staying on
 AC power); no limit until 100%; two hours at 100%; then the user's limit,
-and macOS drains back to it. This is batt's order. 20% is the lowest
-limit the helper sets (AlDente uses 10%, batt 15%).
+and macOS drains back to it. This is batt's order and batt's depth.
+Why 15% and not 10% (AlDente's): from 100% it is already the 85% depth
+the gauge notes mention; no source shows 10% reads better; 10% is where
+macOS starts its low battery warnings; and if the charger is pulled
+mid-run, 15% leaves some room. The helper accepts 20 to 100 today, so
+this story widens it to 15 to 100 (a new helper version: remove and
+install once). The slider stays at 20.
 Known from real runs: macOS drained 80% to 60% in 36 minutes awake, so
-80% to 20% should take about two hours. In 3.5 minutes of sleep the level
+80% to 15% should take about two hours. In 3.5 minutes of sleep the level
 did not fall, so the drain seems to stop while the Mac sleeps.
 Acceptance:
 - [snap] A sheet shows the steps, the current step, the level, and a
@@ -478,7 +483,11 @@ Acceptance:
   does not improve the battery; it uses one full cycle; it takes several
   hours; the charger must stay connected; the drain waits while the Mac
   sleeps. Hachibu does not keep the Mac awake.
-- [unit] Steps advance at 20%, at 100%, and after two hours at 100%; then
+- [manual] First, a check: ask for 15% through the helper and confirm
+  macOS reports and enforces it. Only 75%, 70%, and 60% have been tried.
+- [unit] The helper accepts 15 to 100 and nothing lower; the slider
+  still stops at 20.
+- [unit] Steps advance at 15%, at 100%, and after two hours at 100%; then
   the user's limit is asked for again.
 - [unit] Cancel restores the user's limit at once. Unplugging pauses the
   step and it continues when the charger is back.
