@@ -2,7 +2,6 @@ import AppKit
 import Foundation
 import HachibuKit
 import Observation
-import UserNotifications
 import os
 
 /// What Hachibu did to charging, readable with
@@ -150,6 +149,9 @@ final class BatteryMonitor {
         if overrideLimit != nil { return LimitState(system: userLimit, saved: nil).valueText }
         return isApplying || requested != finished ? target : limit.valueText
     }
+
+    /// A limit request is waiting or under way.
+    var isBusy: Bool { isApplying || requested != finished }
 
     var limitCaption: String {
         if !hasLoaded { return "Reading the limit…" }
@@ -465,54 +467,6 @@ final class BatteryMonitor {
         enqueueApply(wanted ?? goingBackTo, after: nil, remember: false)
     }
 
-    /// For `Hachibu --try`: runs a real mode for a while through the same
-    /// path as the buttons, printing what is measured, then stops it and
-    /// waits until the user's limit is back.
-    func tryMode(_ name: String, seconds: Int) async {
-        func line(_ label: String) {
-            let r = reading
-            print("\(label): \(statusTitle), \(r?.percent ?? -1)%, \(r?.currentMA ?? 0) mA, plugged \(r?.isPluggedIn ?? false), "
-                + "macOS limit \(limit.valueText), yours \(userLimit)%, mode \(mode.rawValue)\(modeProblem.map { ", " + $0 } ?? "")")
-        }
-        popoverIsOpen = true
-        await helper.refresh()
-        for _ in 0..<20 where !(hasLoaded && limitKnown) { try? await Task.sleep(for: .milliseconds(250)) }
-        line("before")
-        switch name {
-        case "topup": toggleTopUp()
-        case "sailing":
-            // Sailing is a setting, not a mode: turn it on, watch, turn it off.
-            let before = Preferences.shared.sailingRange
-            Preferences.shared.sailingRange = 10
-            defer { Preferences.shared.sailingRange = before }
-            for second in 1...max(seconds, 1) {
-                try? await Task.sleep(for: .seconds(1))
-                if second % 10 == 0 || second == seconds { line("t=\(second)s sailing \(isSailing), asked macOS for \(overrideLimit.map(String.init) ?? "nothing")") }
-            }
-            Preferences.shared.sailingRange = before
-            refresh()
-            try? await Task.sleep(for: .seconds(3))
-            for _ in 0..<400 where isApplying || requested != finished || overrideLimit != nil {
-                try? await Task.sleep(for: .milliseconds(500))
-            }
-            line("after")
-            return
-        default: print("unknown mode \(name)"); return
-        }
-        guard mode != .normal else { line("refused"); return }
-        for second in 1...max(seconds, 1) {
-            try? await Task.sleep(for: .seconds(1))
-            if second % 4 == 0 || second == seconds { line("t=\(second)s") }
-            if mode == .normal { break }
-        }
-        if mode == .toppingUp { toggleTopUp() }
-        for _ in 0..<120 where isApplying || requested != finished || overrideLimit != nil {
-            try? await Task.sleep(for: .milliseconds(500))
-        }
-        try? await Task.sleep(for: .seconds(3))
-        line("after")
-    }
-
     private func abandonModes() {
         engine.stop()
         mode = .normal
@@ -572,97 +526,33 @@ final class BatteryMonitor {
 
     // MARK: Fixed states for snapshots
 
-    static func preview(_ preview: PopoverPreview, helper: HelperState? = nil) -> BatteryMonitor {
-        let state = helper ?? (preview == .lowLimit || preview == .sailing ? .running : .notInstalled)
-        let monitor = BatteryMonitor(isPreview: true, helper: HelperManager(fixed: state))
-        let holding = BatteryReading(percent: 80, isPluggedIn: true, currentMA: 0, voltageMV: 12_094,
-                                     temperatureC: 34.7, cycleCount: 274, rawMaxCapacityMAh: 3556,
-                                     designCapacityMAh: 4382, chargerWatts: 9.2, systemWatts: 7.2)
-        monitor.hasLoaded = true
-        switch preview {
-        case .holding:
-            monitor.reading = holding
-            monitor.limit = LimitState(system: 80, saved: 80)
-        case .charging:
-            var reading = holding
-            reading.percent = 46
-            reading.currentMA = 1_950
-            reading.chargerWatts = 30.6
-            monitor.reading = reading
-            monitor.limit = LimitState(system: 80, saved: 80)
-        case .warning:
-            var reading = holding
-            reading.percent = 86
-            reading.currentMA = 1_650
-            reading.chargerWatts = 28.4
-            reading.temperatureC = 37.9
-            monitor.reading = reading
-            monitor.limit = LimitState(system: 80, saved: 80)
-            monitor.isWarning = true
-        case .outside:
-            monitor.reading = holding
-            monitor.limit = LimitState(system: 80, saved: 85)
-        case .unavailable:
-            monitor.limit = LimitState(system: nil, saved: nil)
-        case .topUp:
-            var reading = holding
-            reading.percent = 88
-            reading.currentMA = 1_720
-            reading.chargerWatts = 29.8
-            monitor.reading = reading
-            monitor.limit = LimitState(system: nil, saved: 80)
-            monitor.mode = .toppingUp
-            monitor.overrideLimit = 100
-            monitor.limitBeforeOverride = 80
-        case .sailing:
-            var reading = holding
-            reading.percent = 77
-            monitor.reading = reading
-            monitor.limit = LimitState(system: 77, saved: 80)
-            monitor.isSailing = true
-            if Store.isOverridden { Preferences.shared.sailingRange = 5 }
-            monitor.overrideLimit = 77
-            monitor.limitBeforeOverride = 80
-        case .lowLimit, .helperMissing:
-            var reading = holding
-            reading.percent = 70
-            monitor.reading = reading
-            monitor.limit = LimitState(system: 70, saved: 70)
-        }
-        if monitor.reading != nil { monitor.systemHealth = 82 }
-        monitor.limitKnown = preview != .unavailable
-        monitor.setSlider(monitor.userLimit)
-        return monitor
-    }
-}
-
-/// The fixed popover states that snapshot runs capture.
-enum PopoverPreview: String, CaseIterable {
-    case holding, charging, warning, outside, unavailable
-    /// A limit below 80%, held with the helper; and the same with the helper gone.
-    case lowLimit = "low", helperMissing = "helper"
-    case topUp = "topup", sailing
-
-    static let windowID = "popover-preview"
-    static let windowTitle = "Hachibu Popover"
-
-    /// The snapshot's file name.
-    var page: String { self == .holding ? "popover" : "popover-\(rawValue)" }
-}
-
-/// Notifications. Never sent in test runs.
-enum Notifier {
-    static func requestPermission() {
-        guard !Store.isOverridden else { return }
-        Task { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) }
+    /// Everything a snapshot shows, given as plain values. The fixtures
+    /// themselves are in BatteryMonitor+Preview.swift.
+    struct Fixture {
+        var reading: BatteryReading?
+        var limit = LimitState(system: nil, saved: nil)
+        var limitKnown = true
+        var isWarning = false
+        var mode = ChargeMode.normal
+        var isSailing = false
+        var overrideLimit: Int?
+        var limitBeforeOverride: Int?
+        var helper = HelperState.notInstalled
     }
 
-    static func limitNotHolding(percent: Int, limit: Int) {
-        guard !Store.isOverridden, Preferences.shared.notifyLimitNotHolding else { return }
-        let content = UNMutableNotificationContent()
-        content.title = "Limit not holding"
-        content.body = "Battery is at \(percent)% and still charging. The limit is \(limit)%."
-        let request = UNNotificationRequest(identifier: "limit-not-holding", content: content, trigger: nil)
-        Task { try? await UNUserNotificationCenter.current().add(request) }
+    /// A monitor that shows a fixture and never reads or changes anything real.
+    convenience init(fixture: Fixture) {
+        self.init(isPreview: true, helper: HelperManager(fixed: fixture.helper))
+        hasLoaded = true
+        reading = fixture.reading
+        limit = fixture.limit
+        limitKnown = fixture.limitKnown
+        isWarning = fixture.isWarning
+        mode = fixture.mode
+        isSailing = fixture.isSailing
+        overrideLimit = fixture.overrideLimit
+        limitBeforeOverride = fixture.limitBeforeOverride
+        if fixture.reading != nil { systemHealth = 82 }
+        setSlider(userLimit)
     }
 }
