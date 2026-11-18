@@ -91,16 +91,7 @@ nonisolated enum SystemBattery {
 /// macOS's own charge limit. Reads are always safe. Writes are refused in
 /// test and snapshot runs, so they can never change real charging.
 nonisolated enum ChargeLimit {
-    struct State: Equatable, Sendable {
-        var supported = false
-        /// False when macOS could not be asked. Then `limit` says nothing:
-        /// a failed read must never look like "the limit is off".
-        var known = false
-        /// The limit macOS is holding. nil when it is off.
-        var limit: Int?
-        /// The limits macOS offers without administrator rights.
-        var available: [Int] = []
-    }
+    typealias State = SystemLimit
 
     /// Every call into PowerUI goes through this queue, one at a time: its
     /// client is a single shared object and nothing says it is thread-safe.
@@ -151,4 +142,12 @@ nonisolated enum ChargeLimit {
             return ok ? nil : message.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
         }
     }
+}
+
+/// The real Mac, for LimitSetter: macOS's own limit, pmset, and the helper.
+nonisolated struct MacLimitSystem: LimitSystem {
+    func read() async -> SystemLimit { await Task.detached { ChargeLimit.read() }.value }
+    func enforced() async -> Int? { await Task.detached { ChargeLimit.enforced() }.value }
+    func setOfficial(_ limit: Int) async -> Bool { await Task.detached { ChargeLimit.set(limit) == nil }.value }
+    func setThroughHelper(_ limit: Int) async -> Bool { await HelperClient.send(.setLimit(limit)).succeeded }
 }

@@ -34,7 +34,11 @@ final class BatteryMonitor {
     private(set) var officialStops = [80, 85, 90, 95, 100]
     /// The helper, which adds every whole percent from 20.
     let helper: HelperManager
-    private(set) var isApplying = false
+    /// Carries out limit requests one at a time; only the newest counts.
+    @ObservationIgnored private lazy var setter = LimitSetter(system: MacLimitSystem()) { [weak self] in
+        self?.officialStops ?? []
+    }
+    var isApplying: Bool { setter.isApplying }
     private(set) var applyProblem: String?
     /// True while the helper is being removed. The slider waits.
     private(set) var isRemovingHelper = false
@@ -42,7 +46,7 @@ final class BatteryMonitor {
     /// ran out. If macOS enforces it later, it is saved then.
     @ObservationIgnored private var lateLimit: Int?
     /// True while a limit set through the helper waits to be enforced.
-    private(set) var isWaitingForMacOS = false
+    var isWaitingForMacOS: Bool { setter.isWaitingForMacOS }
     private(set) var isWarning = false
     /// Top Up, while one runs.
     private(set) var mode = ChargeMode.normal
@@ -57,6 +61,10 @@ final class BatteryMonitor {
     private(set) var limitBeforeOverride: Int?
     @ObservationIgnored private var engine = ChargeEngine()
     @ObservationIgnored private var adoptedSailing = false
+    /// False in a one-shot command-line run (`--set-limit`): the copy in the
+    /// menu bar runs Top Up and sailing, and two copies would pull against
+    /// each other.
+    @ObservationIgnored var runsModes = true
     /// The monitor of the running app, for the quit handler.
     @ObservationIgnored nonisolated(unsafe) static weak var current: BatteryMonitor?
     /// False until the first reading arrives.
@@ -83,15 +91,6 @@ final class BatteryMonitor {
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var syncing = false
     @ObservationIgnored private var started = false
-    /// Counts limit requests, so only the newest one is applied and the
-    /// slider is not pulled back while a request is waiting.
-    @ObservationIgnored private var requested = 0
-    @ObservationIgnored private var finished = 0
-    /// Limit requests run one after another, never side by side.
-    @ObservationIgnored private var applyChain: Task<Void, Never>?
-    /// Goes up whenever a limit request starts or ends, so a refresh that
-    /// began before it cannot bring back the old limit.
-    @ObservationIgnored private var epoch = 0
     @ObservationIgnored private var refreshing = false
     @ObservationIgnored private let isPreview: Bool
     @ObservationIgnored private var healthReadAt: Date?
@@ -147,11 +146,11 @@ final class BatteryMonitor {
         // Read the slider first, always: the view then redraws on every step of a drag.
         let target = LimitState(system: sliderValue, saved: nil).valueText
         if overrideLimit != nil { return LimitState(system: userLimit, saved: nil).valueText }
-        return isApplying || requested != finished ? target : limit.valueText
+        return isBusy ? target : limit.valueText
     }
 
     /// A limit request is waiting or under way.
-    var isBusy: Bool { isApplying || requested != finished }
+    var isBusy: Bool { setter.isBusy }
 
     var limitCaption: String {
         if !hasLoaded { return "Reading the limit…" }
@@ -160,7 +159,7 @@ final class BatteryMonitor {
         if let modeProblem { return modeProblem }
         if mode == .toppingUp { return "Charging to 100% once. Your limit returns afterwards." }
         if isWaitingForMacOS, overrideLimit == nil { return "Applying… macOS can take two minutes." }
-        if isApplying || requested != finished { return overrideLimit == nil ? "Applying…" : sailingCaption }
+        if isBusy { return overrideLimit == nil ? "Applying…" : sailingCaption }
         if let applyProblem { return applyProblem }
         if overrideLimit != nil { return sailingCaption }
         return limitKnown ? limit.sourceText : "The limit could not be read. Trying again…"
@@ -172,7 +171,7 @@ final class BatteryMonitor {
     }
 
     var limitAction: LimitAction? {
-        guard canChangeLimit, !isApplying, requested == finished, overrideLimit == nil, mode == .normal else { return nil }
+        guard canChangeLimit, !isBusy, overrideLimit == nil, mode == .normal else { return nil }
         if let saved = limit.savedToRestore { return .useSaved(saved) }
         return limit.source == .outside ? .keepSystem : nil
     }
@@ -197,7 +196,7 @@ final class BatteryMonitor {
         // One read at a time: a slow read must not pile up behind the timer.
         if !refreshing {
             refreshing = true
-            let startedAt = epoch
+            let startedAt = setter.generation
             let late = lateLimit
             Task.detached(priority: .utility) { [weak self] in
                 let reading = SystemBattery.read()
@@ -218,14 +217,14 @@ final class BatteryMonitor {
     private func finishRefresh(reading: BatteryReading?, state: ChargeLimit.State, startedAt: Int, enforced: Int?) {
         refreshing = false
         // macOS enforced, late, a limit Hachibu asked for: it is Hachibu's.
-        if let late = lateLimit, startedAt == epoch, !isApplying, enforced == late, state.known, state.limit == late {
+        if let late = lateLimit, startedAt == setter.generation, !isApplying, enforced == late, state.known, state.limit == late {
             Preferences.shared.savedLimit = late
             lateLimit = nil
             applyProblem = nil
         }
         // A limit request started or ended since this read began, so its
         // limit may be the old one. Take the battery reading, drop the limit.
-        let limitIsCurrent = startedAt == epoch && !isApplying
+        let limitIsCurrent = startedAt == setter.generation && !isApplying
         update(reading: reading, state: limitIsCurrent ? state : nil)
     }
 
@@ -236,6 +235,7 @@ final class BatteryMonitor {
     /// For `Hachibu --set-limit <n>`: applies a limit through the same path
     /// as the slider and reports what macOS confirmed.
     func setLimitFromCommandLine(_ value: Int) async -> String {
+        runsModes = false
         let before = await Task.detached { ChargeLimit.read() }.value
         await helper.refresh()
         if !before.available.isEmpty { officialStops = LimitStops.normalized(before.available) }
@@ -246,8 +246,8 @@ final class BatteryMonitor {
         limitSupported = true
         limitKnown = before.known
         guard before.known else { return "refused: the current limit could not be read" }
-        requested += 1
-        await apply(value, request: requested)
+        _ = await setter.request(value) { [weak self] in self?.settle(value, $0, remember: true) }.value
+        await reloadNow()
         return "limit \(limit.valueText), \(limit.sourceText)" + (applyProblem.map { ". \($0)" } ?? "")
     }
 
@@ -273,7 +273,7 @@ final class BatteryMonitor {
                 Preferences.shared.reloadSavedLimit()
                 limit = LimitState(system: state.limit, saved: Preferences.shared.savedLimit)
                 adoptSailing()
-                if !isApplying, requested == finished { setSlider(userLimit) }
+                if !isBusy { setSlider(userLimit) }
             } else if !state.supported {
                 limitKnown = false
                 limit = LimitState(system: nil, saved: Preferences.shared.savedLimit)
@@ -332,85 +332,50 @@ final class BatteryMonitor {
         enqueueApply(value, after: nil)
     }
 
-    /// Queues a limit request behind any that is still running. Only the
-    /// newest request is carried out; older ones that have not started are dropped.
+    /// Asks for a limit. `remember` is false for a limit a mode asks for: it
+    /// is not the user's choice, so it is never saved as theirs.
     private func enqueueApply(_ value: Int, after delay: Duration?, remember: Bool = true) {
         guard canChangeLimit else { return }
-        requested += 1
-        let request = requested
-        let previous = applyChain
-        applyChain = Task { [weak self] in
-            if let delay { try? await Task.sleep(for: delay) }
-            await previous?.value
-            guard let self, request == self.requested else { return }
-            await self.apply(value, request: request, remember: remember)
-        }
-    }
-
-    /// `remember` is false for a limit a mode asks for: it is not the
-    /// user's choice, so it is never saved as theirs.
-    private func apply(_ value: Int, request: Int, remember: Bool = true) async {
-        isApplying = true
         applyProblem = nil
         lateLimit = nil
-        epoch += 1
-        // macOS sets the limits it offers; any other needs the helper.
-        let needsHelper = value < 100 && !officialStops.contains(value)
+        setter.request(value, after: delay) { [weak self] in self?.settle(value, $0, remember: remember) }
+    }
+
+    /// What a finished request means for what Hachibu saves and says.
+    private func settle(_ value: Int, _ outcome: LimitSetter.Outcome, remember: Bool) {
         var problem: String?
-        if needsHelper {
-            if !(await HelperClient.send(.setLimit(value))).succeeded {
-                problem = "The helper did not set this limit. Try again."
-                await helper.refresh()
-            }
-        } else if await Task.detached(operation: { ChargeLimit.set(value) }).value != nil {
-            problem = "macOS did not accept this limit. Try again."
-        }
-        if problem == nil {
-            // macOS takes a moment to report a new limit. Wait for it, so
-            // the popover shows a confirmed value, never a hoped-for one.
-            // A read that fails confirms nothing.
-            let target: Int? = value >= 100 ? nil : value
-            var confirmed = false
-            for _ in 0..<20 where !confirmed {
-                let state = await Task.detached { ChargeLimit.read() }.value
-                confirmed = state.known && state.limit == target
-                if !confirmed { try? await Task.sleep(for: .milliseconds(500)) }
-            }
-            // A limit set through the helper is accepted at once but enforced
-            // a minute or two later. Wait until power management reports it.
-            if confirmed, needsHelper, remember || value < 100 {
-                isWaitingForMacOS = true
-                var enforced = false
-                for _ in 0..<48 where !enforced && request == requested {
-                    enforced = await Task.detached { ChargeLimit.enforced() }.value == value
-                    if !enforced { try? await Task.sleep(for: .seconds(5)) }
-                }
-                isWaitingForMacOS = false
-                if !enforced, request == requested {
-                    problem = "macOS accepted this limit but is not enforcing it yet."
-                    if remember { lateLimit = value }
-                }
-            }
-            if !confirmed {
-                problem = "macOS has not confirmed this limit. Try again."
-            } else if request == requested, problem == nil, remember {
-                // Saved only once macOS holds it, so "Set by Hachibu" is always true.
+        switch outcome {
+        case .held:
+            // Saved only once macOS holds it, so "Set by Hachibu" is always true.
+            if remember {
                 Preferences.shared.savedLimit = value
                 overrideLimit = nil
                 limitBeforeOverride = nil
             }
+        case .notAccepted(let viaHelper):
+            problem = viaHelper ? "The helper did not set this limit. Try again."
+                : "macOS did not accept this limit. Try again."
+            if viaHelper { Task { await helper.refresh() } }
+        case .notConfirmed:
+            problem = "macOS has not confirmed this limit. Try again."
+        case .notEnforced:
+            problem = "macOS accepted this limit but is not enforcing it yet."
+            if remember { lateLimit = value }
+        case .superseded:
+            return
         }
         // A mode's limit did not take: end the mode instead of pretending.
-        if problem != nil, !remember, request == requested { abandonModes() }
-        epoch += 1
-        // A newer request is waiting behind this one: let it report instead.
-        guard request == requested else { return }
-        finished = request
-        isApplying = false
+        if problem != nil, !remember { abandonModes() }
+        applyProblem = problem
+        Task { await reloadNow() }
+    }
+
+    /// Reads the battery and the limit now, without waiting for the timer.
+    private func reloadNow() async {
+        let startedAt = setter.generation
         let reading = await Task.detached { SystemBattery.read() }.value
         let state = await Task.detached { ChargeLimit.read() }.value
-        update(reading: reading, state: state)
-        applyProblem = problem
+        update(reading: reading, state: startedAt == setter.generation && !isApplying ? state : nil)
     }
 
     // MARK: Top Up and sailing
@@ -442,7 +407,7 @@ final class BatteryMonitor {
         guard !adoptedSailing else { return }
         adoptedSailing = true
         let range = Preferences.shared.sailingRange
-        guard Capability.sailing, range > 0, overrideLimit == nil,
+        guard Capability.sailing, runsModes, range > 0, overrideLimit == nil,
               let saved = limit.saved, let held = limit.system, held < saved, held >= saved - range else { return }
         overrideLimit = held
         limitBeforeOverride = saved
@@ -452,13 +417,13 @@ final class BatteryMonitor {
     /// is only requested when the plan changes, and never while another
     /// request is under way, so a limit changed outside Hachibu is not fought.
     private func runModes() {
-        guard !isPreview, let inputs = chargeInputs else { return }
+        guard !isPreview, runsModes, let inputs = chargeInputs else { return }
         let plan = engine.step(inputs)
         mode = plan.mode
         isSailing = plan.isSailing
         if plan.mode != .normal { modeProblem = nil }
         let wanted: Int? = plan.limit == inputs.limit ? nil : plan.limit
-        guard wanted != overrideLimit, !isApplying, requested == finished, canChangeLimit else { return }
+        guard wanted != overrideLimit, !isBusy, canChangeLimit else { return }
         let goingBackTo = inputs.limit
         if overrideLimit == nil { limitBeforeOverride = inputs.limit }
         overrideLimit = wanted
@@ -486,7 +451,7 @@ final class BatteryMonitor {
         mode = .normal
         overrideLimit = nil
         limitBeforeOverride = nil
-        requested += 1
+        setter.supersede()
         if target < 100, !officialStops.contains(target) {
             _ = await HelperClient.send(.setLimit(target))
         } else {
@@ -503,9 +468,7 @@ final class BatteryMonitor {
         defer { isRemovingHelper = false }
         // Drop any limit request still waiting, and let one that is running
         // finish, so nothing writes a limit after the helper is gone.
-        requested += 1
-        let request = requested
-        await applyChain?.value
+        await setter.cancelPending()
         // Asked even of a helper that seems broken: asking starts it.
         _ = await HelperClient.send(.restoreAdapter)
         let now = await Task.detached { ChargeLimit.read() }.value
@@ -514,12 +477,11 @@ final class BatteryMonitor {
         if let held = now.limit, held < HelperNeed.lowestWithoutHelper {
             let target = HelperNeed.limitAfterRemoval(current: held, official: officialStops)
             setSlider(target)
-            await apply(target, request: request)
-            if applyProblem != nil || limit.effective != target {
+            let outcome = await setter.request(target) { [weak self] in self?.settle(target, $0, remember: true) }.value
+            await reloadNow()
+            if outcome != .held || limit.effective != target {
                 return "The limit could not be raised to \(target)%, so the helper was kept."
             }
-        } else {
-            finished = request
         }
         return await helper.unregister().map { "macOS did not remove the helper: \($0)" }
     }

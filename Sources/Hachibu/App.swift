@@ -104,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let monitor = BatteryMonitor.current, monitor.overrideLimit != nil || monitor.mode != .normal,
               !Store.isOverridden else { return .terminateNow }
+        modeLog.notice("quit waits: override \(monitor.overrideLimit ?? -1, privacy: .public), mode \(monitor.mode.rawValue, privacy: .public)")
         Task {
             await monitor.restoreBeforeQuit()
             NSApp.reply(toApplicationShouldTerminate: true)
@@ -122,6 +123,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 enum Launch {
     private static var done = false
 
+    /// Ends a command-line run. The limit is put back here, before the quit
+    /// starts: a quit begun from inside a task cannot wait for another task.
+    private static func quit(_ monitor: BatteryMonitor) async {
+        if monitor.overrideLimit != nil || monitor.mode != .normal {
+            print("putting the limit back before quitting: Hachibu had asked macOS for "
+                + "\(monitor.overrideLimit.map { "\($0)%" } ?? "nothing"), mode \(monitor.mode.rawValue), yours \(monitor.userLimit)%")
+        }
+        await monitor.restoreBeforeQuit()
+        NSApp.terminate(nil)
+    }
+
     static func run(model: AppModel, monitor: BatteryMonitor, open: @escaping (String) -> Void) {
         guard !done else { return }
         done = true
@@ -134,7 +146,7 @@ enum Launch {
             }
             Task {
                 print(await monitor.setLimitFromCommandLine(value))
-                NSApp.terminate(nil)
+                await quit(monitor)
             }
         } else if let flag = arguments.firstIndex(of: Relaunch.flag) {
             // Started again by itself: go back to where the person was.
@@ -148,7 +160,7 @@ enum Launch {
             let what = arguments[flag + 1]
             Task {
                 await monitor.tryMode(what, seconds: seconds)
-                NSApp.terminate(nil)
+                await quit(monitor)
             }
         } else if arguments.contains("--restore-charger") {
             Task {
@@ -159,7 +171,7 @@ enum Launch {
                 print("helper: \(reply.problem ?? "ok"), reports cut \(reply.adapterCut)")
                 try? await Task.sleep(for: .seconds(3))
                 print("after: CHIE readable \(hb_adapter_is_cut(&cut)), cut \(cut), plugged \(SystemBattery.read()?.isPluggedIn ?? false)")
-                NSApp.terminate(nil)
+                await quit(monitor)
             }
         } else if arguments.contains("--helper-reinstall") {
             Task {
@@ -167,13 +179,13 @@ enum Launch {
                 print("removed: \(removal ?? "ok"), now \(monitor.helper.state)")
                 await monitor.helper.install()
                 print("installed: \(monitor.helper.installProblem ?? "ok"), now \(monitor.helper.state)")
-                NSApp.terminate(nil)
+                await quit(monitor)
             }
         } else if arguments.contains("--helper-status") {
             Task {
                 await monitor.helper.refresh()
                 print("helper: \(monitor.helper.state)")
-                NSApp.terminate(nil)
+                await quit(monitor)
             }
         } else if SelfTest.requested {
             SelfTest.run()

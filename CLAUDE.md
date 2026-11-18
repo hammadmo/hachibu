@@ -3,7 +3,7 @@
 A native macOS menu bar app in SwiftUI that controls when a MacBook
 charges. It runs on this Mac only, with no server.
 
-Starting a session: read `docs/STATUS.md` first. It says what is done,
+Starting a session: read `docs/STATUS.md` first. `ARCHITECTURE.md` says who decides and who acts; `docs/FIXLOG.md` has the rules past bugs left behind. It says what is done,
 what is next, what is not verified, and the decisions already made.
 Update it when a milestone ends or a decision changes.
 
@@ -30,6 +30,7 @@ Update it when a milestone ends or a decision changes.
 - Every snapshot state is a fixture. Snapshots never read or change the real battery.
 - Test runs set `APP_STORE`. With it set, the app never writes real preferences, registers login items, sends notifications, or changes the charge limit (`Store.isOverridden`). Keep that true for every new feature that changes something real.
 - `Hachibu --set-limit <n>` changes the real limit through the same path as the slider. Run it only when the user has agreed to a real change, and restore the limit afterwards.
+- For a refactor that must not change the screen: copy `/tmp/Hachibu-shots` somewhere first, then `tools/compare-shots.sh <that folder>` after. It prints SAME.
 - Then check the grid: `tools/grid-lint.sh` and `swift tools/check-layout.swift /tmp/Hachibu-shots/*-layout.json`. Both print PASS.
 - A change is done when the build has no errors or warnings, tests and checks pass, and you looked at the light and dark snapshots.
 - Run commands one per line or joined with `&&`, never `;`, so a failing check stops a commit.
