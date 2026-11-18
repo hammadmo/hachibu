@@ -136,8 +136,6 @@ enum Metric {
     static let waveBand: CGFloat = 64
     static let waveRadius: CGFloat = 24
     static let blossom: CGFloat = 16
-    static let glyphSize: CGFloat = 14
-    static let glyphStroke: CGFloat = 2
 }
 
 /// Layer 3: motion, named by intent.

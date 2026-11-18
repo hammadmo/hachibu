@@ -113,8 +113,8 @@ All numerals use monospaced digits so values do not shift as they change.
 
 ## Icons
 Source: SF Symbols, light weight, 14 pt, never filled. Views name a
-`KitIcon`. One drawn glyph: `EnsoGlyph`, the open ring for the menu bar,
-stroke 2, round caps, drawn as a template (one color, set by the menu bar).
+`KitIcon`. One drawn glyph: `EnsoGlyph`, the battery with a brush ring
+for the menu bar, drawn as a template (one color, set by the menu bar).
 
 | KitIcon | Symbol |
 | --- | --- |
@@ -165,8 +165,12 @@ A rounded square in `Ink.seal` with 八 (eight) in `Ink.onSeal`.
 Decorative: hidden from VoiceOver. Never used as a button.
 
 ### Menu bar glyph (`EnsoGlyph`)
-An open ring whose length follows the battery level, 14 pt, template.
-A warning adds an exclamation mark beside it, never color alone.
+A small battery, 22 by 16 pt, template: a rounded outline (radius 5,
+line 1.1) with a terminal on the right. Inside, the charge is an enso: a
+brush ring from 12 o'clock, clockwise, as long as the battery is full,
+2.9 pt where the brush lands and 0.9 pt where it lifts. No reading: a
+dotted ring. A warning adds an exclamation mark beside it, never color
+alone. The gallery draws it with the menu bar's own code (`MenuBarGlyph`).
 
 ### Button (`.buttonStyle(.kit(kind))`)
 Size: height 32, radius 4, horizontal padding 12, `labelStrong`.

@@ -1,3 +1,4 @@
+import HachibuKit
 import SwiftUI
 
 /// Views name a KitIcon, never an SF Symbol, so the set changes in one place.
@@ -30,22 +31,17 @@ struct KitIconView: View {
     }
 }
 
-/// The menu bar glyph: an open ring whose length follows the battery level.
-/// One color, so the menu bar can tint it.
+/// The menu bar glyph, exactly as the menu bar draws it (`MenuBarGlyph`):
+/// a small battery whose charge is a brush ring. One color, so the menu bar
+/// can tint it.
 struct EnsoGlyph: View {
-    /// 0 to 100. nil draws a faint full ring.
+    /// 0 to 100. nil draws the "no reading" glyph.
     var percent: Int?
-    var size: CGFloat = Metric.glyphSize
+    var isWarning = false
 
     var body: some View {
-        let inset = Metric.glyphStroke / 2
-        Circle()
-            .trim(from: 0, to: CGFloat(min(max(percent ?? 100, 4), 100)) / 100)
-            .stroke(style: StrokeStyle(lineWidth: Metric.glyphStroke, lineCap: .round))
-            .rotationEffect(.degrees(-90))
-            .opacity(percent == nil ? 0.4 : 1)
-            .padding(inset)
-            .frame(width: size, height: size)
+        Image(nsImage: MenuBarGlyph.image(for: MenuBarMark.choose(percent: percent, warning: isWarning)))
+            .renderingMode(.template)
             .accessibilityHidden(true)
     }
 }

@@ -34,7 +34,7 @@ Update it when a milestone ends or a decision changes.
 - For a refactor that must not change the screen: copy `/tmp/Hachibu-shots` somewhere first, then `tools/compare-shots.sh <that folder>` after. It prints SAME. The About page always differs: it shows the build number.
 - Then check the grid: `tools/grid-lint.sh` and `swift tools/check-layout.swift /tmp/Hachibu-shots/*-layout.json`. Both print PASS.
 - A change is done when the build has no errors or warnings, tests and checks pass, and you looked at the light and dark snapshots.
-- Run commands one per line or joined with `&&`, never `;`, so a failing check stops a commit.
+- Run commands one per line or joined with `&&`, never `;`, so a failing check stops a commit. Never pipe a check into `tail` or `grep` before `&&` either: the pipe hides its exit code.
 
 ## Design rules
 

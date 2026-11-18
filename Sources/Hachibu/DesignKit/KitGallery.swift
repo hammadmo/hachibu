@@ -66,7 +66,7 @@ struct KitGallery: View {
                     ForEach(PartState.allCases, id: \.self) { heading($0.rawValue) }
                 }
                 stateRow("Primary") { Button("Top Up") {}.buttonStyle(.kit()) }
-                stateRow("Secondary") { Button("Discharge") {}.buttonStyle(.kit(.secondary)) }
+                stateRow("Secondary") { Button("Top Up") {}.buttonStyle(.kit(.secondary)) }
                 stateRow("Ghost") { Button("Settings…") {}.buttonStyle(.kit(.ghost)) }
             }
         }
@@ -138,8 +138,9 @@ struct KitGallery: View {
                 UmeBlossom(size: Metric.blossom)
                 UmeBlossom(size: Metric.blossom, arrangement: .sprig)
                 HStack(spacing: Space.sm) {
-                    ForEach([100, 80, 50, 20], id: \.self) { EnsoGlyph(percent: $0) }
+                    ForEach([100, 90, 80, 50, 20, 5], id: \.self) { EnsoGlyph(percent: $0) }
                     EnsoGlyph(percent: nil)
+                    EnsoGlyph(percent: 86, isWarning: true)
                 }
                 .foregroundStyle(Ink.text)
                 HStack(spacing: Space.sm) {
@@ -190,10 +191,7 @@ struct PopoverSample: View {
                 .kitType(.label)
                 LimitSlider(value: $limit, stops: [80, 85, 90, 95, 100])
             }
-            HStack(spacing: Space.sm) {
-                Button("Top Up") {}.buttonStyle(.kit())
-                Button("Discharge") {}.buttonStyle(.kit(.secondary))
-            }
+            Button("Top Up") {}.buttonStyle(.kit(.secondary))
             LevelSparkline(levels: Self.day, limit: limit).kitCard()
             StatRow(stats: Self.stats)
             KitDivider()

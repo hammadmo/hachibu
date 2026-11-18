@@ -90,3 +90,15 @@ Rules:
 - If the system does it for you (macOS drains to a lower limit), do not
   hand it the chance at the wrong moment.
 
+## 2026-11-19 A commit went in with the grid lint failing
+
+Symptom: the menu bar glyph was committed while `tools/grid-lint.sh`
+printed FAIL.
+Cause: the checks were chained as `tools/grid-lint.sh | tail -1 && ...`.
+A pipe reports the exit code of its last command, so `tail` hid the
+failure. The same shape as the earlier `;` mistake.
+Fix: the lint lines got their marked exceptions, and the commit was
+amended after every check passed.
+Rule: never pipe a check into `tail`, `grep`, or `head` in front of `&&`.
+Run it bare, or use `set -o pipefail`.
+

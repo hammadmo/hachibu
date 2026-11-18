@@ -33,41 +33,76 @@ struct MenuBarLabel: View {
 }
 
 /// Draws the menu bar glyph as a template image, so macOS colors it for a
-/// light or dark menu bar. A warning adds an exclamation mark: never color alone.
+/// light or dark menu bar: a small battery whose charge is an enso, a brush
+/// ring that is thick where the brush lands and thin where it lifts, as long
+/// as the battery is full. A warning adds an exclamation mark: never color alone.
 nonisolated enum MenuBarGlyph {
+    // All sizes are in points inside a 16 pt tall menu bar icon.
+    private static let height: CGFloat = 16
+    private static let body = NSRect(x: 0.7, y: 0.7, width: 17.6, height: 14.6) // grid: ok glyph strokes inside a 16 pt icon
+    private static let bodyRadius: CGFloat = 5
+    private static let bodyLine: CGFloat = 1.1
+    private static let terminal = NSRect(x: 19.4, y: 5.7, width: 2, height: 4.6) // grid: ok glyph strokes inside a 16 pt icon
+    private static let ringRadius: CGFloat = 4.5
+    private static let brushThick: CGFloat = 2.9
+    private static let brushThin: CGFloat = 0.9
+    private static let batteryWidth: CGFloat = 22
+    private static let warningWidth: CGFloat = 6
+
     static func image(for mark: MenuBarMark) -> NSImage {
-        let side: CGFloat = 16
-        let stroke: CGFloat = 2
         let warning = mark.isWarning
         let percent = mark.percent
-        let size = NSSize(width: warning ? side + 7 : side, height: side)
+        let size = NSSize(width: batteryWidth + (warning ? warningWidth : 0), height: height)
         let image = NSImage(size: size, flipped: false) { _ in
-            let radius = (side - stroke) / 2 - 0.5
-            let center = NSPoint(x: side / 2, y: side / 2)
             NSColor.black.setStroke()
             NSColor.black.setFill()
-            let ring = NSBezierPath()
-            ring.lineWidth = stroke
-            ring.lineCapStyle = .round
+            let outline = NSBezierPath(roundedRect: body, xRadius: bodyRadius, yRadius: bodyRadius)
+            outline.lineWidth = bodyLine
+            outline.stroke()
+            NSBezierPath(roundedRect: terminal, xRadius: terminal.width / 2, yRadius: terminal.width / 2).fill()
+            let center = NSPoint(x: body.midX, y: body.midY)
             if let percent {
-                // From 12 o'clock, clockwise, to the battery level.
-                let sweep = 360 * max(CGFloat(percent) / 100, 0.04)
-                ring.appendArc(withCenter: center, radius: radius, startAngle: 90,
-                               endAngle: 90 - min(sweep, 359.9), clockwise: true)
-                ring.stroke()
+                brush(center: center, percent: CGFloat(percent)).fill()
             } else {
-                ring.appendOval(in: NSRect(x: center.x - radius, y: center.y - radius,
-                                           width: radius * 2, height: radius * 2))
-                ring.setLineDash([2, 3], count: 2, phase: 0)
+                // No reading: a dotted ring where the charge would be.
+                let ring = NSBezierPath(ovalIn: NSRect(x: center.x - ringRadius, y: center.y - ringRadius,
+                                                       width: ringRadius * 2, height: ringRadius * 2))
+                ring.lineWidth = 1.2
+                ring.setLineDash([1.4, 2.4], count: 2, phase: 0)
                 ring.stroke()
             }
             if warning {
-                NSBezierPath(roundedRect: NSRect(x: side + 3, y: 6, width: 2.4, height: 8), xRadius: 1.2, yRadius: 1.2).fill() // grid: ok glyph strokes inside a 16 pt icon
-                NSBezierPath(ovalIn: NSRect(x: side + 2.8, y: 2, width: 2.8, height: 2.8)).fill() // grid: ok glyph strokes inside a 16 pt icon
+                let x = batteryWidth + 1.6
+                NSBezierPath(roundedRect: NSRect(x: x, y: 6, width: 2.4, height: 8), xRadius: 1.2, yRadius: 1.2).fill() // grid: ok glyph strokes inside a 16 pt icon
+                NSBezierPath(ovalIn: NSRect(x: x - 0.2, y: 2, width: 2.8, height: 2.8)).fill() // grid: ok glyph strokes inside a 16 pt icon
             }
             return true
         }
         image.isTemplate = true
         return image
+    }
+
+    /// The brush ring: from 12 o'clock, clockwise, as far as the level,
+    /// tapering from the thick start to the thin end.
+    private static func brush(center: NSPoint, percent: CGFloat) -> NSBezierPath {
+        let sweep = min(360 * max(percent / 100, 0.06), 356)
+        let steps = 60
+        var outer: [NSPoint] = []
+        var inner: [NSPoint] = []
+        for step in 0...steps {
+            let t = CGFloat(step) / CGFloat(steps)
+            let angle = (90 - sweep * t) * .pi / 180
+            let width = brushThick - (brushThick - brushThin) * pow(t, 1.4)
+            outer.append(NSPoint(x: center.x + (ringRadius + width / 2) * cos(angle),
+                                 y: center.y + (ringRadius + width / 2) * sin(angle)))
+            inner.append(NSPoint(x: center.x + (ringRadius - width / 2) * cos(angle),
+                                 y: center.y + (ringRadius - width / 2) * sin(angle)))
+        }
+        let path = NSBezierPath()
+        path.move(to: outer[0])
+        outer.dropFirst().forEach(path.line(to:))
+        inner.reversed().forEach(path.line(to:))
+        path.close()
+        return path
     }
 }
