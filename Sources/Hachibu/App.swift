@@ -91,6 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // but a copy started from a terminal needs it said here too.
         NSApp.setActivationPolicy(.accessory)
         Notifier.requestPermission()
+        DockIcon.watch()
     }
 
     /// Closing Settings or History must not quit the menu bar app.
@@ -143,5 +144,33 @@ enum Launch {
         } else {
             Snapshot.runIfRequested(model: model, open: open)
         }
+    }
+}
+
+/// Shows Hachibu in the Dock while Settings or History is open, so the
+/// window can be found again, and takes it out when both are closed.
+/// Test runs leave the Dock alone.
+enum DockIcon {
+    private static let titles: Set<String> = ["Hachibu Settings", HistoryView.windowTitle]
+
+    static func watch() {
+        guard !Store.isOverridden else { return }
+        let center = NotificationCenter.default
+        center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { update(closing: nil) }
+        }
+        center.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main) { note in
+            let closing = (note.object as AnyObject?).map(ObjectIdentifier.init)
+            MainActor.assumeIsolated { update(closing: closing) }
+        }
+    }
+
+    /// A window that is closing still counts as visible, so it is left out.
+    private static func update(closing: ObjectIdentifier?) {
+        let open = NSApp.windows.contains { $0.isVisible && titles.contains($0.title) && ObjectIdentifier($0) != closing }
+        let wanted: NSApplication.ActivationPolicy = open ? .regular : .accessory
+        guard NSApp.activationPolicy() != wanted else { return }
+        NSApp.setActivationPolicy(wanted)
+        if open { NSApp.activate() }
     }
 }
