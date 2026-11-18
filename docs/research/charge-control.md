@@ -291,3 +291,47 @@ and the helper.
 - Decision needed: Discharge by adapter cut is not shipped. macOS's own
   drain already gives "run on the battery, plugged in, down to the limit".
 
+## Is calibration worth building? (2026-11-18, web research by a Sonnet subagent)
+
+Marks here: [V] the page was read through a fetch tool that summarises
+pages, so not the raw text; [U] uncertain or from a search summary only.
+Nothing below was measured on this Mac.
+
+- AlDente claims the battery management system "loses track" when the
+  battery sits at mid or low charge for long: shutdowns at 40–50%, erratic
+  reported capacity, fast percentage drops, all temporary and gone after a
+  cycle. Its Calibration Mode charges to full, discharges to 10%, charges
+  to full, restores the limit, and disables sleep. It recommends monthly,
+  or every two weeks around 50%. It cites no evidence; the FAQ links
+  Battery University.
+  [V](https://apphousekitchen.com/feature-explanation-calibration-mode-2/)
+  [V](https://apphousekitchen.com/faq/)
+- Apple: with Optimized Charging or a Charge Limit the Mac "will
+  occasionally charge to 100% to maintain accurate battery
+  state-of-charge estimates". No frequency, no deep discharge. Apple also
+  says charging resumes when the level drops by more than 5% while
+  plugged in. [V](https://support.apple.com/102338)
+- Battery University, generic lithium-ion, not Apple: the gauge drifts
+  from the cells after many partial discharges; calibrate every three
+  months or 40 partial cycles; not needed if the device deep-discharges
+  by itself; impedance-tracking packs may need less. Calibration corrects
+  the readout, not the capacity.
+  [V](https://batteryuniversity.com/article/bu-603-how-to-calibrate-a-smart-battery)
+- Texas Instruments Impedance Track gauges update capacity from two
+  rested voltage readings far apart in charge level. That a narrow charge
+  window for weeks degrades the reading is an inference from this, not a
+  sourced finding, and whether Apple's pack works this way was not
+  confirmed. [U]
+- batt has an experimental calibration: discharge below 15%, charge to
+  100%, hold two hours, discharge back to the limit. No rationale given.
+  [V](https://github.com/charlie0129/batt/blob/master/docs/usage.md)
+- User reports: anecdotes only. No verified case on Apple silicon of a
+  shutdown at a non-zero percentage fixed by a full cycle. BatFi and
+  Battery Toolkit were not checked.
+- Reading: calibration can plausibly fix the reading (percentage and
+  reported capacity). No source claims it improves the battery, and each
+  run costs a full cycle, a deep discharge, and hours at 100%. macOS's
+  own full charge gives the gauge a top reference but no deep discharge.
+- Decision taken: keep S-042 as an optional, manual feature, worded as
+  "fixes the reading, not the battery", with no schedule and no reminder.
+

@@ -451,36 +451,42 @@ Acceptance:
 Status: todo
 
 ### S-042 Calibrate the battery
-As the user, I start a calibration that charges to 100%, lets macOS
-drain the battery to 20%, charges to 100% again, then restores my limit.
+As the user, when the percentage or the health figure looks wrong, I
+start a calibration: macOS drains the battery to 20%, charges it to 100%,
+rests there for two hours, then my limit returns.
 Screens: calibration
 Depends: S-010, S-020
-How (rewritten 2026-11-18, no adapter cut): three limits in a row. No
-limit until 100%; a limit of 20% until the battery is there (macOS drains
-to a limit below the level by itself, staying on AC power); no limit
-until 100% again; then the user's limit. 20% replaces the earlier 15%:
-it is the lowest limit the helper sets.
+Why (researched 2026-11-18, `docs/research/charge-control.md`, "Is
+calibration worth building?"): it can correct the reading, not the
+battery. AlDente and Battery University recommend it for batteries kept
+in a narrow range; Apple only says macOS charges to 100% now and then to
+keep its estimates accurate, which gives no deep discharge. Evidence of
+real trouble on Apple silicon is anecdotal. So: manual, optional, no
+schedule, no reminder, and the sheet says what it costs.
+How (no adapter cut): limits in a row. A limit of 20% until the battery
+is there (macOS drains to a limit below the level by itself, staying on
+AC power); no limit until 100%; two hours at 100%; then the user's limit,
+and macOS drains back to it. This is batt's order. 20% is the lowest
+limit the helper sets (AlDente uses 10%, batt 15%).
 Known from real runs: macOS drained 80% to 60% in 36 minutes awake, so
-100% to 20% should take two to three hours. In 3.5 minutes of sleep the
-level did not fall, so the drain seems to stop while the Mac sleeps.
-Worth asking before building: macOS already runs its own full charge
-every few weeks "to keep its estimates accurate" (S-041), and Apple does
-not ask for calibration on these batteries. This story may add little.
+80% to 20% should take about two hours. In 3.5 minutes of sleep the level
+did not fall, so the drain seems to stop while the Mac sleeps.
 Acceptance:
-- [snap] A sheet shows the three steps, the current step, the level, and
-  a Cancel button.
-- [unit] Steps advance at 100%, at 20%, and at 100%; then the user's
-  limit is asked for again.
+- [snap] A sheet shows the steps, the current step, the level, and a
+  Cancel button.
+- [snap] Before starting, the sheet says: it corrects the reading and
+  does not improve the battery; it uses one full cycle; it takes several
+  hours; the charger must stay connected; the drain waits while the Mac
+  sleeps. Hachibu does not keep the Mac awake.
+- [unit] Steps advance at 20%, at 100%, and after two hours at 100%; then
+  the user's limit is asked for again.
 - [unit] Cancel restores the user's limit at once. Unplugging pauses the
   step and it continues when the charger is back.
 - [unit] Sailing and heat protection are paused while it runs (heat
   protection: decide when S-040 is built).
 - [manual] A notification is sent when calibration finishes.
-- [snap] The sheet says it takes several hours, that the charger must
-  stay connected, and that the drain waits while the Mac sleeps. Hachibu
-  does not keep the Mac awake.
-- [manual] One full run on this Mac, with the times of each step written
-  into `docs/research/charge-control.md`.
+- [manual] One full run on this Mac, with the time of each step and the
+  health figure before and after written into the research file.
 Status: todo
 
 ## M6 System and polish
