@@ -282,5 +282,14 @@ VoiceOver; they never carry meaning and never sit behind text.
   the divider on the About tab.
 Not used in the popover: it is dense with numbers.
 
+### Popover composition (`PopoverView`)
+Top to bottom, spacing `Space.lg`: the warning banner (only while the
+limit is not holding); the gauge; the status line (status, then measured
+watts); the power flow card; the limit block (label and value, slider,
+then the source with one secondary button when there is something to do:
+"Use Hachibu's Limit" or "Keep This Limit"); the stat row; a divider; the
+footer. Top Up, Discharge, and the 24-hour chart join it when they are
+built, not before.
+
 ### Footer
 Ghost buttons in a row: "History…", "Settings…", "Quit Hachibu".

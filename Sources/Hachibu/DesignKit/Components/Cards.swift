@@ -57,6 +57,8 @@ struct StatusLine: View {
             }
         }
         .multilineTextAlignment(.center)
+        // A fixed height for the usual two lines keeps what follows on the grid.
+        .frame(minHeight: Metric.statusHeight)
         .accessibilityElement(children: .combine)
     }
 }

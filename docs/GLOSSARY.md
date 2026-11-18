@@ -23,6 +23,8 @@ notifications, and errors.
 | Charging | Plugged in and current is flowing into the battery | powering, filling |
 | Holding at limit | Plugged in, at the limit, no current into the battery | limit reached, paused, idle, full |
 | On battery | Not plugged in | unplugged, discharging |
+| Fully charged | Plugged in at 100% with no current into the battery | full, charged |
+| Not charging | Plugged in, below the limit, and no current into the battery | paused, idle, waiting |
 | Topping up | Charging to 100% once, at the user's request | full charge, override, boost |
 | Discharging | Plugged in but running on the battery, at the user's request, down to the limit | draining, on battery |
 | Sailing | Plugged in and drifting down inside the sailing range | coasting, floating |
@@ -36,6 +38,9 @@ notifications, and errors.
 | Term | Means | Not |
 | --- | --- | --- |
 | Set the limit | Choose the percentage where charging stops | change cap, adjust |
+| Use Hachibu's Limit | Apply the limit saved in Hachibu when macOS holds a different one | restore, reset, take over |
+| Keep This Limit | Adopt the limit macOS already holds as Hachibu's own | accept, import |
+| Apply Limit Again | Ask macOS for the limit once more, from the warning banner | retry, fix |
 | Top Up | Start charging to 100% once | charge to full, boost |
 | Discharge | Start running on the battery, while plugged in, down to the limit | drain |
 | Stop | End a Top Up, Discharge, or calibration early | cancel, abort |

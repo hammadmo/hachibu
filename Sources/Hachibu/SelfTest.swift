@@ -1,63 +1,84 @@
 import AppKit
-import SwiftData
+import Foundation
 import HachibuKit
 
-/// Self-test for agents: runs the app's real functions on a test store,
-/// prints PASS or FAIL per check, and quits with exit code 0 or 1.
-///   APP_STORE=/tmp/Hachibu-self.store ~/Applications/Hachibu.app/Contents/MacOS/Hachibu --selftest
-/// (tools/selftest.sh does this.) Add a check for every story with logic.
-@MainActor
+/// Checks the app's real functions on this Mac, read-only, and quits with
+/// 0 (all passed) or 1. Run it with tools/selftest.sh, which sets APP_STORE
+/// so nothing real is written and the charge limit cannot be changed.
 enum SelfTest {
-    static var requested: Bool { CommandLine.arguments.contains("--selftest") }
-    /// Read by AppDelegate.applicationWillTerminate.
-    static var exitCode: Int32 = 0
-    private static var failures = 0
-    private static var count = 0
+    static let requested = CommandLine.arguments.contains("--selftest")
+    private(set) static var exitCode: Int32 = 1
 
-    static func runIfRequested(model: AppModel) {
-        guard requested else { return }
-        // Print each line at once, so a crash keeps the lines before it.
-        setvbuf(stdout, nil, _IOLBF, 0)
+    static func run() {
         guard Store.isOverridden else {
             print("SELFTEST refused: set APP_STORE to a file in /tmp")
-            finish(code: 1)
+            NSApp.terminate(nil)
             return
         }
-        Task {
-            try? await Task.sleep(for: .seconds(0.5))
-            let context = model.container.mainContext
-            func items() -> [Item] { (try? context.fetch(FetchDescriptor<Item>())) ?? [] }
-
-            let before = items().count
-            model.addItem()
-            check("New Item adds one item", items().count == before + 1)
-            check("the new item is selected", model.selection != nil)
-
-            if let item = items().first(where: { $0.id == model.selection }) {
-                item.isStarred.toggle()
-                check("starring an item marks it starred", item.isStarred)
-                context.delete(item)
-                try? context.save()
-                check("deleting the item removes it", items().count == before)
-            }
-            check("titles are cleaned", ItemTitle.clean("  Buy   milk ") == "Buy milk")
-
-            print(failures == 0 ? "SELFTEST PASS \(count) checks" : "SELFTEST FAIL \(failures) of \(count) checks")
-            finish(code: failures == 0 ? 0 : 1)
+        var failures = 0
+        func check(_ name: String, _ passed: Bool) {
+            print("\(passed ? "PASS" : "FAIL") \(name)")
+            if !passed { failures += 1 }
         }
-    }
 
-    private static func check(_ name: String, _ ok: Bool, _ detail: String = "") {
-        count += 1
-        if !ok { failures += 1 }
-        print(ok ? "PASS \(name)" : "FAIL \(name)\(detail.isEmpty ? "" : ": \(detail)")")
-    }
+        // S-002: a real reading from this Mac parses without missing fields.
+        let reading = SystemBattery.read()
+        check("the battery can be read", reading != nil)
+        check("the level is a percentage", reading.map { (0...100).contains($0.percent) } ?? false)
+        check("cycle count is present", reading?.cycleCount != nil)
+        check("health is present (capacities read from BatteryData)", reading?.healthPercent != nil)
+        check("temperature is present and plausible", reading?.temperatureC.map { (5...60).contains($0) } ?? false)
+        check("voltage is present", reading?.voltageMV != nil)
 
-    /// Quits through NSApp.terminate, never exit(), and closes sheets first:
-    /// an open sheet refuses terminate, and the run would wait forever.
-    static func finish(code: Int32) {
-        exitCode = code
-        for window in NSApp.windows { if let sheet = window.attachedSheet { window.endSheet(sheet) } }
+        // S-003: power comes from the battery controller.
+        check("system power can be read (PSTR)", SystemBattery.smcFloat("PSTR") != nil)
+        check("charger power can be read (PDTR)", SystemBattery.smcFloat("PDTR") != nil)
+        check("a missing power key reads as missing, not 0", SystemBattery.smcFloat("ZZZZ") == nil)
+        if let reading {
+            let status = BatteryStatus.derive(from: reading, limit: ChargeLimit.read().limit)
+            check("the status never says holding while current flows in",
+                  !(reading.isCharging && status == .holdingAtLimit))
+        }
+
+        // The reading is built the same way from a saved dictionary (macOS 27 layout).
+        let saved: [String: Any] = [
+            "CurrentCapacity": 80, "MaxCapacity": 100, "ExternalConnected": true, "Amperage": 0,
+            "Voltage": 12_094, "CycleCount": 274, "Temperature": 3_040,
+            "BatteryData": ["AppleRawMaxCapacity": 3_556, "DesignCapacity": 4_382],
+        ]
+        let built = SystemBattery.reading(from: saved, chargerWatts: 9.2, systemWatts: 7.2,
+                                          smcTemperature: nil, fullChargeOverride: false)
+        check("a saved battery dictionary builds the expected reading",
+              built?.percent == 80 && built?.healthPercent == 81 && built?.cycleCount == 274
+                  && built?.temperatureC == 30.4 && built?.isPluggedIn == true)
+        let draining = SystemBattery.reading(from: ["CurrentCapacity": 50, "ExternalConnected": false,
+                                                    "Amperage": NSNumber(value: UInt64(bitPattern: -850))],
+                                             chargerWatts: 12, systemWatts: 7, smcTemperature: 31,
+                                             fullChargeOverride: false)
+        check("a discharging current reads as negative, with no charger power",
+              draining?.currentMA == -850 && draining?.chargerWatts == 0)
+
+        // S-004, S-005: macOS's limit.
+        let limit = ChargeLimit.read()
+        check("the macOS charge limit is supported", limit.supported)
+        check("macOS offers limits, and the stops include 100",
+              !limit.available.isEmpty && LimitStops.normalized(limit.available).last == 100)
+        check("a test run refuses to change the real limit", ChargeLimit.set(85) != nil)
+        check("the real limit is unchanged after the refusal", ChargeLimit.read().limit == limit.limit)
+
+        // S-005: the chosen limit is saved and read back.
+        Preferences.shared.savedLimit = 85
+        check("the chosen limit is saved and read back",
+              Preferences.shared.storedValue(Preferences.Key.savedLimit) as? Int == 85)
+        Preferences.shared.savedLimit = nil
+        check("clearing the limit removes it", Preferences.shared.storedValue(Preferences.Key.savedLimit) == nil)
+
+        // S-001: the template's sample window is gone; this is a menu bar app.
+        check("the app has no Dock icon", NSApp.activationPolicy() == .accessory)
+        check("no window is open at launch", NSApp.windows.filter { $0.isVisible && $0.canBecomeMain }.isEmpty)
+
+        print(failures == 0 ? "SELFTEST PASS" : "SELFTEST FAIL \(failures)")
+        exitCode = failures == 0 ? 0 : 1
         NSApp.terminate(nil)
     }
 }

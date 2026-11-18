@@ -5,25 +5,29 @@ SwiftData database and no server.
 
 ## Layout
 
-- `Sources/Hachibu/` the app. `App.swift` has the window, menus, and the database location.
-- `Sources/HachibuKit/` rules and data logic with no SwiftUI. Tests in `Tests/HachibuKitTests/`.
+- `Sources/Hachibu/` the app: a menu bar item (`MenuBar.swift`), its popover (`PopoverView.swift`), and the Settings and History windows. `App.swift` has the scenes. No Dock icon, no main window, no database yet.
+- `Sources/Hachibu/BatteryMonitor.swift` watches the battery and the limit and applies the limit the user chooses. Views read everything from it.
+- `Sources/Hachibu/SystemBattery.swift` reads the real battery (`SystemBattery`) and macOS's own charge limit (`ChargeLimit`).
+- `Sources/HachibuSystem/` C and Objective-C: the battery controller (SMC) and the private PowerUI framework. Read `docs/research/charge-control.md` before touching it.
+- `Sources/HachibuKit/` rules with no SwiftUI: status, limit source, the "Limit not holding" watch, formatting. Tests in `Tests/HachibuKitTests/`.
+- `Sources/Hachibu/DesignKit/` the design kit. `design/KIT.md` is its spec.
 - `Package.swift` a Swift package. There is no Xcode project.
 - `build.sh` builds, signs, and installs `~/Applications/Hachibu.app`.
-- `Icon/AppIcon.icon` the app icon, an Icon Composer file (JSON plus SVG layers). `build.sh` compiles it with `tools/make_icon.sh`; `tools/icon_review.sh` renders every look into one PNG.
-- `docs/` the brief, the screen index, and the user stories, when they exist.
+- `Icon/AppIcon.icon` the app icon, drawn by `tools/draw_icon.py` and compiled by `tools/make_icon.sh`.
+- `docs/` the brief, the research, the stories, and the glossary.
 
 ## Build and check
 
 - Build and install: `./build.sh`. Add `--open` to restart the app with the new build. The build shows warnings; fix them.
 - Unit tests: `swift test --scratch-path ~/Library/Developer/Hachibu/test-build`.
-- Self-test (the app's real functions on a /tmp store): `tools/selftest.sh`. Exit 0 when every check passes. Add a check for every story with logic in `SelfTest.swift`.
-- After every UI change, take snapshots with sample data and look at them: `tools/snap.sh`.
-  It writes `/tmp/Hachibu-shots/<page>-light.png` and `-dark.png` for every sidebar page, and `settings-<tab>-light.png` and `-dark.png` for every Settings tab, then quits. `APP_SNAPSHOT_PAGES=all,settings tools/snap.sh` limits the pages.
-  For a panel, sheet, or popover, add a capture to `Snapshot.swift` like the Settings loop.
-- Snapshots, seed data, and the self-test refuse to run without `APP_STORE` in /tmp.
-- Never test against the real database in `~/Library/Application Support/Hachibu/`.
+- Self-test: `tools/selftest.sh`. It reads the real battery and the real limit, read-only, and exits 0 when every check passes. Add a check for every story with logic in `SelfTest.swift`.
+- After every UI change, take snapshots and look at them: `tools/snap.sh`. It writes `/tmp/Hachibu-shots/<page>-light.png` and `-dark.png` for the popover states, every Settings tab, and History, then quits. `APP_SNAPSHOT_PAGES=popover,settings,history tools/snap.sh` limits the groups. A new popover state is a case in `PopoverPreview`.
+- Every snapshot state is a fixture. Snapshots never read or change the real battery.
+- Test runs set `APP_STORE`. With it set, the app never writes real preferences, registers login items, sends notifications, or changes the charge limit (`Store.isOverridden`). Keep that true for every new feature that changes something real.
+- `Hachibu --set-limit <n>` changes the real limit through the same path as the slider. Run it only when the user has agreed to a real change, and restore the limit afterwards.
 - Then check the grid: `tools/grid-lint.sh` and `swift tools/check-layout.swift /tmp/Hachibu-shots/*-layout.json`. Both print PASS.
-- A change is done when the build has no errors, the grid checks pass, and you looked at the light and dark snapshots.
+- A change is done when the build has no errors or warnings, tests and checks pass, and you looked at the light and dark snapshots.
+- Run commands one per line or joined with `&&`, never `;`, so a failing check stops a commit.
 
 ## Design rules
 

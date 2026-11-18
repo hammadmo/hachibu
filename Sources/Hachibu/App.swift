@@ -1,54 +1,43 @@
 import AppKit
-import SwiftData
 import SwiftUI
 
-// Hachibu
+// Hachibu: a menu bar app. No Dock icon and no main window.
 //   Hachibu                      the app
-//   APP_STORE=<file> Hachibu     use another database (tests, experiments)
-//   APP_SNAPSHOT=<dir> Hachibu   save a PNG of every sidebar page and Settings tab in light and dark mode, then quit
-//   APP_SEED=1 Hachibu           fill an empty /tmp store with sample items (tools/snap.sh)
-//   Hachibu --selftest           run the self-test on a /tmp store and quit with 0 or 1 (tools/selftest.sh)
-//   APP_ACCENT=<id> Hachibu      run with another accent from Theme.all (UI/Theme.swift)
-//   APP_GRID=1 Hachibu           draw the 8 pt grid and the layout probes over the window
+//   Hachibu --selftest           check the real functions and quit with 0 or 1 (tools/selftest.sh)
+//   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none), print the result, quit
+//   APP_STORE=<file> Hachibu     a test run: no real preferences, login items, notifications, or limit changes
+//   APP_SNAPSHOT=<dir> Hachibu   save a PNG of the popover states, every Settings tab, and History, in light and dark, then quit
 //   APP_KIT_GALLERY=1 Hachibu    show every design kit part in every state (DesignKit/KitGallery.swift)
+//   APP_GRID=1 Hachibu           draw the 8 pt grid and the layout probes over the popover preview
 
 @main
 struct HachibuApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @State private var model = AppModel(container: Store.makeContainer())
+    @State private var model = AppModel()
+    @State private var monitor = BatteryMonitor()
 
     var body: some Scene {
-        Window("Hachibu", id: "main") {
-            Group {
-                if KitGallery.enabled { KitGallery() } else { ContentView() }
-            }
-            .environment(model)
-            .themed()
-            .overlay { if GridOverlay.enabled { GridOverlay() } }
-            .frame(minWidth: 760, minHeight: 480)
+        MenuBarExtra {
+            PopoverView()
+                .environment(model)
+                .environment(monitor)
+        } label: {
+            MenuBarLabel()
+                .environment(model)
+                .environment(monitor)
         }
-        .modelContainer(model.container)
-        .defaultSize(width: 1100, height: 720)
-        .windowToolbarStyle(.unified)
-        .commands {
-            SidebarCommands()
-            ToolbarCommands()
-            CommandGroup(replacing: .newItem) {
-                Button("New Item") { model.addItem() }
-                    .keyboardShortcut("n")
-            }
-        }
+        .menuBarExtraStyle(.window)
 
         // A plain window, not a Settings scene: SwiftUI gives a Settings scene
         // a system title bar that cannot be hidden.
         Window("Hachibu Settings", id: SettingsView.windowID) {
             SettingsView()
                 .environment(model)
-                .themed()
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.suppressed)
         .commands {
             CommandGroup(replacing: .appSettings) { OpenSettingsButton() }
         }
@@ -56,12 +45,30 @@ struct HachibuApp: App {
         Window(HistoryView.windowTitle, id: HistoryView.windowID) {
             HistoryView()
                 .environment(model)
-                .themed()
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.suppressed)
         .keyboardShortcut("y")
+
+        // The two windows below open only in snapshot and gallery runs.
+        Window(PopoverPreview.windowTitle, id: PopoverPreview.windowID) {
+            PopoverPreviewView()
+                .environment(model)
+                .overlay { if GridOverlay.enabled { GridOverlay() } }
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.suppressed)
+
+        Window(KitGallery.windowTitle, id: KitGallery.windowID) {
+            KitGallery()
+        }
+        .defaultSize(KitGallery.size)
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.suppressed)
     }
 }
 
@@ -77,12 +84,14 @@ private struct OpenSettingsButton: View {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Started from a terminal, the process is not a foreground app yet.
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
+        // A menu bar app: no Dock icon. Info.plist says the same (LSUIElement),
+        // but a copy started from a terminal needs it said here too.
+        NSApp.setActivationPolicy(.accessory)
+        Notifier.requestPermission()
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    /// Closing Settings or History must not quit the menu bar app.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     /// The self-test's result becomes the exit code, after a normal quit.
     func applicationWillTerminate(_ notification: Notification) {
@@ -90,27 +99,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// Where the data lives: ~/Library/Application Support/Hachibu/Hachibu.store
-enum Store {
-    /// True when APP_STORE points somewhere else (tests, snapshots, seed data).
-    static var isOverridden: Bool {
-        !(ProcessInfo.processInfo.environment["APP_STORE"] ?? "").isEmpty
-    }
+/// What a special run does once the app is up: the self-test, the kit
+/// gallery, or snapshots. A normal launch does nothing here.
+enum Launch {
+    private static var done = false
 
-    static var url: URL {
-        if let path = ProcessInfo.processInfo.environment["APP_STORE"], !path.isEmpty {
-            return URL(fileURLWithPath: path)
-        }
-        let dir = URL.applicationSupportDirectory.appending(path: "Hachibu", directoryHint: .isDirectory)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appending(path: "Hachibu.store")
-    }
-
-    static func makeContainer() -> ModelContainer {
-        do {
-            return try ModelContainer(for: Item.self, configurations: ModelConfiguration(url: url))
-        } catch {
-            fatalError("Could not open the database at \(url.path): \(error)")
+    static func run(model: AppModel, monitor: BatteryMonitor, open: @escaping (String) -> Void) {
+        guard !done else { return }
+        done = true
+        let arguments = CommandLine.arguments
+        if let flag = arguments.firstIndex(of: "--set-limit") {
+            guard arguments.indices.contains(flag + 1), let value = Int(arguments[flag + 1]) else {
+                print("usage: Hachibu --set-limit <80|85|90|95|100>")
+                NSApp.terminate(nil)
+                return
+            }
+            Task {
+                print(await monitor.setLimitFromCommandLine(value))
+                NSApp.terminate(nil)
+            }
+        } else if SelfTest.requested {
+            SelfTest.run()
+        } else if KitGallery.enabled {
+            open(KitGallery.windowID)
+            NSApp.activate()
+        } else {
+            Snapshot.runIfRequested(model: model, open: open)
         }
     }
 }

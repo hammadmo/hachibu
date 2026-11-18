@@ -1,11 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// Every kit part in every state. Shown instead of the app when
+/// Every kit part in every state. Opens in its own window when
 /// APP_KIT_GALLERY=1. With APP_SNAPSHOT=<dir> it writes
 /// kit-gallery-light.png and kit-gallery-dark.png, then quits.
 struct KitGallery: View {
     static let enabled = ProcessInfo.processInfo.environment["APP_KIT_GALLERY"] == "1"
+    static let windowID = "gallery"
+    static let windowTitle = "Hachibu Design Kit"
     static let size = CGSize(width: 1240, height: 880)
 
     @State private var limit = 80
@@ -33,7 +35,7 @@ struct KitGallery: View {
         .focusEffectDisabled()
         .task {
             // The gallery needs more room than the app's window.
-            NSApp.windows.first { $0.canBecomeMain }?.setContentSize(Self.size)
+            NSApp.windows.first { $0.title == Self.windowTitle }?.setContentSize(Self.size)
             await snapshotIfRequested()
         }
     }
@@ -150,7 +152,7 @@ struct KitGallery: View {
         for mode in ["light", "dark"] {
             NSApp.appearance = NSAppearance(named: mode == "light" ? .aqua : .darkAqua)
             try? await Task.sleep(for: .seconds(0.8))
-            Snapshot.capture(to: "\(dir)/kit-gallery-\(mode).png")
+            Snapshot.capture(to: "\(dir)/kit-gallery-\(mode).png", window: Snapshot.window(titled: Self.windowTitle))
         }
         print("SNAPSHOT done \(dir)")
         NSApp.terminate(nil)

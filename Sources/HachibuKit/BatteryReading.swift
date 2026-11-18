@@ -1,0 +1,95 @@
+import Foundation
+
+/// One look at the battery. Everything on screen is derived from this, so
+/// the app can never claim something the numbers contradict.
+public struct BatteryReading: Equatable, Sendable {
+    /// 0 to 100.
+    public var percent: Int
+    public var isPluggedIn: Bool
+    /// Milliamps into the battery. Negative while it discharges.
+    public var currentMA: Int
+    public var voltageMV: Int?
+    public var temperatureC: Double?
+    public var cycleCount: Int?
+    public var rawMaxCapacityMAh: Int?
+    public var designCapacityMAh: Int?
+    /// Watts coming in from the charger.
+    public var chargerWatts: Double?
+    /// Watts the Mac is using.
+    public var systemWatts: Double?
+    /// macOS is charging to 100% on its own to keep its estimates accurate.
+    public var fullChargeOverride: Bool
+
+    public init(percent: Int, isPluggedIn: Bool, currentMA: Int, voltageMV: Int? = nil,
+                temperatureC: Double? = nil, cycleCount: Int? = nil, rawMaxCapacityMAh: Int? = nil,
+                designCapacityMAh: Int? = nil, chargerWatts: Double? = nil, systemWatts: Double? = nil,
+                fullChargeOverride: Bool = false) {
+        self.percent = min(max(percent, 0), 100)
+        self.isPluggedIn = isPluggedIn
+        self.currentMA = currentMA
+        self.voltageMV = voltageMV
+        self.temperatureC = temperatureC
+        self.cycleCount = cycleCount
+        self.rawMaxCapacityMAh = rawMaxCapacityMAh
+        self.designCapacityMAh = designCapacityMAh
+        self.chargerWatts = chargerWatts
+        self.systemWatts = systemWatts
+        self.fullChargeOverride = fullChargeOverride
+    }
+
+    /// Below this, current into the battery is treated as noise, not charging.
+    public static let chargingThresholdMA = 50
+
+    /// Current is really flowing into the battery.
+    public var isCharging: Bool { isPluggedIn && currentMA > Self.chargingThresholdMA }
+
+    /// Maximum capacity now, as a percent of the design capacity.
+    public var healthPercent: Int? {
+        guard let raw = rawMaxCapacityMAh, let design = designCapacityMAh, design > 0, raw > 0 else { return nil }
+        return min(Int((Double(raw) / Double(design) * 100).rounded()), 100)
+    }
+
+    /// Watts into the battery. Negative while it discharges.
+    public var batteryWatts: Double? {
+        voltageMV.map { Double($0) * Double(currentMA) / 1_000_000 }
+    }
+}
+
+/// What the battery is doing, in the glossary's words.
+public enum BatteryStatus: Equatable, Sendable {
+    case charging, holdingAtLimit, fullyCharged, notCharging, onBattery, fullChargeByMacOS
+
+    /// How close to the limit still counts as holding at it.
+    public static let holdingMargin = 2
+
+    public static func derive(from reading: BatteryReading, limit: Int?) -> BatteryStatus {
+        guard reading.isPluggedIn else { return .onBattery }
+        if reading.isCharging { return reading.fullChargeOverride ? .fullChargeByMacOS : .charging }
+        if let limit, limit < 100, reading.percent >= limit - holdingMargin { return .holdingAtLimit }
+        return reading.percent >= 99 ? .fullyCharged : .notCharging
+    }
+
+    public var title: String {
+        switch self {
+        case .charging: "Charging"
+        case .holdingAtLimit: "Holding at limit"
+        case .fullyCharged: "Fully charged"
+        case .notCharging: "Not charging"
+        case .onBattery: "On battery"
+        case .fullChargeByMacOS: "Full charge by macOS"
+        }
+    }
+
+    /// The measured power, next to the status. A missing value is a dash, never a false 0.
+    public func detail(for reading: BatteryReading) -> String {
+        switch self {
+        case .onBattery:
+            let out = reading.systemWatts ?? reading.batteryWatts.map(abs)
+            return "\(Watts.text(out)) out"
+        case .fullChargeByMacOS:
+            return "macOS is charging past your limit to keep its estimates accurate"
+        case .charging, .holdingAtLimit, .fullyCharged, .notCharging:
+            return "\(Watts.text(reading.chargerWatts)) from charger"
+        }
+    }
+}

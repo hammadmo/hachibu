@@ -15,6 +15,19 @@ Paused for heat, Full charge by macOS, Limit not holding.
 
 ## M1 Core loop: a limit you can trust (no helper)
 
+Built 2026-11-18. Checked by unit tests, the self-test on the real
+battery, fixture snapshots, and one real limit change (80 to 85 and back,
+confirmed with `pmset -g battlimit`). Still to try by hand: clicking
+through the popover, the keyboard, the notification, and a restart.
+Changes from the stories as written:
+- Health shows the figure macOS reports (System Settings), read hourly,
+  so the two never disagree; raw capacity over design capacity is the
+  fallback.
+- With no saved limit, the popover offers "Keep This Limit" to adopt the
+  one macOS already holds.
+- Two more statuses exist: "Fully charged" and "Not charging".
+- Settings has four tabs (General, Charging, Helper, About), not three.
+
 Ends with: a menu bar app that sets an 80–100% limit, shows the truth
 about it, and remembers it. No admin rights needed.
 
@@ -35,7 +48,7 @@ UX:
 - States: reading unavailable shows the icon with "–"; warning adds an exclamation mark to the icon, never color alone
 - Words: no text beyond the percentage, for example "80%"
 - Access: VoiceOver "Hachibu, battery 80 percent, Holding at limit"; the item opens with VoiceOver's menu bar navigation
-Status: todo
+Status: done
 
 ### S-002 Open the popover and read the status
 As the user, I click the menu bar icon and see the percentage and one
@@ -57,7 +70,7 @@ UX:
 - States: no reading "Battery information unavailable" with the reason; Mac without a battery "This Mac has no battery"
 - Words: status terms from the glossary only; rows "Battery health 82%", "Cycles 274", "Temperature 34.7 °C"
 - Access: nothing has focus on open; Tab reaches the slider, then buttons, then footer; VoiceOver reads the percentage and status as one element
-Status: todo
+Status: done
 
 ### S-003 See whether current is really flowing
 As the user, I see the measured power next to the status, so the status
@@ -78,7 +91,7 @@ UX:
 - States: missing value shows "–"; values round to one decimal below 10 W, whole watts above
 - Words: "Charging · 28 W in", "Holding at limit · 9.2 W from charger", "On battery · 7 W out"
 - Access: the state is a word plus a dot, never a dot alone; VoiceOver reads "9.2 watts from charger"
-Status: todo
+Status: done
 
 ### S-004 See who set the limit
 As the user, I see the current limit and whether Hachibu, System
@@ -98,7 +111,7 @@ UX:
 - States: "Set by Hachibu"; "Set outside Hachibu" with the button; "No limit"
 - Words: "Limit 80%", "Set outside Hachibu", button "Use Hachibu's Limit"
 - Access: the source line is read with the slider's value; the button is reachable with Tab
-Status: todo
+Status: done
 
 ### S-005 Set a limit from 80% to 100%
 As the user, I drag the limit slider in the popover to 80, 85, 90, 95,
@@ -119,7 +132,7 @@ UX:
 - States: applying "Applying…"; refused "macOS did not accept this limit. Try again." under the slider, slider returns to the confirmed value; without the helper a note "Limits below 80% need the helper." with "Set Up…"
 - Words: label "Limit", stops 80 to 100, tooltip on the note button "Open Settings to install the helper"
 - Access: arrow keys move one stop; VoiceOver "Limit, 85 percent, adjustable"
-Status: todo
+Status: done
 
 ### S-006 Get warned when the limit is not holding
 As the user, I get a clear warning when the battery charges above my
@@ -142,7 +155,7 @@ UX:
 - States: holding again removes the banner without a message; retry failed keeps the banner and adds "macOS did not accept the limit."
 - Words: banner "Limit not holding" / "Battery is at 86% and still charging. The limit is 80%."; button "Apply Limit Again"; notification title "Limit not holding", same body
 - Access: warning icon plus words, not color alone; VoiceOver announces the banner when the popover opens
-Status: todo
+Status: done
 
 ### S-007 Keep the limit across quit and restart
 As the user, I quit Hachibu or restart the Mac and my limit is still
@@ -162,7 +175,7 @@ UX:
 - States: saved and macOS limits differ -> "Set outside Hachibu" with "Use Hachibu's Limit"
 - Words: as in S-004
 - Access: as in S-004
-Status: todo
+Status: done
 
 ### S-008 Quit and open Settings from the popover
 As the user, I open Settings or quit Hachibu from the popover.
@@ -178,7 +191,7 @@ UX:
 - States: quitting during a Top Up or Discharge restores the limit and charger first, without asking
 - Words: "History…", "Settings…", "Quit Hachibu"
 - Access: all three reachable with Tab; shortcuts work while the popover is open
-Status: todo
+Status: done
 
 ## M2 Helper: limits below 80%
 

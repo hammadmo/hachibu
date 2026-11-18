@@ -106,6 +106,7 @@ enum Metric {
     static let sealSmall: CGFloat = 12
     static let sealRadius: CGFloat = 3
     static let buttonHeight: CGFloat = 32
+    static let statusHeight: CGFloat = 36
     static let buttonRadius: CGFloat = 4
     static let cardRadius: CGFloat = 8
     static let sliderHeight: CGFloat = 24
