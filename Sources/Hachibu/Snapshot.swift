@@ -158,13 +158,16 @@ struct SettingsFixture {
     }
 }
 
-/// Thirty hours of made-up samples, for the snapshot that reads the store.
+/// Thirty hours of made-up samples with a two-hour hole, for the snapshot
+/// that reads the store.
 enum HistoryFixture {
     static func fill(_ store: HistoryStore, now: Date = .now) {
         guard Store.isOverridden, store.samples().isEmpty else { return }
         var level = 62.0
         for minute in stride(from: 30 * 60, through: 0, by: -1) {
             let t = Double(minute)
+            // Two hours with Hachibu not running: the charts must show a gap.
+            if (640...760).contains(minute) { continue }
             let onBattery = (400...520).contains(minute) || (1_100...1_190).contains(minute)
             let charging = !onBattery && level < 79.6
             level = onBattery ? max(level - 0.22, 30) : min(level + 0.3, 80)
@@ -175,7 +178,8 @@ enum HistoryFixture {
                                        macWatts: 7 + 2.5 * abs(sin(t / 23)), limit: 80))
         }
         for day in [2, 1, 0] {
-            store.appendHealth(HealthSnapshot(time: now.addingTimeInterval(Double(-day) * 86_400),
+            // A minute back, so the newest one is never ahead of the clock.
+            store.appendHealth(HealthSnapshot(time: now.addingTimeInterval(Double(-day) * 86_400 - 60),
                                               healthPercent: 82, cycles: 274 + (2 - day) / 2))
         }
     }

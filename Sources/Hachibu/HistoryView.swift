@@ -53,14 +53,15 @@ struct HistoryView: View {
 
     private func charts(_ data: HistoryData, _ range: HistoryRange) -> some View {
         let time: (Double) -> String = { range.timeLabel(at: $0, from: data.start, to: data.end) }
-        let startLabel = data.startLabel(for: range)
+        let startLabel = range.startLabel
+        let limit = data.limit.flatMap { $0 < 100 ? Double($0) : nil }
         return Grid(horizontalSpacing: Space.lg, verticalSpacing: Space.lg) {
             GridRow {
                 ChartCard(title: "Battery level",
                           series: [.init(id: "level", values: data.level)],
-                          bounds: ChartScale.bounds(for: data.level, including: [Double(data.limit), 100],
+                          bounds: ChartScale.bounds(for: data.level, including: [limit ?? 100, 100],
                                                     step: 10, minimumSpan: 20),
-                          guide: data.limit < 100 ? Double(data.limit) : nil,
+                          guide: limit,
                           value: { "\(Int($0.rounded()))%" },
                           time: time, startLabel: startLabel)
                 ChartCard(title: "Temperature",
@@ -82,7 +83,7 @@ struct HistoryView: View {
                           series: [.init(id: "health", values: data.health)],
                           bounds: ChartScale.bounds(for: data.health, step: 1, minimumSpan: 4),
                           value: { "\(Int($0.rounded()))%" },
-                          summary: data.health.last.map { "\(Int($0.rounded()))% · \(data.cycles) cycles" },
+                          summary: data.health.last(where: \.isFinite).map { "\(Int($0.rounded()))% · \(data.cycles) cycles" },
                           time: time, startLabel: startLabel)
             }
         }
@@ -146,11 +147,12 @@ enum HistoryPreview { case recorded, sample }
 /// Everything the History window draws for one range. Every series has the
 /// same number of points, oldest first.
 struct HistoryData: Sendable {
-    /// Where the charts begin: the start of the range, or the first thing
-    /// recorded when that is later.
+    /// The charts run from `start` to `end`: the whole range, with gaps
+    /// where nothing was recorded.
     var start = Date.now
     var end = Date.now
-    var limit = 80
+    /// The limit when it did not change over the range; otherwise nil.
+    var limit: Int? = 80
     var cycles = 0
     var level: [Double] = []
     var temperature: [Double] = []
@@ -159,14 +161,6 @@ struct HistoryData: Sendable {
     var health: [Double] = []
 
     var isEmpty: Bool { level.count < 2 }
-
-    /// The label under the left edge of every chart.
-    func startLabel(for range: HistoryRange) -> String {
-        // Recorded for (nearly) the whole range: "24 hours ago".
-        if end.timeIntervalSince(start) >= range.duration * 0.98 { return range.startLabel }
-        return range == .day ? "Since \(start.formatted(date: .omitted, time: .shortened))"
-            : "Since \(start.formatted(.dateTime.day().month(.abbreviated)))"
-    }
 
     /// What Hachibu has recorded for a range. Empty with under an hour of data.
     nonisolated static func recorded(_ range: HistoryRange, from store: HistoryStore, now: Date) -> HistoryData {
@@ -178,14 +172,9 @@ struct HistoryData: Sendable {
         data.temperature = series.temperature
         data.chargerWatts = series.chargerWatts
         data.macWatts = series.macWatts
-        // Health changes slowly: one point per saved day, from the last one
-        // before the chart begins. A single day draws as a level line.
         let snapshots = store.healthSnapshots()
-        let before = snapshots.last { $0.time < series.start }
-        let shown = (before.map { [$0] } ?? []) + snapshots.filter { $0.time >= series.start && $0.time <= now }
-        data.health = shown.map { Double($0.healthPercent) }
-        if data.health.count == 1 { data.health += data.health }
-        data.cycles = shown.last?.cycles ?? 0
+        data.health = HistorySeries.healthLine(snapshots, start: series.start, end: series.end, points: range.points)
+        data.cycles = snapshots.last { $0.time <= now }?.cycles ?? 0
         return data
     }
 

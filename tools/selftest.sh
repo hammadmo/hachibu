@@ -3,5 +3,5 @@
 set -u
 rm -rf ~/Library/Saved\ Application\ State/app.hachibu.mac.savedState
 store=/tmp/Hachibu-self.store
-rm -f $store $store-shm $store-wal
+rm -f $store $store-shm $store-wal $store-health $store-selftest
 APP_STORE=$store ~/Applications/Hachibu.app/Contents/MacOS/Hachibu --selftest

@@ -109,7 +109,7 @@ struct LevelSparkline: View {
     /// The bottom of the scale: a little under the lowest level, in tens, so
     /// a day spent near the limit does not draw as a flat line at the top.
     private var floor: Double {
-        let lowest = min(levels.min() ?? 0, Double(limit ?? 100))
+        let lowest = min(levels.filter(\.isFinite).min() ?? 0, Double(limit ?? 100))
         return max((lowest / 10).rounded(.down) * 10 - 10, 0)
     }
 
@@ -143,10 +143,14 @@ nonisolated struct SparkPath: Shape {
     func path(in rect: CGRect) -> Path {
         guard levels.count > 1 else { return Path() }
         var path = Path()
-        for (index, level) in levels.enumerated() {
-            let x = rect.minX + rect.width * CGFloat(index) / CGFloat(levels.count - 1)
-            let y = rect.maxY - rect.height * CGFloat((min(max(level, floor), 100) - floor) / max(100 - floor, 1))
-            if index == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
+        // The line breaks where nothing was recorded.
+        for run in ChartLine.runs(in: levels) {
+            for index in run {
+                let x = rect.minX + rect.width * CGFloat(index) / CGFloat(levels.count - 1)
+                let y = rect.maxY - rect.height * CGFloat((min(max(levels[index], floor), 100) - floor) / max(100 - floor, 1))
+                if index == run.lowerBound { path.move(to: CGPoint(x: x, y: y)) }
+                if index != run.lowerBound || run.count == 1 { path.addLine(to: CGPoint(x: x, y: y)) }
+            }
         }
         return path
     }

@@ -32,7 +32,8 @@ public struct HistorySample: Equatable, Sendable {
     public func encoded() -> Data {
         var data = Data(capacity: Self.size)
         func put<T: FixedWidthInteger>(_ value: T) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
-        func tenths(_ value: Double?) -> Int { Int(((value ?? 0) * 10).rounded()) }
+        // Clamped as a Double first: a wild sensor value must not trap here.
+        func tenths(_ value: Double?) -> Int { Int((min(max(value ?? 0, -10_000), 10_000) * 10).rounded()) }
         var flags: UInt8 = 0
         if isPluggedIn { flags |= 1 }
         if isCharging { flags |= 2 }
@@ -54,19 +55,20 @@ public struct HistorySample: Equatable, Sendable {
     /// nil for a record that is the wrong size or from an unknown version.
     public init?(encoded data: Data) {
         guard data.count == Self.size else { return nil }
-        let bytes = [UInt8](data)
-        func u16(_ at: Int) -> UInt16 { UInt16(bytes[at]) | UInt16(bytes[at + 1]) << 8 }
-        guard bytes[13] == Self.version else { return nil }
-        let seconds = UInt32(bytes[0]) | UInt32(bytes[1]) << 8 | UInt32(bytes[2]) << 16 | UInt32(bytes[3]) << 24
-        let flags = bytes[5]
+        let base = data.startIndex
+        func byte(_ at: Int) -> UInt8 { data[base + at] }
+        func u16(_ at: Int) -> UInt16 { UInt16(byte(at)) | UInt16(byte(at + 1)) << 8 }
+        guard byte(13) == Self.version else { return nil }
+        let seconds = UInt32(byte(0)) | UInt32(byte(1)) << 8 | UInt32(byte(2)) << 16 | UInt32(byte(3)) << 24
+        let flags = byte(5)
         time = Date(timeIntervalSince1970: TimeInterval(seconds))
-        percent = Int(bytes[4])
+        percent = Int(byte(4))
         isPluggedIn = flags & 1 != 0
         isCharging = flags & 2 != 0
         temperatureC = flags & 4 != 0 ? Double(Int16(bitPattern: u16(6))) / 10 : nil
         chargerWatts = flags & 8 != 0 ? Double(u16(8)) / 10 : nil
         macWatts = flags & 16 != 0 ? Double(u16(10)) / 10 : nil
-        limit = Int(bytes[12])
+        limit = Int(byte(12))
     }
 }
 
@@ -96,12 +98,13 @@ public struct HealthSnapshot: Equatable, Sendable {
 
     public init?(encoded data: Data) {
         guard data.count == Self.size else { return nil }
-        let bytes = [UInt8](data)
-        guard bytes[5] == 1 else { return nil }
-        let seconds = UInt32(bytes[0]) | UInt32(bytes[1]) << 8 | UInt32(bytes[2]) << 16 | UInt32(bytes[3]) << 24
+        let base = data.startIndex
+        func byte(_ at: Int) -> UInt8 { data[base + at] }
+        guard byte(5) == 1 else { return nil }
+        let seconds = UInt32(byte(0)) | UInt32(byte(1)) << 8 | UInt32(byte(2)) << 16 | UInt32(byte(3)) << 24
         time = Date(timeIntervalSince1970: TimeInterval(seconds))
-        healthPercent = Int(bytes[4])
-        cycles = Int(UInt16(bytes[6]) | UInt16(bytes[7]) << 8)
+        healthPercent = Int(byte(4))
+        cycles = Int(UInt16(byte(6)) | UInt16(byte(7)) << 8)
     }
 }
 
@@ -144,49 +147,77 @@ public enum HistoryRules {
     }
 }
 
-/// What the charts draw for one stretch of time: every series has the same
-/// number of points, evenly spaced from `start` to `end`.
+/// What the charts draw for one stretch of time. Every line has the same
+/// number of points, evenly spaced from `start` to `end`: point 0 is at
+/// `start` and the last point is at `end`. A point where nothing was
+/// measured is `.nan`, and charts leave a gap there: nothing is carried
+/// across time that was not recorded.
 public struct HistorySeries: Equatable, Sendable {
     public var start: Date
     public var end: Date
-    public var limit: Int
+    /// The limit, when it was the same for the whole stretch (100 is none).
+    /// nil when it changed: one line could not show it truthfully.
+    public var limit: Int?
     public var level: [Double] = []
+    /// Empty when never measured in this stretch.
     public var temperature: [Double] = []
     public var chargerWatts: [Double] = []
     public var macWatts: [Double] = []
 
-    /// Builds the series for the last `window` seconds. It starts at the
-    /// first sample, never earlier, so nothing is drawn for time that was
-    /// not recorded. A stretch with no samples inside (the Mac asleep, or
-    /// Hachibu not running) keeps the value before it. nil when there is
-    /// under an hour of data.
+    public static func == (a: HistorySeries, b: HistorySeries) -> Bool {
+        func same(_ x: [Double], _ y: [Double]) -> Bool {
+            x.count == y.count && zip(x, y).allSatisfy { ($0.isNaN && $1.isNaN) || $0 == $1 }
+        }
+        return a.start == b.start && a.end == b.end && a.limit == b.limit && same(a.level, b.level)
+            && same(a.temperature, b.temperature) && same(a.chargerWatts, b.chargerWatts) && same(a.macWatts, b.macWatts)
+    }
+
+    /// Builds the series for the `window` seconds before `now`. nil when
+    /// what was recorded in that time covers under an hour.
     public static func build(samples: [HistorySample], window: TimeInterval, now: Date, points: Int) -> HistorySeries? {
         let from = now.addingTimeInterval(-window)
         let inside = samples.filter { $0.time >= from && $0.time <= now }
-        guard let first = inside.first, let last = inside.last, points >= 2,
+        guard let first = inside.first, let last = inside.last, points >= 2, window > 0,
               last.time.timeIntervalSince(first.time) >= HistoryRules.minimumSpan else { return nil }
-        let span = now.timeIntervalSince(first.time)
-        var series = HistorySeries(start: first.time, end: now, limit: last.limit)
+        let limits = Set(inside.map(\.limit))
+        var series = HistorySeries(start: from, end: now, limit: limits.count == 1 ? limits.first : nil)
+        // Each sample goes to the point nearest to it in time.
         var buckets = [[HistorySample]](repeating: [], count: points)
         for sample in inside {
-            let position = sample.time.timeIntervalSince(first.time) / span
-            buckets[min(Int(position * Double(points)), points - 1)].append(sample)
+            let position = sample.time.timeIntervalSince(from) / window
+            buckets[min(max(Int((position * Double(points - 1)).rounded()), 0), points - 1)].append(sample)
         }
         func line(_ value: (HistorySample) -> Double?) -> [Double] {
-            var out: [Double] = []
-            var carried = inside.lazy.compactMap(value).first
-            for bucket in buckets {
+            let out = buckets.map { bucket -> Double in
                 let values = bucket.compactMap(value)
-                if !values.isEmpty { carried = values.reduce(0, +) / Double(values.count) }
-                if let carried { out.append(carried) }
+                return values.isEmpty ? .nan : values.reduce(0, +) / Double(values.count)
             }
-            return out.count == points ? out : []
+            return out.contains { !$0.isNaN } ? out : []
         }
         series.level = line { Double($0.percent) }
         series.temperature = line(\.temperatureC)
         series.chargerWatts = line(\.chargerWatts)
         series.macWatts = line(\.macWatts)
         return series
+    }
+
+    /// Battery health along the same axis. Health is a daily figure, so each
+    /// point shows the latest snapshot at or before its time; points before
+    /// the first snapshot are `.nan`. Empty when there is no snapshot at all.
+    public static func healthLine(_ snapshots: [HealthSnapshot], start: Date, end: Date, points: Int) -> [Double] {
+        let sorted = snapshots.filter { $0.time <= end }.sorted { $0.time < $1.time }
+        guard !sorted.isEmpty, points >= 2 else { return [] }
+        let step = end.timeIntervalSince(start) / Double(points - 1)
+        var next = 0
+        var current = Double.nan
+        return (0..<points).map { index in
+            let time = start.addingTimeInterval(Double(index) * step)
+            while next < sorted.count, sorted[next].time <= time {
+                current = Double(sorted[next].healthPercent)
+                next += 1
+            }
+            return current
+        }
     }
 }
 
@@ -209,8 +240,10 @@ public final class HistoryStore: @unchecked Sendable {
 
     /// Samples in time order, optionally only those at or after `since`.
     public func samples(since: Date? = nil) -> [HistorySample] {
-        let all: [HistorySample] = lock.withLock { records(in: samplesURL, size: HistorySample.size, HistorySample.init(encoded:)) }
-        let sorted = all.sorted { $0.time < $1.time }
+        let all: [HistorySample] = lock.withLock { records(in: samplesURL, size: HistorySample.size, HistorySample.init(encoded:)).found }
+        // Appends arrive in time order, so sorting is rarely needed.
+        let inOrder = zip(all, all.dropFirst()).allSatisfy { $0.time <= $1.time }
+        let sorted = inOrder ? all : all.sorted { $0.time < $1.time }
         guard let since else { return sorted }
         return sorted.filter { $0.time >= since }
     }
@@ -219,7 +252,7 @@ public final class HistoryStore: @unchecked Sendable {
     @discardableResult
     public func appendHealth(_ snapshot: HealthSnapshot, calendar: Calendar = .current) -> Bool {
         lock.withLock {
-            let last = records(in: healthURL, size: HealthSnapshot.size, HealthSnapshot.init(encoded:)).map(\.time).max()
+            let last = records(in: healthURL, size: HealthSnapshot.size, HealthSnapshot.init(encoded:)).found.map(\.time).max()
             guard HistoryRules.shouldRecordHealth(last: last, now: snapshot.time, calendar: calendar) else { return false }
             append(snapshot.encoded(), to: healthURL)
             return true
@@ -227,15 +260,19 @@ public final class HistoryStore: @unchecked Sendable {
     }
 
     public func healthSnapshots() -> [HealthSnapshot] {
-        lock.withLock { records(in: healthURL, size: HealthSnapshot.size, HealthSnapshot.init(encoded:)) }
+        lock.withLock { records(in: healthURL, size: HealthSnapshot.size, HealthSnapshot.init(encoded:)).found }
             .sorted { $0.time < $1.time }
     }
 
-    /// Rewrites the samples file with old samples thinned. Returns how many were dropped.
+    /// Rewrites the samples file with old samples thinned. Returns how many
+    /// were dropped. A file with records this build cannot read (written by
+    /// a newer one, or damaged) is left exactly as it is.
     @discardableResult
     public func thin(now: Date) -> Int {
         lock.withLock {
-            let all = records(in: samplesURL, size: HistorySample.size, HistorySample.init(encoded:)).sorted { $0.time < $1.time }
+            let read = records(in: samplesURL, size: HistorySample.size, HistorySample.init(encoded:))
+            guard read.unreadable == 0 else { return 0 }
+            let all = read.found.sorted { $0.time < $1.time }
             let kept = HistoryRules.thinned(all, now: now)
             guard kept.count < all.count else { return 0 }
             var data = Data(capacity: kept.count * HistorySample.size)
@@ -269,16 +306,18 @@ public final class HistoryStore: @unchecked Sendable {
         try? handle.write(contentsOf: record)
     }
 
-    private func records<T>(in url: URL, size: Int, _ decode: (Data) -> T?) -> [T] {
-        guard let data = try? Data(contentsOf: url) else { return [] }
+    /// Every record that decodes, and how many whole records did not.
+    private func records<T>(in url: URL, size: Int, _ decode: (Data) -> T?) -> (found: [T], unreadable: Int) {
+        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { return ([], 0) }
         var out: [T] = []
         out.reserveCapacity(data.count / size)
+        var unreadable = 0
         var offset = data.startIndex
         while offset + size <= data.endIndex {
-            if let record = decode(data.subdata(in: offset..<offset + size)) { out.append(record) }
+            if let record = decode(data[offset..<offset + size]) { out.append(record) } else { unreadable += 1 }
             offset += size
         }
-        return out
+        return (out, unreadable)
     }
 }
 

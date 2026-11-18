@@ -33,7 +33,8 @@ struct PopoverView: View {
                 .gridProbe("power", area: "popover")
             limitBlock
                 .gridProbe("limit", area: "popover")
-            LevelSparkline(levels: monitor.history.dayLevels, limit: monitor.shownLimit)
+            LevelSparkline(levels: monitor.history.dayLevels,
+                           limit: monitor.history.dayLimit.flatMap { $0 < 100 ? $0 : nil })
                 .kitCard()
                 .gridProbe("day", area: "popover")
             StatRow(stats: stats)

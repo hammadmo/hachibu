@@ -284,10 +284,11 @@ final class BatteryMonitor {
             // Supported but unreadable this time: keep the last known limit.
         }
         runModes()
-        if !isPreview, let reading, limitKnown {
-            // The user's limit, not the level sailing holds; and health only
-            // once macOS has given its own figure, the one System Settings shows.
-            history.note(reading, limit: userLimit, health: systemHealth, now: now)
+        if !isPreview, let reading {
+            // The user's limit, not the level sailing holds (none while the
+            // limit cannot be read); and health only once macOS has given its
+            // own figure, the one System Settings shows.
+            history.note(reading, limit: limitKnown ? userLimit : 100, health: systemHealth, now: now)
         }
         let justStarted = watch.update(reading: reading, limit: limitKnown ? limit.system : nil,
                                        suppressed: mode != .normal, now: now)
@@ -515,7 +516,7 @@ final class BatteryMonitor {
     /// A monitor that shows a fixture and never reads or changes anything real.
     convenience init(fixture: Fixture) {
         self.init(isPreview: true, helper: HelperManager(fixed: fixture.helper),
-                  history: HistoryCenter(fixedDay: fixture.dayLevels))
+                  history: HistoryCenter(fixedDay: fixture.dayLevels, limit: fixture.limit.saved))
         hasLoaded = true
         reading = fixture.reading
         limit = fixture.limit

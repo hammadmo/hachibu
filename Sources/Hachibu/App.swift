@@ -123,6 +123,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 enum Launch {
     private static var done = false
 
+    /// True for a run that does one thing and quits. Such a copy leaves
+    /// recording, Top Up, and sailing to the copy in the menu bar.
+    nonisolated static let isOneShot: Bool = {
+        let flags: Set = ["--set-limit", "--try", "--helper-status", "--helper-reinstall", "--restore-charger", "--selftest"]
+        return CommandLine.arguments.contains { flags.contains($0) }
+    }()
+
     /// Ends a command-line run. The limit is put back here, before the quit
     /// starts: a quit begun from inside a task cannot wait for another task.
     private static func quit(_ monitor: BatteryMonitor) async {

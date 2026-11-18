@@ -10,6 +10,6 @@ shots=/tmp/Hachibu-shots
 # A crashed run leaves saved window state, and the next launch would wait on a "reopen windows?" alert.
 rm -rf ~/Library/Saved\ Application\ State/app.hachibu.mac.savedState
 # Seed data only fills an empty store, so start from nothing.
-rm -f $store $store-shm $store-wal
+rm -f $store $store-shm $store-wal $store-health $store-selftest
 rm -rf $shots
 APP_STORE=$store APP_SNAPSHOT=$shots $app

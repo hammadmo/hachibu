@@ -90,16 +90,37 @@ nonisolated struct ChartLine: Shape {
     func path(in rect: CGRect) -> Path {
         guard values.count > 1 else { return Path() }
         var path = Path()
-        for index in values.indices {
-            let point = Self.point(index, of: values, bounds: bounds, in: rect)
-            if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
-        }
-        if closed {
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-            path.closeSubpath()
+        // A value that is not a number was not measured: the line stops
+        // there and starts again at the next measured point.
+        for run in Self.runs(in: values) {
+            let points = run.map { Self.point($0, of: values, bounds: bounds, in: rect) }
+            path.move(to: points[0])
+            // A single measured point between two gaps still shows, as a dot.
+            if points.count == 1 { path.addLine(to: points[0]) }
+            for point in points.dropFirst() { path.addLine(to: point) }
+            if closed, let last = points.last {
+                path.addLine(to: CGPoint(x: last.x, y: rect.maxY))
+                path.addLine(to: CGPoint(x: points[0].x, y: rect.maxY))
+                path.closeSubpath()
+            }
         }
         return path
+    }
+
+    /// The stretches of indices whose values are numbers.
+    static func runs(in values: [Double]) -> [Range<Int>] {
+        var runs: [Range<Int>] = []
+        var start: Int?
+        for (index, value) in values.enumerated() {
+            if value.isFinite {
+                if start == nil { start = index }
+            } else if let from = start {
+                runs.append(from..<index)
+                start = nil
+            }
+        }
+        if let from = start { runs.append(from..<values.count) }
+        return runs
     }
 }
 
@@ -122,6 +143,7 @@ nonisolated struct ChartMarker: Shape {
         case .dots:
             for line in values where line.count > 1 {
                 let index = Int((fraction * Double(line.count - 1)).rounded())
+                guard line[index].isFinite else { continue }
                 let point = ChartLine.point(index, of: line, bounds: bounds, in: rect)
                 path.addEllipse(in: CGRect(x: point.x - dot, y: point.y - dot, width: dot * 2, height: dot * 2))
             }
@@ -188,7 +210,11 @@ struct ChartCard: View {
         if hover == nil, let summary { return summary }
         let parts = series.enumerated().compactMap { index, line -> String? in
             guard line.values.count > 1 else { return nil }
-            let text = value(line.values[Int((position * Double(line.values.count - 1)).rounded())])
+            // Under the pointer: what was measured there, or a dash for a
+            // gap. With no pointer: the latest measured value.
+            let under = line.values[Int((position * Double(line.values.count - 1)).rounded())]
+            let shown = hover == nil ? line.values.last(where: \.isFinite) ?? .nan : under
+            let text = shown.isFinite ? value(shown) : "–"
             return legend.indices.contains(index) ? "\(legend[index]) \(text)" : text
         }
         return parts.joined(separator: " · ")

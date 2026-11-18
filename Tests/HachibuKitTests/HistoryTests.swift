@@ -110,37 +110,97 @@ func collecting() {
     #expect(HistorySeries.build(samples: short, window: 24 * 3600, now: now, points: 96) == nil)
     #expect(HistorySeries.build(samples: [], window: 24 * 3600, now: now, points: 96) == nil)
     let enough = short + [sample(60)]
-    #expect(HistorySeries.build(samples: enough, window: 24 * 3600, now: t0.addingTimeInterval(3600), points: 96) != nil)
+    #expect(HistorySeries.build(samples: enough, window: 24 * 3600, now: t0.addingTimeInterval(3600), points: 97) != nil)
 }
 
-@Test("The chart starts at the first sample and holds the last value across a gap")
+@Test("The chart covers the whole window and leaves a gap where nothing was recorded")
 func seriesShape() throws {
-    // Two hours at 80%, a three hour gap, then an hour at 60%.
-    let samples = (0..<120).map { sample(Double($0), 80) } + (300...360).map { sample(Double($0), 60, temp: nil, limit: 70) }
+    // Six hours: two at 80%, three with nothing, one at 60%.
+    let samples = (0...120).map { sample(Double($0), 80) } + (300...360).map { sample(Double($0), 60, temp: nil) }
     let now = t0.addingTimeInterval(360 * 60)
-    let series = try #require(HistorySeries.build(samples: samples, window: 24 * 3600, now: now, points: 6))
+    let series = try #require(HistorySeries.build(samples: samples, window: 6 * 3600, now: now, points: 7))
     #expect(series.start == t0)
     #expect(series.end == now)
-    #expect(series.level == [80, 80, 80, 80, 80, 60])
-    #expect(series.limit == 70)
-    // No temperature after the gap: the last one measured is kept.
-    #expect(series.temperature.count == 6 && series.temperature.allSatisfy { abs($0 - 31.2) < 0.001 })
-    #expect(series.chargerWatts.count == 6 && series.macWatts.count == 6)
-    // Only what is inside the window counts.
-    let lastHour = try #require(HistorySeries.build(samples: samples, window: 3600, now: now, points: 4))
-    #expect(lastHour.level == [60, 60, 60, 60])
-    #expect(lastHour.start == t0.addingTimeInterval(300 * 60))
-    #expect(HistorySeries.build(samples: samples, window: 59 * 60, now: now, points: 4) == nil)
+    // One point an hour, each at its own time: 0h 1h 2h 3h 4h 5h 6h.
+    #expect(Array(series.level[0...2]) == [80, 80, 80])
+    #expect(series.level[3].isNaN && series.level[4].isNaN)
+    #expect(Array(series.level[5...6]) == [60, 60])
+    // Temperature stopped being measured: nothing is carried forward or back.
+    #expect(series.temperature[0...2].allSatisfy { abs($0 - 31.2) < 0.001 })
+    #expect(series.temperature[3...6].allSatisfy { $0.isNaN })
+    #expect(series.limit == 80)
+}
+
+@Test("Time before the first sample is a gap, not an invented line")
+func seriesLeadingGap() throws {
+    let samples = (0...60).map { sample(Double($0), 75) }
+    let now = t0.addingTimeInterval(3600)
+    let series = try #require(HistorySeries.build(samples: samples, window: 4 * 3600, now: now, points: 5))
+    #expect(series.start == now.addingTimeInterval(-4 * 3600))
+    #expect(series.level[0...2].allSatisfy { $0.isNaN })
+    #expect(Array(series.level[3...4]) == [75, 75])
+    #expect(HistorySeries.build(samples: samples, window: 59 * 60, now: now, points: 5) == nil)
+}
+
+@Test("A value measured late is not drawn earlier")
+func lateMeasurement() throws {
+    let samples = (0..<60).map { sample(Double($0), temp: nil) } + (60...120).map { sample(Double($0), temp: 35) }
+    let series = try #require(HistorySeries.build(samples: samples, window: 2 * 3600,
+                                                  now: t0.addingTimeInterval(7200), points: 5))
+    #expect(series.temperature[0].isNaN && series.temperature[1].isNaN)
+    #expect(series.temperature[3] == 35 && series.temperature[4] == 35)
+}
+
+@Test("The limit is given only when it was the same for the whole stretch")
+func limitOverTime() throws {
+    let now = t0.addingTimeInterval(3600)
+    let steady = (0...60).map { sample(Double($0), limit: 80) }
+    let steadySeries = try #require(HistorySeries.build(samples: steady, window: 3600, now: now, points: 5))
+    #expect(steadySeries.limit == 80)
+    let changed = (0..<30).map { sample(Double($0), limit: 100) } + (30...60).map { sample(Double($0), limit: 80) }
+    let changedSeries = try #require(HistorySeries.build(samples: changed, window: 3600, now: now, points: 5))
+    #expect(changedSeries.limit == nil)
 }
 
 @Test("A value that was never measured gives an empty line, not zeros")
 func missingSeries() throws {
     let samples = (0...60).map { sample(Double($0), temp: nil, charger: nil) }
-    let series = try #require(HistorySeries.build(samples: samples, window: 24 * 3600,
+    let series = try #require(HistorySeries.build(samples: samples, window: 3600,
                                                   now: t0.addingTimeInterval(3600), points: 10))
     #expect(series.temperature.isEmpty)
     #expect(series.chargerWatts.isEmpty)
-    #expect(series.macWatts.count == 10)
+    #expect(series.macWatts.count == 10 && series.macWatts.allSatisfy { $0.isFinite })
+}
+
+@Test("A wild sensor value is clamped, never a crash")
+func wildValues() {
+    let wild = HistorySample(time: t0, percent: 500, isPluggedIn: true, isCharging: false, temperatureC: -1e30,
+                             chargerWatts: 1e30, macWatts: -5, limit: 999)
+    let back = HistorySample(encoded: wild.encoded())
+    #expect(back?.percent == 255 && back?.limit == 255)
+    #expect(back?.chargerWatts == 6553.5 && back?.macWatts == 0)
+    #expect(back?.temperatureC == -3276.8)
+}
+
+@Test("Thinning leaves a file alone when it holds records this build cannot read")
+func thinningKeepsUnknownRecords() throws {
+    let url = temporaryFile()
+    defer { try? FileManager.default.removeItem(at: url) }
+    let store = HistoryStore(file: url)
+    let now = t0.addingTimeInterval(100 * 24 * 3600)
+    (0..<180).forEach { store.append(sample(Double($0))) }
+    // A record from a newer version: same size, another version byte.
+    var future = sample(200).encoded()
+    future[13] = 2
+    let handle = try FileHandle(forWritingTo: url)
+    try handle.seekToEnd()
+    try handle.write(contentsOf: future)
+    try handle.close()
+    let before = try Data(contentsOf: url)
+    #expect(store.thin(now: now) == 0)
+    let after = try Data(contentsOf: url)
+    #expect(after == before)
+    #expect(store.samples().count == 180)
 }
 
 // MARK: S-034
@@ -166,4 +226,18 @@ func healthOncePerDay() {
     #expect(store.appendHealth(HealthSnapshot(time: morning.addingTimeInterval(86_400), healthPercent: 81, cycles: 275), calendar: calendar))
     #expect(store.healthSnapshots() == [HealthSnapshot(time: morning, healthPercent: 82, cycles: 274),
                                          HealthSnapshot(time: morning.addingTimeInterval(86_400), healthPercent: 81, cycles: 275)])
+}
+
+@Test("Health is drawn where it was measured: each point shows the latest snapshot before it")
+func healthLine() {
+    let day = 86_400.0
+    let start = t0, end = t0.addingTimeInterval(4 * day)
+    let snapshots = [HealthSnapshot(time: t0.addingTimeInterval(-10 * day), healthPercent: 84, cycles: 260),
+                     HealthSnapshot(time: t0.addingTimeInterval(3 * day), healthPercent: 82, cycles: 275)]
+    // Five points, one a day. The old figure holds until the new one is measured on day 3.
+    #expect(HistorySeries.healthLine(snapshots, start: start, end: end, points: 5) == [84, 84, 84, 82, 82])
+    // With nothing before the chart, the days before the first snapshot are a gap.
+    let line = HistorySeries.healthLine([snapshots[1]], start: start, end: end, points: 5)
+    #expect(line[0...2].allSatisfy { $0.isNaN } && Array(line[3...4]) == [82, 82])
+    #expect(HistorySeries.healthLine([], start: start, end: end, points: 5).isEmpty)
 }

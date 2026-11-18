@@ -114,7 +114,12 @@ enum SelfTest {
                 $0.percent == reading.percent && abs(($0.temperatureC ?? 0) - (reading.temperatureC ?? 0)) < 0.06
             } ?? false)
         }
-        check("a test run records nothing by itself", !FileManager.default.fileExists(atPath: HistoryCenter.file.path))
+        if let reading {
+            HistoryCenter.shared.note(reading, limit: 80, health: 82)
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        check("a test run records nothing, even when handed a reading",
+              !FileManager.default.fileExists(atPath: HistoryCenter.file.path))
         try? FileManager.default.removeItem(at: historyFile)
 
         // S-001: the template's sample window is gone; this is a menu bar app.
