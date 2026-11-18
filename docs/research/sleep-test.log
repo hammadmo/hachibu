@@ -9,3 +9,8 @@
 18 20:34-20:38 asleep 3.5 minutes, with three short dark wakes by macOS
 18 20:38 78%;ACattached mA=-11 charging=No pmset=76 saved=76 helper=running after wake
 # Result: pass. The limit stayed 76 and the battery did not charge. The level did not fall during sleep either.
+# Step 2: lid closed (times from `pmset -g log`)
+18 20:40 76%;ACattached pmset=76 'Clamshell Sleep' (level had reached the limit)
+18 20:40-20:49 asleep 8.6 minutes, one dark wake by macOS at 20:40
+18 20:49 76%;ACattached mA=0 charging=No pmset=76 saved=76 helper=running after opening the lid
+# Result: pass. Held exactly at the limit with the lid closed: 76% before and after, no current.
