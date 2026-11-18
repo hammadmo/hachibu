@@ -16,6 +16,8 @@ final class AppModel {
     var popoverPreview: PopoverPreview = .holding
     /// The fixed battery and helper state Settings shows in snapshot runs.
     var settingsPreview: BatteryMonitor?
+    /// The dialog that says how to allow the helper in Login Items.
+    var showingHelperApproval = false
     /// The Helper tab is asking "Remove the helper?".
     var confirmingHelperRemoval = false
 }

@@ -174,3 +174,64 @@ struct KitDivider: View {
         Rectangle().fill(Ink.hairline).frame(height: Metric.hairline)
     }
 }
+
+/// A dialog over a window: a short title, what to do as numbered steps, and
+/// up to two buttons. The window behind it is dimmed and cannot be clicked.
+/// Use it only when the person must do something outside Hachibu.
+struct KitDialog: View {
+    var title: String
+    var message: String?
+    var steps: [String] = []
+    /// Shown instead of the buttons while Hachibu is busy.
+    var progress: String?
+    var primaryTitle: String
+    var primary: () -> Void = {}
+    var secondaryTitle: String?
+    var secondary: () -> Void = {}
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Metric.cardRadius, style: .continuous)
+        VStack(alignment: .leading, spacing: Space.lg) {
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text(title).kitType(.title).foregroundStyle(Ink.text)
+                    .accessibilityAddTraits(.isHeader)
+                if let message {
+                    Text(message).kitType(.body).foregroundStyle(Ink.textSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if !steps.isEmpty {
+                VStack(alignment: .leading, spacing: Space.sm) {
+                    ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                        HStack(alignment: .firstTextBaseline, spacing: Space.sm) {
+                            Text("\(index + 1)").kitType(.numeral).foregroundStyle(Ink.accentText)
+                            Text(step).kitType(.body).foregroundStyle(Ink.text)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+            HStack(spacing: Space.sm) {
+                if let progress {
+                    Text(progress).kitType(.body).foregroundStyle(Ink.textSoft)
+                    Spacer(minLength: 0)
+                } else {
+                    Spacer(minLength: 0)
+                    if let secondaryTitle {
+                        Button(secondaryTitle, action: secondary).buttonStyle(.kit(.ghost)).fixedSize()
+                    }
+                    Button(primaryTitle, action: primary).buttonStyle(.kit()).fixedSize()
+                }
+            }
+            .frame(minHeight: Metric.buttonHeight)
+        }
+        .padding(Space.xl)
+        .frame(width: Metric.dialogWidth, alignment: .leading)
+        .background(shape.fill(Ink.surface))
+        .overlay(shape.strokeBorder(Ink.outline, lineWidth: Metric.hairline))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Ink.scrim)
+        .contentShape(.rect)
+        .accessibilityAddTraits(.isModal)
+    }
+}

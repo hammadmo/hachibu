@@ -122,6 +122,13 @@ enum Launch {
                 print(await monitor.setLimitFromCommandLine(value))
                 NSApp.terminate(nil)
             }
+        } else if let flag = arguments.firstIndex(of: Relaunch.flag) {
+            // Started again by itself: go back to where the person was.
+            if arguments.indices.contains(flag + 1), let tab = SettingsTab(rawValue: arguments[flag + 1]) {
+                model.settingsTab = tab
+            }
+            open(SettingsView.windowID)
+            NSApp.activate()
         } else if arguments.contains("--helper-reinstall") {
             Task {
                 let removal = await monitor.helper.unregister()
@@ -172,5 +179,21 @@ enum DockIcon {
         guard NSApp.activationPolicy() != wanted else { return }
         NSApp.setActivationPolicy(wanted)
         if open { NSApp.activate() }
+    }
+}
+
+/// Quits Hachibu and starts it again with Settings open on a tab. Never in
+/// test runs.
+enum Relaunch {
+    static let flag = "--show-settings"
+
+    static func now(showing tab: SettingsTab) {
+        guard !Store.isOverridden else { return }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        // -n: a new copy, started while this one is still quitting.
+        process.arguments = ["-n", Bundle.main.bundlePath, "--args", flag, tab.rawValue]
+        guard (try? process.run()) != nil else { return }
+        NSApp.terminate(nil)
     }
 }

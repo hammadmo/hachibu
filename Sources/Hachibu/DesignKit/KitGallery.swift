@@ -113,6 +113,14 @@ struct KitGallery: View {
             }
             .frame(width: 280)
             VStack(alignment: .leading, spacing: Space.sm) {
+                heading("Dialog")
+                KitDialog(title: "Allow the helper", message: "macOS asks for your approval once.",
+                          steps: ["Click Open Login Items.", "Turn on Hachibu."],
+                          primaryTitle: "Open Login Items…", secondaryTitle: "Not Now")
+                    .frame(height: 260)
+            }
+            .frame(width: 360)
+            VStack(alignment: .leading, spacing: Space.sm) {
                 heading("Sparkline: data, collecting")
                 LevelSparkline(levels: PopoverSample.day, limit: 80).kitCard()
                 LevelSparkline(levels: [], limit: 80).kitCard()

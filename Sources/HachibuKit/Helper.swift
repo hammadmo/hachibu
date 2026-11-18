@@ -91,6 +91,11 @@ public enum HelperState: Equatable, Sendable {
     }
 
     public var isRunning: Bool { self == .running }
+
+    public var isFailure: Bool {
+        if case .failed = self { return true }
+        return false
+    }
 }
 
 public enum HelperNeed {

@@ -28,6 +28,28 @@ struct SettingsView: View {
             .padding(Space.xxl)
         }
         .kitWindow(width: Metric.settingsWidth)
+        .overlay {
+            if model.showingHelperApproval { HelperApprovalDialog() }
+        }
+    }
+}
+
+/// Shown after Install Helper…: how to allow the helper, and then a restart,
+/// because Hachibu only reaches a newly allowed helper after it starts again.
+struct HelperApprovalDialog: View {
+    @Environment(AppModel.self) private var model
+    @Environment(BatteryMonitor.self) private var monitor
+
+    var body: some View {
+        let allowed = monitor.helper.state != .needsApproval
+        KitDialog(title: "Allow the helper",
+                  message: "macOS asks for your approval once.",
+                  steps: ["Click Open Login Items.",
+                          "Turn on Hachibu under “Allow in the Background”.",
+                          "Hachibu restarts by itself and the helper starts."],
+                  progress: allowed ? "Allowed. Restarting Hachibu…" : nil,
+                  primaryTitle: "Open Login Items…", primary: { HelperManager.openLoginItems() },
+                  secondaryTitle: "Not Now", secondary: { model.showingHelperApproval = false })
     }
 }
 
@@ -160,10 +182,16 @@ struct HelperSettings: View {
         .task { await helper.refresh() }
         // While macOS waits for the approval, look again every two seconds.
         .task(id: helper.state) {
+            guard helper.state == .needsApproval else { return }
             while helper.state == .needsApproval, !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(2))
                 await helper.refresh()
             }
+            // Just allowed. Hachibu reaches the helper reliably only after
+            // it starts again, so it does that by itself.
+            guard !Task.isCancelled, helper.state == .running || helper.state.isFailure else { return }
+            try? await Task.sleep(for: .seconds(1))
+            Relaunch.now(showing: .helper)
         }
         .onDisappear { model.confirmingHelperRemoval = false }
     }
@@ -196,6 +224,7 @@ struct HelperSettings: View {
                     Task {
                         await helper.install()
                         problem = helper.installProblem
+                        model.showingHelperApproval = helper.state == .needsApproval
                     }
                 }
                 .buttonStyle(.kit())

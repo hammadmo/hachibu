@@ -59,6 +59,8 @@ enum Ink {
     static let onFill = Color(light: Pigment.paper, dark: Pigment.lacquer)
     static let outline = Color(light: Pigment.ink, dark: Pigment.goldDim)
     static let outlineText = Color(light: Pigment.ink, dark: Pigment.gold)
+    /// Dims a window behind a dialog.
+    static let scrim = Color(light: Pigment.paper, dark: Pigment.lacquer).opacity(0.82)
     static let wash = Color(light: Pigment.ink, dark: Pigment.gold).opacity(0.1)
 
     static let seal = Color(hex: Pigment.seal)
@@ -109,6 +111,7 @@ enum Metric {
     static let statusHeight: CGFloat = 36
     static let buttonRadius: CGFloat = 4
     static let cardRadius: CGFloat = 8
+    static let dialogWidth: CGFloat = 336
     static let sliderHeight: CGFloat = 24
     static let sliderTrack: CGFloat = 2
     static let sliderThumb: CGFloat = 12
