@@ -4,3 +4,8 @@
 18 20:24 80%;ACattached mA=-647 pmset=70
 18 20:25 80%;ACattached mA=-643 pmset=70
 # 18 20:26 limit changed to 76% and each step shortened to 5 minutes, at the user's request.
+# Step 1: sleep from the Apple menu, lid open (times from `pmset -g log`)
+18 20:34 78%;ACattached pmset=76 entering sleep (level had not yet drained to 76%)
+18 20:34-20:38 asleep 3.5 minutes, with three short dark wakes by macOS
+18 20:38 78%;ACattached mA=-11 charging=No pmset=76 saved=76 helper=running after wake
+# Result: pass. The limit stayed 76 and the battery did not charge. The level did not fall during sleep either.
