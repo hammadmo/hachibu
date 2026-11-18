@@ -1,0 +1,174 @@
+import HachibuKit
+import SwiftUI
+
+extension View {
+    /// A raised card: paper or lacquer one step up, with a hairline border.
+    func kitCard() -> some View {
+        let shape = RoundedRectangle(cornerRadius: Metric.cardRadius, style: .continuous)
+        return padding(Space.md)
+            .frame(maxWidth: .infinity)
+            .background(shape.fill(Ink.raised))
+            .overlay(shape.strokeBorder(Ink.hairline, lineWidth: Metric.hairline))
+    }
+}
+
+/// Watts from the charger, used by the Mac, and into or out of the battery.
+/// A missing value shows a dash.
+struct PowerFlowCard: View {
+    var charger: Double?
+    var mac: Double?
+    /// Positive while the battery charges, negative while it discharges.
+    var battery: Double?
+
+    var body: some View {
+        HStack(spacing: Space.xs) {
+            column("Charger", charger, emphasized: (charger ?? 0) >= 0.05)
+            KitIconView(icon: .flow).foregroundStyle(Ink.textSoft)
+            column("Mac", mac)
+            KitIconView(icon: .flow).foregroundStyle(Ink.textSoft)
+                .rotationEffect(.degrees((battery ?? 0) < 0 ? 180 : 0))
+            column("Battery", battery)
+        }
+        .kitCard()
+        .accessibilityElement(children: .combine)
+    }
+
+    private func column(_ label: String, _ value: Double?, emphasized: Bool = false) -> some View {
+        VStack(spacing: Space.xs) {
+            Text(label).kitType(.meta).foregroundStyle(Ink.textSoft)
+            Text(Watts.text(value)).kitType(.numeral)
+                .foregroundStyle(emphasized ? Ink.accentText : Ink.text)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// The status and the line under it.
+struct StatusLine: View {
+    var title: String
+    var detail: String?
+    var isWarning = false
+
+    var body: some View {
+        VStack(spacing: Space.xs) {
+            Text(title).kitType(.status).foregroundStyle(isWarning ? Ink.warning : Ink.text)
+            if let detail {
+                Text(detail).kitType(.meta).foregroundStyle(Ink.textSoft)
+            }
+        }
+        .multilineTextAlignment(.center)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Up to three "label value" pairs across the width.
+struct StatRow: View {
+    struct Stat: Identifiable {
+        var label: String
+        var value: String
+        var id: String { label }
+    }
+
+    var stats: [Stat]
+
+    var body: some View {
+        HStack(spacing: Space.sm) {
+            ForEach(Array(stats.enumerated()), id: \.element.id) { index, stat in
+                if index > 0 { Spacer(minLength: 0) }
+                HStack(spacing: Space.xs) {
+                    Text(stat.label).foregroundStyle(Ink.textSoft)
+                    Text(stat.value).foregroundStyle(Ink.text)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .kitType(.meta)
+    }
+}
+
+/// Battery level over the last 24 hours, with the limit as a dashed line.
+struct LevelSparkline: View {
+    /// Levels from 0 to 100, oldest first.
+    var levels: [Double]
+    var limit: Int?
+
+    /// The bottom of the scale: a little under the lowest level, in tens, so
+    /// a day spent near the limit does not draw as a flat line at the top.
+    private var floor: Double {
+        let lowest = min(levels.min() ?? 0, Double(limit ?? 100))
+        return max((lowest / 10).rounded(.down) * 10 - 10, 0)
+    }
+
+    var body: some View {
+        ZStack {
+            if levels.count < 2 {
+                Text("Collecting data").kitType(.meta).foregroundStyle(Ink.textSoft)
+            } else {
+                if let limit, limit < 100 {
+                    SparkPath(levels: [Double(limit), Double(limit)], floor: floor)
+                        .stroke(Ink.accent, style: StrokeStyle(lineWidth: Metric.hairline, dash: [3, 4]))
+                }
+                SparkPath(levels: levels, floor: floor)
+                    .stroke(Ink.gauge, style: StrokeStyle(lineWidth: Metric.sliderTrack,
+                                                           lineCap: .round, lineJoin: .round))
+            }
+        }
+        .frame(height: Metric.sparkHeight)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Battery level, last 24 hours")
+    }
+}
+
+/// A line through levels on a scale from `floor` to 100, so the limit line
+/// and the level line share one axis.
+nonisolated struct SparkPath: Shape {
+    var levels: [Double]
+    var floor: Double = 0
+
+    func path(in rect: CGRect) -> Path {
+        guard levels.count > 1 else { return Path() }
+        var path = Path()
+        for (index, level) in levels.enumerated() {
+            let x = rect.minX + rect.width * CGFloat(index) / CGFloat(levels.count - 1)
+            let y = rect.maxY - rect.height * CGFloat((min(max(level, floor), 100) - floor) / max(100 - floor, 1))
+            if index == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
+        }
+        return path
+    }
+}
+
+/// A problem shown where the status is, with one way to fix it.
+struct KitBanner: View {
+    var title: String
+    var message: String
+    var actionTitle: String?
+    var action: () -> Void = {}
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Metric.cardRadius, style: .continuous)
+        VStack(alignment: .leading, spacing: Space.sm) {
+            HStack(spacing: Space.sm) {
+                KitIconView(icon: .warning)
+                Text(title).kitType(.labelStrong)
+            }
+            .foregroundStyle(Ink.warning)
+            Text(message).kitType(.meta).foregroundStyle(Ink.text)
+                .fixedSize(horizontal: false, vertical: true)
+            if let actionTitle {
+                Button(actionTitle, action: action).buttonStyle(.kit(.secondary))
+            }
+        }
+        .padding(Space.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(shape.fill(Ink.warningWash))
+        .overlay(shape.strokeBorder(Ink.warning, lineWidth: Metric.hairline))
+    }
+}
+
+/// A hairline between groups.
+struct KitDivider: View {
+    var body: some View {
+        Rectangle().fill(Ink.hairline).frame(height: Metric.hairline)
+    }
+}

@@ -27,18 +27,19 @@ SwiftData database and no server.
 
 ## Design rules
 
-- Use Apple's controls and system styles. Only the accent color is custom: `UI/Theme.swift` (`ThemeStore.defaultID`). People change it, and light or dark mode, in Settings > Appearance.
-- Views use `.tint`, `Palette.accent`, `Palette.accentText` (accent-colored text), and `Palette.onAccent` (text on an accent fill). Never hard-code colors, radii, or durations in views.
-- Compare accents: add `APP_ACCENT=<id>` to the snapshot command.
+Hachibu has its own design kit. The spec is `design/KIT.md`; the code is
+`Sources/Hachibu/DesignKit/`. Read the spec before building or changing a part.
+
+- The popover and the menu bar item use kit parts only. Settings and History keep system window chrome and system form controls.
+- Views read colors only from `Ink`, fonts only through `.kitType(...)`, sizes from `Metric` and `Space`, motion from `Motion`, icons from `KitIcon`. Never a hex color, `.font(.system...)`, or `systemName:` outside `DesignKit/`.
+- Every part is a real control (a `Button` with a style, a slider with an accessibility representation) and has every state: rest, hover, pressed, selected, focused, disabled, in light and dark.
+- Review a new or changed part in the gallery before it goes into a screen:
+  `APP_STORE=/tmp/Hachibu-test.store APP_KIT_GALLERY=1 APP_SNAPSHOT=/tmp/Hachibu-kit ~/Applications/Hachibu.app/Contents/MacOS/Hachibu`
+  writes `kit-gallery-light.png` and `kit-gallery-dark.png`. Add the part to `KitGallery.swift` first.
 - Spacing comes from `Space` in `UI/Grid.swift`, on a 4 pt grid. Mark custom pages and cards with `.gridArea` and `.gridProbe`.
-- Windows open calm: `.noInitialFocus()` on every window and sheet (no focus ring or selected text on open), `.fitsContent()` on sheets and Settings tabs (no scroll bar with nothing to scroll). System scroll bars. Both in `UI/WindowBehavior.swift`.
-- Settings: one tab per topic in `SettingsView.swift`, one grouped Form per tab. Add a case to `SettingsTab` for a new tab.
-- Window chrome (title bar, toolbar, sidebar, menus, sheets) stays system. Buttons use system styles, like `.borderedProminent`.
-- Colors: `.primary`, `.secondary`, `.tint`, and system colors. Never fixed grays or white for text.
-- Every action has a menu bar item and a keyboard shortcut.
-- `Label` for icon and text pairs. SF Symbols for icons.
-- `ContentUnavailableView` for empty states.
-- Liquid Glass belongs to floating controls only, never to content.
+- Meaning never rests on color alone: a warning has an icon and words.
+- Use the words in `docs/GLOSSARY.md` for every string on screen.
+- `ContentUnavailableView` for empty states in Settings and History.
 
 ## Skills
 

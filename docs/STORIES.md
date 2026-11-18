@@ -1,0 +1,481 @@
+# Hachibu stories
+
+Built from `docs/BRIEF.md` and `docs/research/charge-control.md`.
+Checks: `[snap]` snapshot, `[unit]` unit test, `[self]` self-test,
+`[manual]` a person must try it on the Mac.
+
+Snapshot pages use fake battery readings, never the real battery. Pages:
+`popover`, `popover-warning`, `popover-topup`, `popover-discharge`,
+`settings-general`, `settings-charging`, `settings-helper`, `history`,
+`calibration`.
+
+Status words (one name each, see `docs/GLOSSARY.md` once it exists):
+Charging, Holding at limit, On battery, Topping up, Discharging, Sailing,
+Paused for heat, Full charge by macOS, Limit not holding.
+
+## M1 Core loop: a limit you can trust (no helper)
+
+Ends with: a menu bar app that sets an 80–100% limit, shows the truth
+about it, and remembers it. No admin rights needed.
+
+### S-001 See the battery in the menu bar
+As the user, I see a battery icon with the percentage in the menu bar,
+and no Dock icon or main window.
+Screens: popover
+Acceptance:
+- [manual] The menu bar shows a battery icon and the same percentage as
+  `pmset -g batt`, updated within 30 seconds of a change.
+- [manual] The app has no Dock icon and opens no window at launch.
+- [unit] The icon name is chosen from percent and state (charging, on
+  battery, holding).
+- [self] The template's sample list (Item, All Items, Starred) is gone.
+UX:
+- Flow: launch -> battery icon and percentage appear in the menu bar -> click opens the popover -> click again or Escape closes it
+- Surface: menu bar item (a place people come back to, with no window of its own)
+- States: reading unavailable shows the icon with "–"; warning adds an exclamation mark to the icon, never color alone
+- Words: no text beyond the percentage, for example "80%"
+- Access: VoiceOver "Hachibu, battery 80 percent, Holding at limit"; the item opens with VoiceOver's menu bar navigation
+Status: todo
+
+### S-002 Open the popover and read the status
+As the user, I click the menu bar icon and see the percentage and one
+status line that says what the battery is doing.
+Screens: popover
+Depends: S-001
+Acceptance:
+- [snap] The popover shows the percentage, a status line, and health,
+  cycles, and temperature rows.
+- [unit] Status is derived from a reading: Charging (current into the
+  battery), Holding at limit (plugged in, no current, at or near the
+  limit), On battery (not plugged in).
+- [unit] Health is `AppleRawMaxCapacity / DesignCapacity`, read from the
+  `BatteryData` dictionary, rounded to a whole percent.
+- [self] A real reading from this Mac parses without missing fields.
+UX:
+- Flow: click the menu bar item -> popover opens with the percentage and status on top -> Escape or a click outside closes it
+- Surface: popover (a few related choices tied to one control)
+- States: no reading "Battery information unavailable" with the reason; Mac without a battery "This Mac has no battery"
+- Words: status terms from the glossary only; rows "Battery health 82%", "Cycles 274", "Temperature 34.7 °C"
+- Access: nothing has focus on open; Tab reaches the slider, then buttons, then footer; VoiceOver reads the percentage and status as one element
+Status: todo
+
+### S-003 See whether current is really flowing
+As the user, I see the measured power next to the status, so the status
+line can never claim something the numbers contradict.
+Screens: popover
+Depends: S-002
+Acceptance:
+- [snap] The status line shows a dot and watts, for example
+  "Not charging · 9.2 W in".
+- [unit] Watts come from `PDTR` (charger in), `PSTR` (system), `PPBR`
+  (battery); a missing key shows "–", not 0.
+- [unit] "Holding at limit" is never shown while battery current is
+  above the charging threshold.
+- [manual] Unplugging the charger changes the line within 5 seconds.
+UX:
+- Flow: the status line updates itself every few seconds while the popover is open; no action needed
+- Surface: inline in the popover's status line (information that needs no action)
+- States: missing value shows "–"; values round to one decimal below 10 W, whole watts above
+- Words: "Charging · 28 W in", "Holding at limit · 9.2 W from charger", "On battery · 7 W out"
+- Access: the state is a word plus a dot, never a dot alone; VoiceOver reads "9.2 watts from charger"
+Status: todo
+
+### S-004 See who set the limit
+As the user, I see the current limit and whether Hachibu, System
+Settings, or another app set it.
+Screens: popover
+Depends: S-002
+Acceptance:
+- [snap] The popover shows "Limit 80%" with its source underneath.
+- [unit] The source is "Hachibu" when the macOS limit equals the saved
+  one, otherwise "set outside Hachibu".
+- [unit] With the macOS limit off, the popover shows "No limit".
+- [manual] Changing the slider in System Settings > Battery shows up in
+  the popover within 30 seconds, marked as set outside Hachibu.
+UX:
+- Flow: read the limit and its source under the slider -> if set outside Hachibu, click "Use Hachibu's Limit" to apply the saved one, or move the slider to adopt a new one
+- Surface: inline under the slider (information tied to one control)
+- States: "Set by Hachibu"; "Set outside Hachibu" with the button; "No limit"
+- Words: "Limit 80%", "Set outside Hachibu", button "Use Hachibu's Limit"
+- Access: the source line is read with the slider's value; the button is reachable with Tab
+Status: todo
+
+### S-005 Set a limit from 80% to 100%
+As the user, I drag the limit slider in the popover to 80, 85, 90, 95,
+or 100%.
+Screens: popover
+Depends: S-004
+Acceptance:
+- [snap] The slider shows five stops and the chosen value.
+- [unit] Values snap to the stops macOS reports as available.
+- [manual] After choosing 85%, `pmset -g battlimit` shows 85 within 10
+  seconds; choosing 100% turns the limit off.
+- [manual] The popover shows "Applying…" until macOS confirms the value,
+  and an error line if macOS refuses.
+- [self] The chosen limit is saved and read back from a /tmp store.
+UX:
+- Flow: drag the slider, or focus it and press the arrow keys -> the value snaps to a stop -> "Applying…" -> the confirmed value shows; 100% means No limit
+- Surface: inline slider in the popover (changes one value on something already on screen)
+- States: applying "Applying…"; refused "macOS did not accept this limit. Try again." under the slider, slider returns to the confirmed value; without the helper a note "Limits below 80% need the helper." with "Set Up…"
+- Words: label "Limit", stops 80 to 100, tooltip on the note button "Open Settings to install the helper"
+- Access: arrow keys move one stop; VoiceOver "Limit, 85 percent, adjustable"
+Status: todo
+
+### S-006 Get warned when the limit is not holding
+As the user, I get a clear warning when the battery charges above my
+limit, instead of a status that looks normal.
+Screens: popover-warning
+Depends: S-003, S-005
+Acceptance:
+- [snap] The popover shows a warning banner "Limit not holding" with
+  the measured percent and limit.
+- [unit] The warning starts when percent is more than 2 above the limit
+  and current flows into the battery for 2 minutes; it clears when either
+  stops.
+- [unit] No warning while Topping up or Full charge by macOS is active.
+- [manual] One notification is sent when the warning starts, not one
+  per reading.
+- [manual] The menu bar icon shows a warning mark while it lasts.
+UX:
+- Flow: warning starts -> banner at the top of the popover, a mark on the menu bar icon, one notification -> click the notification to open the popover -> "Apply Limit Again" retries -> banner clears when the limit holds
+- Surface: inline banner in the popover (a problem shown where the status is; not an alert, since nothing is lost)
+- States: holding again removes the banner without a message; retry failed keeps the banner and adds "macOS did not accept the limit."
+- Words: banner "Limit not holding" / "Battery is at 86% and still charging. The limit is 80%."; button "Apply Limit Again"; notification title "Limit not holding", same body
+- Access: warning icon plus words, not color alone; VoiceOver announces the banner when the popover opens
+Status: todo
+
+### S-007 Keep the limit across quit and restart
+As the user, I quit Hachibu or restart the Mac and my limit is still
+there, and Hachibu shows it correctly when it opens again.
+Screens: popover
+Depends: S-005
+Acceptance:
+- [manual] After quitting Hachibu, `pmset -g battlimit` still shows the
+  limit.
+- [manual] After a restart and launch, the popover shows the same limit
+  with source Hachibu.
+- [unit] On launch, a saved limit that differs from the macOS limit is
+  shown as "set outside Hachibu" and is not overwritten silently.
+UX:
+- Flow: launch -> Hachibu reads the macOS limit -> shows it with its source; it never changes the limit at launch without a click
+- Surface: none of its own; shown by the limit line from S-004
+- States: saved and macOS limits differ -> "Set outside Hachibu" with "Use Hachibu's Limit"
+- Words: as in S-004
+- Access: as in S-004
+Status: todo
+
+### S-008 Quit and open Settings from the popover
+As the user, I open Settings or quit Hachibu from the popover.
+Screens: popover, settings-general
+Depends: S-002
+Acceptance:
+- [snap] The popover footer has History…, Settings…, and Quit.
+- [manual] Command-comma opens Settings; Command-Q quits.
+- [snap] Settings opens with General, Charging, and Appearance tabs.
+UX:
+- Flow: popover footer -> "History…" opens the History window, "Settings…" opens Settings (Command-comma), "Quit Hachibu" quits (Command-Q)
+- Surface: footer row of plain buttons in the popover; Settings and History are windows (self-contained tasks kept open beside other work)
+- States: quitting during a Top Up or Discharge restores the limit and charger first, without asking
+- Words: "History…", "Settings…", "Quit Hachibu"
+- Access: all three reachable with Tab; shortcuts work while the popover is open
+Status: todo
+
+## M2 Helper: limits below 80%
+
+Ends with: any limit from 20 to 99%, through a helper that installs and
+uninstalls cleanly.
+
+### S-010 Install the helper
+As the user, I turn on "Advanced charging control" in Settings and
+approve the helper once in System Settings.
+Screens: settings-helper
+Acceptance:
+- [snap] The Helper tab shows the state: Not installed, Needs approval,
+  Running, or Failed with the reason.
+- [manual] After approval the tab shows Running within 5 seconds, and
+  the helper appears once in System Settings > Login Items.
+- [manual] The helper refuses connections from any program not signed
+  with Hachibu's Developer ID.
+- [unit] Helper requests are a closed list: set limit, cut adapter,
+  restore adapter, read status. Nothing else is accepted.
+- [manual] The app and helper are signed with a Developer ID
+  certificate and the build is notarized.
+Status: todo
+
+### S-011 Set a limit from 20% to 99%
+As the user, with the helper running, I drag the slider to any whole
+percent from 20 to 100.
+Screens: popover, settings-charging
+Depends: S-010, S-005
+Acceptance:
+- [snap] The slider runs from 20 to 100 when the helper is running, and
+  from 80 to 100 with a note when it is not.
+- [manual] After choosing 70%, `pmset -g battlimit` shows 70 within 10
+  seconds.
+- [manual] Left plugged in for an hour above the limit, the battery
+  does not charge.
+- [unit] The helper rejects values outside 20–100.
+Status: todo
+
+### S-012 Remove the helper
+As the user, I click "Remove helper" and everything it installed is
+gone, with charging back to normal.
+Screens: settings-helper
+Depends: S-010
+Acceptance:
+- [manual] After removal, no Hachibu entry remains in Login Items and
+  no Hachibu helper process runs.
+- [manual] Removal restores the adapter and sets the limit to the
+  nearest value macOS allows without the helper (80% or above).
+- [snap] The tab asks for confirmation and says what will change.
+Status: todo
+
+### S-013 See the helper's health
+As the user, I see in the popover when the helper is needed but not
+running, with a button to fix it.
+Screens: popover-warning
+Depends: S-010
+Acceptance:
+- [snap] A banner "Helper not running" with a "Fix…" button shows when
+  the saved limit is below 80% and the helper is missing.
+- [unit] The banner does not show when the limit is 80% or above.
+Status: todo
+
+## M3 Overrides: top up, discharge, sailing
+
+### S-020 Top up to 100% once
+As the user, I click "Top up" before travel; the battery charges to
+100% and my limit returns afterwards.
+Screens: popover-topup
+Depends: S-005
+Acceptance:
+- [snap] While active, the status is "Topping up" and the button reads
+  "Stop".
+- [unit] Top up ends when the battery reaches 100%, when the charger is
+  unplugged, or when I click Stop; the saved limit is then applied again.
+- [manual] After unplugging and plugging back in, the limit is back.
+- [manual] Quitting Hachibu during a top up restores the limit first.
+Status: todo
+
+### S-021 Discharge to the limit while plugged in
+As the user, I click "Discharge" and the Mac runs on battery, still
+plugged in, until it reaches the limit.
+Screens: popover-discharge
+Depends: S-010
+Acceptance:
+- [snap] While active, the status is "Discharging" with watts out and
+  the button reads "Stop".
+- [manual] Within 5 seconds the Mac reports battery power; at the limit
+  the adapter is restored.
+- [unit] Discharge refuses to start at or below the limit, and stops at
+  the limit, at 20%, on Stop, or when the charger is unplugged.
+- [manual] If the helper stops for any reason, the adapter is restored.
+Status: todo
+
+### S-022 Sail between two levels
+As the user, I set a sailing range in Settings, and the battery drifts
+down that many percent before it charges back to the limit.
+Screens: settings-charging, popover
+Depends: S-021
+Acceptance:
+- [snap] Settings > Charging has a "Sailing range" control from 0 (off)
+  to 10 percent; the popover status reads "Sailing" while drifting.
+- [unit] With limit 80 and range 5, charging resumes at 75 and stops at
+  80.
+- [unit] Sailing pauses during Top up and Calibration.
+Status: todo
+
+### S-023 Sleep safely during discharge or sailing
+As the user, I close the lid during discharge or sailing; the charger
+is reconnected before sleep and the mode resumes on wake.
+Screens: popover
+Depends: S-021
+Acceptance:
+- [manual] Closing the lid mid-discharge: on wake, the log shows the
+  adapter was restored before sleep and cut again after wake.
+- [manual] The Mac is never kept awake by Hachibu.
+- [unit] The sleep handler restores the adapter in every active mode.
+Status: todo
+
+### S-024 Recover after a crash or forced quit
+As the user, I never end up stuck on battery because Hachibu or its
+helper stopped.
+Screens: popover
+Depends: S-021
+Acceptance:
+- [manual] Force-quitting the app during discharge restores the adapter
+  within 30 seconds.
+- [manual] Killing the helper restores the adapter when it relaunches.
+- [unit] The helper restores the adapter when its client has been
+  silent for 30 seconds.
+Status: todo
+
+## M4 Details: power flow and history
+
+### S-030 See power flow
+As the user, I see a card showing watts from the charger, into the Mac,
+and into or out of the battery.
+Screens: popover
+Depends: S-003
+Acceptance:
+- [snap] The card shows three labelled values and arrows whose
+  direction matches the sign of battery power.
+- [unit] On battery, the charger value reads 0 W and the battery arrow
+  points to the Mac.
+Status: todo
+
+### S-031 Record battery samples
+As the user, Hachibu records the battery level, power, temperature, and
+state once a minute while it runs.
+Screens: history
+Acceptance:
+- [self] Adding samples to a /tmp store and reading them back returns
+  them in time order.
+- [unit] Samples older than 90 days are thinned to one per hour.
+- [manual] After a day of running, CPU use stays under 1% and the
+  database under 5 MB.
+Status: todo
+
+### S-032 See the last 24 hours in the popover
+As the user, I see a small chart of battery level over the last 24
+hours, with the limit drawn as a line.
+Screens: popover
+Depends: S-031
+Acceptance:
+- [snap] The chart card shows the level line and the limit line.
+- [snap] With under an hour of data, the card says "Collecting data".
+Status: todo
+
+### S-033 Browse history
+As the user, I open the History window and view level, temperature, and
+power over a day, a week, or a month.
+Screens: history
+Depends: S-031
+Acceptance:
+- [snap] The window has a range picker (Day, Week, Month) and three
+  charts.
+- [snap] Hovering a chart shows the value and time at that point.
+- [snap] With no data, the window shows an empty state.
+Status: todo
+
+### S-034 Track battery health over time
+As the user, I see how maximum capacity and cycle count change over
+months.
+Screens: history
+Depends: S-031
+Acceptance:
+- [unit] One health snapshot is saved per day, at most.
+- [snap] The History window has a Health chart with capacity percent
+  and cycle count.
+Status: todo
+
+## M5 Protection: heat, calibration, full charge
+
+### S-040 Pause charging when the battery is hot
+As the user, I set a temperature in Settings; above it, charging pauses
+until the battery cools.
+Screens: settings-charging, popover
+Depends: S-010
+Acceptance:
+- [snap] Settings > Charging has a "Heat protection" toggle and a
+  temperature from 30 to 45 °C; the status reads "Paused for heat".
+- [unit] Charging pauses above the threshold and resumes 2 °C below it.
+- [manual] A probe confirms which method pauses charging on this Mac
+  (adapter cut, or lowering the macOS limit) before the story is built.
+Status: todo
+
+### S-041 Know when macOS is doing a full charge
+As the user, I am told when macOS charges past my limit on its own, and
+why, so I do not mistake it for a failure.
+Screens: popover
+Depends: S-006
+Acceptance:
+- [snap] The status reads "Full charge by macOS" with a one-line reason.
+- [unit] The state follows
+  `com.apple.system.powersources.chargingtofulloverride`.
+- [manual] One notification when it starts; the "Limit not holding"
+  warning stays off.
+Status: todo
+
+### S-042 Calibrate the battery
+As the user, I start a calibration that charges to 100%, discharges to
+15%, charges to 100% again, then restores my limit.
+Screens: calibration
+Depends: S-020, S-021
+Acceptance:
+- [snap] A sheet shows the steps, the current step, and a Cancel button.
+- [unit] Steps advance at the right levels; Cancel or unplugging
+  restores the adapter and the limit.
+- [manual] A notification is sent when calibration finishes.
+- [snap] The sheet warns that it takes several hours and that the Mac
+  must stay awake and plugged in.
+Status: todo
+
+## M6 System and polish
+
+### S-050 Launch at login
+As the user, I turn on "Open at login" in Settings.
+Screens: settings-general
+Acceptance:
+- [snap] General has an "Open at login" toggle.
+- [manual] After a restart, Hachibu is in the menu bar without my doing
+  anything.
+Status: todo
+
+### S-051 Choose what the menu bar shows
+As the user, I choose whether the menu bar item shows the percentage.
+Screens: settings-general
+Depends: S-001
+Acceptance:
+- [snap] General has a "Show percentage" toggle.
+- [manual] Turning it off leaves only the icon.
+Status: todo
+
+### S-052 Choose which notifications I get
+As the user, I turn each notification on or off: limit not holding,
+full charge by macOS, top up finished, calibration finished.
+Screens: settings-general
+Acceptance:
+- [snap] General lists the four toggles.
+- [unit] A disabled kind is never sent.
+Status: todo
+
+### S-053 App icon
+As the user, I see a Hachibu icon in Finder and Settings.
+Screens: none (icon review sheet)
+Acceptance:
+- [manual] `tools/icon_review.sh` shows the icon in every look.
+Status: todo
+
+### S-054 Publish as open source
+As a visitor, I can read what Hachibu does, how it controls charging,
+its limits, and how to build it.
+Screens: none
+Acceptance:
+- [manual] `README.md` covers: what it does, supported Macs and macOS,
+  the two control methods and their limits, build steps, uninstall, and
+  credit to batt (charlie0129/batt).
+- [manual] A license file exists.
+- [manual] The repo has no personal names, emails, or team IDs in
+  tracked files.
+Status: todo
+
+## Later
+
+- Shortcuts actions: Set Limit, Get State, Top Up.
+- Global hotkeys for Top up and Discharge.
+- A choice of menu bar icon styles.
+- A command-line tool.
+
+## Dropped
+
+- Schedules and location rules: one user, one desk.
+- Per-app power use, quitting or throttling apps: out of scope for a
+  charge controller.
+- Charging-light control: the MacBook Air M1 has no MagSafe.
+- Intel Macs and macOS before 27: one target Mac.
+- Holding the limit while shut down: not possible on Apple silicon.
+- Accounts, licensing, upgrade prompts, analytics: personal and open
+  source.
+- Blocking the macOS full charge with adapter cut: the user chose
+  accept and notify.

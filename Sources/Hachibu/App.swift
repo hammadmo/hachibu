@@ -10,6 +10,7 @@ import SwiftUI
 //   Hachibu --selftest           run the self-test on a /tmp store and quit with 0 or 1 (tools/selftest.sh)
 //   APP_ACCENT=<id> Hachibu      run with another accent from Theme.all (UI/Theme.swift)
 //   APP_GRID=1 Hachibu           draw the 8 pt grid and the layout probes over the window
+//   APP_KIT_GALLERY=1 Hachibu    show every design kit part in every state (DesignKit/KitGallery.swift)
 
 @main
 struct HachibuApp: App {
@@ -18,11 +19,13 @@ struct HachibuApp: App {
 
     var body: some Scene {
         Window("Hachibu", id: "main") {
-            ContentView()
-                .environment(model)
-                .themed()
-                .overlay { if GridOverlay.enabled { GridOverlay() } }
-                .frame(minWidth: 760, minHeight: 480)
+            Group {
+                if KitGallery.enabled { KitGallery() } else { ContentView() }
+            }
+            .environment(model)
+            .themed()
+            .overlay { if GridOverlay.enabled { GridOverlay() } }
+            .frame(minWidth: 760, minHeight: 480)
         }
         .modelContainer(model.container)
         .defaultSize(width: 1100, height: 720)
