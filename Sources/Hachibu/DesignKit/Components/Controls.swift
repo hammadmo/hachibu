@@ -75,6 +75,8 @@ private struct PressReporting: ButtonStyle {
 struct KitTabBar<Tab: Hashable>: View {
     var tabs: [(id: Tab, title: String)]
     @Binding var selection: Tab
+    /// What VoiceOver calls the group.
+    var label = "Sections"
 
     var body: some View {
         HStack(spacing: Space.xs) {
@@ -93,7 +95,7 @@ struct KitTabBar<Tab: Hashable>: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Settings sections")
+        .accessibilityLabel(label)
     }
 }
 

@@ -6,9 +6,8 @@ deliberately left open is the gauge: the gap is the charge you leave
 unused. Light mode is ink on warm paper. Dark mode is gold on black
 lacquer. A small vermilion seal is the only bright color.
 
-Scope: the popover, the menu bar item, and Settings are fully kit.
-History keeps system window chrome and uses kit type, cards, and charts
-inside. Traffic lights, menus, and alerts stay system everywhere.
+Scope: everything is kit: the popover, the menu bar item, Settings, and
+History. Traffic lights, menus, and alerts stay system.
 
 ## Tokens
 
@@ -135,7 +134,9 @@ Settings is a plain `Window` with a hidden title bar (a SwiftUI `Settings`
 scene cannot hide its title bar), `Ink.surface` edge to edge, width 520,
 height fitting the tab. Traffic lights stay where macOS puts them; the tab
 bar starts 36 pt down to clear them. Command-Comma opens it.
-History: system chrome.
+History is the same kind of window, width 760, opened with Command-Y.
+Both use `.kitWindow(width:)` (`DesignKit/KitWindow.swift`), which adds
+the surface, the wave band, and the blossom sprig.
 
 ## Parts
 
@@ -252,6 +253,23 @@ its detail. It never looks like a working control.
 A dot 8 pt and a word in `body`: idle (textSoft), good (accent), warning
 (warning). Never the dot alone.
 
+### Chart and chart card (`KitChart`, `ChartCard`)
+Chart: height 120; three hairlines (top, middle, bottom); the main line
+in `Ink.gauge`, 2 pt, round joins, with a `Ink.wash` fill beneath; a second
+line in `Ink.textSoft`, 1 pt; a guide (the limit) dashed 1 pt in
+`Ink.accent`; scale labels in `meta` at the top and bottom trailing corners.
+Pointer over the chart: a vertical hairline, a 6 pt `Ink.accent` dot on
+each line, the value in the card header, and the time under the chart.
+Card: title in `section` + `accentText`; the latest value (or a summary)
+in `numeral`; the chart; the range's start and "Now" in `meta`, with a
+legend between them when there are two lines.
+VoiceOver: one element per card, the title and the latest value.
+The vertical scale sits on round numbers (`ChartScale` in HachibuKit).
+
+### History empty state
+The gauge with no reading (tick ring and a dash), "No history yet" in
+`status`, and one sentence in `body` + `textSoft` saying why.
+
 ### Motifs (`Seigaiha`, `UmeBlossom`)
 The two motifs from the app icon, for quiet decoration only. Hidden from
 VoiceOver; they never carry meaning and never sit behind text.
@@ -260,7 +278,7 @@ VoiceOver; they never carry meaning and never sit behind text.
   the Settings window, higher on the leading side.
 - Ume (plum blossom): petals in `Ink.accent`, stamens in `Ink.seal`.
   A sprig (two flowers, three loose petals) at 55% in the top trailing
-  corner of the Settings window; a single 16 pt flower in the middle of
+  corner of every kit window; a single 16 pt flower in the middle of
   the divider on the About tab.
 Not used in the popover: it is dense with numbers.
 

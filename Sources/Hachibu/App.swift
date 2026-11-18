@@ -52,6 +52,16 @@ struct HachibuApp: App {
         .commands {
             CommandGroup(replacing: .appSettings) { OpenSettingsButton() }
         }
+
+        Window(HistoryView.windowTitle, id: HistoryView.windowID) {
+            HistoryView()
+                .environment(model)
+                .themed()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .keyboardShortcut("y")
     }
 }
 

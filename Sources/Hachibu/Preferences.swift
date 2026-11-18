@@ -73,4 +73,6 @@ final class Preferences {
 /// shown disabled and say so, never as controls that silently do nothing.
 enum Capability {
     static let helper = false
+    /// Recording battery samples for the History window (story S-031).
+    static let history = false
 }

@@ -11,7 +11,8 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var model = model
         VStack(spacing: 0) {
-            KitTabBar(tabs: SettingsTab.allCases.map { (id: $0, title: $0.title) }, selection: $model.settingsTab)
+            KitTabBar(tabs: SettingsTab.allCases.map { (id: $0, title: $0.title) }, selection: $model.settingsTab,
+                      label: "Settings sections")
                 .padding(.top, Metric.titleBarInset)
                 .padding(.bottom, Space.sm)
             KitDivider()
@@ -24,24 +25,8 @@ struct SettingsView: View {
                 }
             }
             .padding(Space.xxl)
-            // Calm seas along the bottom edge, tone on tone, as on the icon.
-            Seigaiha(radius: Metric.waveRadius)
-                .stroke(Ink.relief, lineWidth: Metric.hairline)
-                .frame(height: Metric.waveBand)
-                .accessibilityHidden(true)
         }
-        .frame(width: Metric.settingsWidth)
-        .overlay(alignment: .topTrailing) {
-            UmeBlossom(size: Metric.blossom, arrangement: .sprig)
-                .opacity(0.55)
-                .padding(.top, Space.sm)
-                .padding(.trailing, Space.lg)
-        }
-        .background(Ink.surface)
-        .ignoresSafeArea()
-        .background(SettingsChrome())
-        .focusEffectDisabled()
-        .noInitialFocus()
+        .kitWindow(width: Metric.settingsWidth)
     }
 }
 
@@ -196,40 +181,5 @@ struct AboutSettings: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-    }
-}
-
-/// Hides the Settings window's title bar so the kit surface runs edge to
-/// edge. The traffic lights stay where macOS puts them.
-private struct SettingsChrome: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { ChromeView() }
-    func updateNSView(_ nsView: NSView, context: Context) {}
-
-    private final class ChromeView: NSView {
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            guard let window else { return }
-            NotificationCenter.default.removeObserver(self)
-            apply(to: window)
-            // SwiftUI finishes styling the window after this view arrives.
-            DispatchQueue.main.async { [weak self] in self?.apply(to: window) }
-            // SwiftUI restyles the Settings window when it opens again.
-            NotificationCenter.default.addObserver(self, selector: #selector(restyle),
-                                                   name: NSWindow.didBecomeKeyNotification, object: window)
-        }
-
-        @objc private func restyle(_ note: Notification) {
-            if let window { apply(to: window) }
-        }
-
-        private func apply(to window: NSWindow) {
-            window.titlebarAppearsTransparent = true
-            window.titlebarSeparatorStyle = .none
-            window.titleVisibility = .hidden
-            window.styleMask.insert(.fullSizeContentView)
-            window.isMovableByWindowBackground = true
-            window.toolbar = nil
-            window.backgroundColor = Ink.surfaceNS
-        }
     }
 }

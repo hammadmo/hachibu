@@ -48,6 +48,10 @@ final class AppModel {
         didSet { if !Store.isOverridden { UserDefaults.standard.set(settingsTab.rawValue, forKey: "settings.tab") } }
     }
 
+    var historyRange: HistoryRange = .day
+    /// Snapshot runs switch this to sample data.
+    var historyPreview: HistoryPreview = .recorded
+
     init(container: ModelContainer) {
         self.container = container
     }
