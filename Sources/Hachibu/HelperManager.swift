@@ -116,9 +116,11 @@ final class HelperManager {
     private nonisolated static func readState() async -> HelperState {
         if let reason = unavailableReason { return .unavailable(reason) }
         switch daemon.status {
-        case .notRegistered: return .notInstalled
+        // macOS answers "not found" for a helper it has never been told
+        // about. The helper's file is in this copy (checked above), so that
+        // means not installed yet.
+        case .notRegistered, .notFound: return .notInstalled
         case .requiresApproval: return .needsApproval
-        case .notFound: return .unavailable("This copy of Hachibu was built without the helper.")
         case .enabled:
             let reply = await HelperClient.send(.readStatus)
             if let problem = reply.problem { return .failed(problem) }
