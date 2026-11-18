@@ -273,8 +273,9 @@ Acceptance:
 - [manual] After unplugging and plugging back in, the limit is back.
 - [manual] Quitting Hachibu during a top up restores the limit first.
 Status: done (2026-11-18. Tried for real with `Hachibu --try topup 20`:
-the limit went off and came back to 80%. Still to try by hand: the
-button itself, unplug and plug back in, and Quit during a Top Up.)
+the limit went off and came back to 80%. The user then tried the
+button and Stop, unplugging during a Top Up, and Quit during a Top Up,
+and reported that all passed.)
 
 ### S-021 Discharge to the limit while plugged in
 As the user, I click "Discharge" and the Mac runs on battery, still
@@ -316,8 +317,8 @@ battery is at, and at the bottom of the range it asks for the limit
 again. Tried for real with `Hachibu --try sailing 50` (limit 85%, level
 80%, range 10): macOS held 80%, charging stopped, the status read
 "Sailing", and turning sailing off brought 85% back. Needs the helper.
-Not tried: a held level below 80% (helper limits take up to 90 seconds
-to take effect), a full drift down and recharge, and the slider itself.
+The user tried the slider with the helper running and reported that it
+passed. Not tried: a full drift down and recharge over a day.
 
 ### S-023 Sleep safely during discharge or sailing
 As the user, I close the lid during discharge or sailing; the charger
