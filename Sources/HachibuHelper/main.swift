@@ -18,7 +18,7 @@ final class Service: NSObject, NSXPCListenerDelegate, HelperXPC, @unchecked Send
     private let queue = DispatchQueue(label: "app.hachibu.mac.helper.work")
     private var callers = 0
     private var idle: DispatchWorkItem?
-    private let program = CommandLine.arguments[0]
+    private let program = Bundle.main.executablePath ?? CommandLine.arguments[0]
     private let startedFrom: FileStamp?
     /// False when this helper has no team signature, so no caller can be checked.
     private let canTrustCallers: Bool
@@ -49,8 +49,9 @@ final class Service: NSObject, NSXPCListenerDelegate, HelperXPC, @unchecked Send
         guard canTrustCallers else { return false }
         connection.exportedInterface = NSXPCInterface(with: HelperXPC.self)
         connection.exportedObject = self
-        connection.invalidationHandler = { [weak self] in
-            self?.queue.async { self?.callerLeft() }
+        // The service lives as long as the helper does.
+        connection.invalidationHandler = { [self] in
+            queue.async { self.callerLeft() }
         }
         queue.async {
             // A new build replaced this program: finish, so macOS starts the
@@ -128,7 +129,7 @@ guard geteuid() == 0 else {
 }
 
 // Without a team signature there is no one to trust: accept no caller at all.
-let rule = CodeIdentity.teamID().flatMap { CodeIdentity.requirement(identifier: HelperID.app, team: $0) }
+let rule = CodeIdentity.teamID().flatMap { CodeIdentity.requirement(identifier: HelperID.app, team: $0, oldestBuild: HelperID.oldestTrustedAppBuild) }
 let service = Service(canTrustCallers: rule != nil)
 
 // macOS stops the helper with SIGTERM (shutdown, or the helper was removed).

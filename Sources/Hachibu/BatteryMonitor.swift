@@ -32,6 +32,11 @@ final class BatteryMonitor {
     let helper: HelperManager
     private(set) var isApplying = false
     private(set) var applyProblem: String?
+    /// True while the helper is being removed. The slider waits.
+    private(set) var isRemovingHelper = false
+    /// A limit the helper wrote that macOS had not enforced when the wait
+    /// ran out. If macOS enforces it later, it is saved then.
+    @ObservationIgnored private var lateLimit: Int?
     /// True while a limit set through the helper waits to be enforced.
     private(set) var isWaitingForMacOS = false
     private(set) var isWarning = false
@@ -105,7 +110,7 @@ final class BatteryMonitor {
 
     /// The slider works once the limit is known. Until then a drag would
     /// set a limit without knowing the real one.
-    var canChangeLimit: Bool { limitSupported && limitKnown }
+    var canChangeLimit: Bool { limitSupported && limitKnown && !isRemovingHelper }
 
     /// The limit in words. While the slider is being dragged or a request is
     /// under way it shows where the slider is; the caption says "Applying…".
@@ -152,10 +157,12 @@ final class BatteryMonitor {
         if !refreshing {
             refreshing = true
             let startedAt = epoch
+            let late = lateLimit
             Task.detached(priority: .utility) { [weak self] in
                 let reading = SystemBattery.read()
                 let state = ChargeLimit.read()
-                await self?.finishRefresh(reading: reading, state: state, startedAt: startedAt)
+                let enforced = late == nil ? nil : ChargeLimit.enforced()
+                await self?.finishRefresh(reading: reading, state: state, startedAt: startedAt, enforced: enforced)
             }
         }
         if healthReadAt.map({ Date.now.timeIntervalSince($0) > 3600 }) ?? true {
@@ -167,8 +174,14 @@ final class BatteryMonitor {
         }
     }
 
-    private func finishRefresh(reading: BatteryReading?, state: ChargeLimit.State, startedAt: Int) {
+    private func finishRefresh(reading: BatteryReading?, state: ChargeLimit.State, startedAt: Int, enforced: Int?) {
         refreshing = false
+        // macOS enforced, late, a limit Hachibu asked for: it is Hachibu's.
+        if let late = lateLimit, startedAt == epoch, !isApplying, enforced == late, state.known, state.limit == late {
+            Preferences.shared.savedLimit = late
+            lateLimit = nil
+            applyProblem = nil
+        }
         // A limit request started or ended since this read began, so its
         // limit may be the old one. Take the battery reading, drop the limit.
         let limitIsCurrent = startedAt == epoch && !isApplying
@@ -289,6 +302,7 @@ final class BatteryMonitor {
     private func apply(_ value: Int, request: Int) async {
         isApplying = true
         applyProblem = nil
+        lateLimit = nil
         epoch += 1
         // macOS sets the limits it offers; any other needs the helper.
         let needsHelper = value < 100 && !officialStops.contains(value)
@@ -322,7 +336,10 @@ final class BatteryMonitor {
                     if !enforced { try? await Task.sleep(for: .seconds(5)) }
                 }
                 isWaitingForMacOS = false
-                if !enforced, request == requested { problem = "macOS accepted this limit but is not enforcing it yet." }
+                if !enforced, request == requested {
+                    problem = "macOS accepted this limit but is not enforcing it yet."
+                    lateLimit = value
+                }
             }
             if !confirmed {
                 problem = "macOS has not confirmed this limit. Try again."
@@ -346,14 +363,28 @@ final class BatteryMonitor {
     /// a limit below 80% goes up to the lowest macOS holds by itself, and
     /// then the helper leaves macOS. Returns why it failed, or nil.
     func removeHelper() async -> String? {
-        guard !isPreview else { return nil }
-        if helper.isRunning { _ = await HelperClient.send(.restoreAdapter) }
-        if limitKnown, let held = limit.system, held < HelperNeed.lowestWithoutHelper {
+        guard !isPreview, !isRemovingHelper else { return nil }
+        isRemovingHelper = true
+        defer { isRemovingHelper = false }
+        // Drop any limit request still waiting, and let one that is running
+        // finish, so nothing writes a limit after the helper is gone.
+        requested += 1
+        let request = requested
+        await applyChain?.value
+        // Asked even of a helper that seems broken: asking starts it.
+        _ = await HelperClient.send(.restoreAdapter)
+        let now = await Task.detached { ChargeLimit.read() }.value
+        guard now.known else { return "The limit could not be read, so the helper was kept. Try again." }
+        if !now.available.isEmpty { officialStops = LimitStops.normalized(now.available) }
+        if let held = now.limit, held < HelperNeed.lowestWithoutHelper {
             let target = HelperNeed.limitAfterRemoval(current: held, official: officialStops)
             setSlider(target)
-            requested += 1
-            await apply(target, request: requested)
-            if applyProblem != nil { return "The limit could not be raised to \(target)%, so the helper was kept." }
+            await apply(target, request: request)
+            if applyProblem != nil || limit.effective != target {
+                return "The limit could not be raised to \(target)%, so the helper was kept."
+            }
+        } else {
+            finished = request
         }
         return await helper.unregister().map { "macOS did not remove the helper: \($0)" }
     }

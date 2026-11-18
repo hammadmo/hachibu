@@ -204,9 +204,16 @@ struct HelperSettings: View {
             }
         case .needsApproval:
             SettingsRow(title: "Approve the helper", detail: "Turn on Hachibu under \"Allow in the Background\".") {
-                Button("Open Login Items…") { HelperManager.openLoginItems() }
-                    .buttonStyle(.kit())
-                    .fixedSize()
+                HStack(spacing: Space.sm) {
+                    Button("Remove Helper") {
+                        Task { problem = await monitor.removeHelper() }
+                    }
+                    .buttonStyle(.kit(.ghost))
+                    .disabled(helper.isWorking || monitor.isRemovingHelper)
+                    Button("Open Login Items…") { HelperManager.openLoginItems() }
+                        .buttonStyle(.kit())
+                }
+                .fixedSize()
             }
         case .running, .failed:
             if model.confirmingHelperRemoval {
@@ -221,7 +228,7 @@ struct HelperSettings: View {
                             }
                         }
                         .buttonStyle(.kit())
-                        .disabled(helper.isWorking)
+                        .disabled(helper.isWorking || monitor.isRemovingHelper)
                     }
                     .fixedSize()
                 }

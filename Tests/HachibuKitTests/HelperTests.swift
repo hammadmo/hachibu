@@ -72,3 +72,11 @@ func signingRequirement() {
     #expect(CodeIdentity.requirement(identifier: "app.hachibu.mac", team: "A\" or true") == nil)
     #expect(CodeIdentity.requirement(identifier: "x\" or anchor apple", team: "ABCDE12345") == nil)
 }
+
+@Test("The helper's rule refuses builds older than the first hardened one")
+func signingRequirementFloor() {
+    #expect(CodeIdentity.requirement(identifier: "app.hachibu.mac", team: "ABCDE12345", oldestBuild: "202611181819")
+        == "identifier \"app.hachibu.mac\" and anchor apple generic and certificate leaf[subject.OU] = \"ABCDE12345\" and info[CFBundleVersion] >= \"202611181819\"")
+    #expect(CodeIdentity.requirement(identifier: "app.hachibu.mac", team: "ABCDE12345", oldestBuild: "1\" or true") == nil)
+    #expect(CodeIdentity.requirement(identifier: "app.hachibu.mac", team: "ABCDE12345", oldestBuild: "") == nil)
+}

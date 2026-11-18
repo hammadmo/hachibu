@@ -81,8 +81,13 @@ enum SelfTest {
                   FileManager.default.fileExists(atPath: Bundle.main.bundleURL.appendingPathComponent($0).path)
               })
         check("the charger reads as connected or cut (CHIE)", { var cut = false; return hb_adapter_is_cut(&cut) }())
-        check("root-only writes are refused without root", !hb_root_limit_set(70) && geteuid() != 0)
-        check("the helper started by hand refuses to run", helperExitCode() == 1)
+        // Never as root: there the write and the helper would be real.
+        if geteuid() != 0 {
+            check("root-only writes are refused without root", !hb_root_limit_set(70))
+            check("the helper started by hand refuses to run", helperExitCode() == 1)
+        } else {
+            check("the self-test is not run as root", false)
+        }
         check("the real limit is unchanged after the refused write", ChargeLimit.read().limit == limit.limit)
 
         check("the enforced limit is read from pmset's report",

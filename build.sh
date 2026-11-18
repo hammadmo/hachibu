@@ -33,7 +33,8 @@ bin="$scratch/$config/$name"
 helper="$scratch/$config/HachibuHelper"
 [[ -x "$bin" && -x "$helper" ]] || { echo "build failed"; exit 1; }
 # swift build can report success while an edited file failed to compile. Catch that.
-stale=$(find "$here/Sources" -name '*.swift' -newer "$bin" | head -1)
+# A source file newer than both programs was not compiled into either.
+stale=$(find "$here/Sources" -name '*.swift' -newer "$bin" -newer "$helper" | head -1)
 if [[ -n "$stale" ]]; then
   echo "build failed: binary is older than $stale"
   swift build -c $config --package-path "$here" --scratch-path "$scratch" 2>&1 | grep -E "error" | head -20

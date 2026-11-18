@@ -8,6 +8,10 @@ public enum HelperID {
     public static let service = "app.hachibu.mac.helper"
     public static let plist = "app.hachibu.mac.helper.plist"
     public static let version = 1
+    /// The oldest build of the app the helper listens to. Builds before
+    /// this one were signed without the hardened runtime, so other code
+    /// could be loaded into them and speak to the helper in Hachibu's name.
+    public static let oldestTrustedAppBuild = "202611181819"
 }
 
 /// Everything the helper can be asked to do. The list is closed: a request
@@ -127,10 +131,16 @@ public enum CodeIdentity {
     /// The code-signing rule for a peer: this identifier, signed with a
     /// certificate Apple issued to this team. nil when the team is not a
     /// plain team ID, so nothing odd can end up inside the rule.
-    public static func requirement(identifier: String, team: String) -> String? {
+    /// `oldestBuild`, when given, also refuses any build older than it.
+    public static func requirement(identifier: String, team: String, oldestBuild: String? = nil) -> String? {
         let plain = team.count == 10 && team.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber) }
         let safe = !identifier.isEmpty && identifier.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "." || $0 == "-") }
+        var floor = ""
+        if let oldestBuild {
+            guard !oldestBuild.isEmpty, oldestBuild.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+            floor = " and info[CFBundleVersion] >= \"\(oldestBuild)\""
+        }
         guard plain, safe else { return nil }
-        return "identifier \"\(identifier)\" and anchor apple generic and certificate leaf[subject.OU] = \"\(team)\""
+        return "identifier \"\(identifier)\" and anchor apple generic and certificate leaf[subject.OU] = \"\(team)\"" + floor
     }
 }

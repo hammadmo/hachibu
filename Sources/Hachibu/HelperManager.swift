@@ -105,17 +105,23 @@ final class HelperManager {
 
     /// Asks macOS whether the helper is installed and approved, then asks
     /// the helper itself: "Running" is only shown for a helper that answered.
-    func refresh() async {
+    /// `fresh` is for right after an install or a removal: a check that
+    /// began earlier says nothing about the state now, so read again.
+    func refresh(fresh: Bool = false) async {
         guard !isFixed else { return }
         // One check at a time; a second caller waits for the one under way.
-        if let inFlight { return await inFlight.value }
+        while let inFlight {
+            await inFlight.value
+            if !fresh { return }
+            if self.inFlight == inFlight { self.inFlight = nil }
+        }
         let check = Task {
             let found = await Task.detached { await Self.readState() }.value
             if !isWorking { state = found }
         }
         inFlight = check
         await check.value
-        inFlight = nil
+        if inFlight == check { inFlight = nil }
     }
 
     private nonisolated static func readState() async -> HelperState {
@@ -144,7 +150,7 @@ final class HelperManager {
             do { try Self.daemon.register(); return nil } catch { return error.localizedDescription }
         }.value
         isWorking = false
-        await refresh()
+        await refresh(fresh: true)
         // Waiting for approval is not a failure, whatever register() threw.
         installProblem = state == .notInstalled ? "macOS did not install the helper: \(failure ?? "no reason given")" : nil
     }
@@ -158,7 +164,7 @@ final class HelperManager {
             do { try await Self.daemon.unregister(); return nil } catch { return error.localizedDescription }
         }.value
         isWorking = false
-        await refresh()
+        await refresh(fresh: true)
         return failure
     }
 
