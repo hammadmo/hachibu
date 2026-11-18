@@ -32,6 +32,8 @@ final class BatteryMonitor {
     let helper: HelperManager
     private(set) var isApplying = false
     private(set) var applyProblem: String?
+    /// True while a limit set through the helper waits to be enforced.
+    private(set) var isWaitingForMacOS = false
     private(set) var isWarning = false
     /// False until the first reading arrives.
     private(set) var hasLoaded = false
@@ -110,6 +112,7 @@ final class BatteryMonitor {
     var limitCaption: String {
         if !hasLoaded { return "Reading the limit…" }
         if !limitSupported { return "This version of macOS does not offer a charge limit." }
+        if isWaitingForMacOS { return "Applying… macOS can take two minutes." }
         if isApplying || requested != finished { return "Applying…" }
         if let applyProblem { return applyProblem }
         return limitKnown ? limit.sourceText : "The limit could not be read. Trying again…"
@@ -205,6 +208,7 @@ final class BatteryMonitor {
             if !state.available.isEmpty { officialStops = LimitStops.normalized(state.available) }
             if state.known {
                 limitKnown = true
+                Preferences.shared.reloadSavedLimit()
                 limit = LimitState(system: state.limit, saved: Preferences.shared.savedLimit)
                 if !isApplying, requested == finished { setSlider(limit.effective) }
             } else if !state.supported {
@@ -300,9 +304,21 @@ final class BatteryMonitor {
                 confirmed = state.known && state.limit == target
                 if !confirmed { try? await Task.sleep(for: .milliseconds(500)) }
             }
+            // A limit set through the helper is accepted at once but enforced
+            // a minute or two later. Wait until power management reports it.
+            if confirmed, needsHelper {
+                isWaitingForMacOS = true
+                var enforced = false
+                for _ in 0..<48 where !enforced && request == requested {
+                    enforced = await Task.detached { ChargeLimit.enforced() }.value == value
+                    if !enforced { try? await Task.sleep(for: .seconds(5)) }
+                }
+                isWaitingForMacOS = false
+                if !enforced, request == requested { problem = "macOS accepted this limit but is not enforcing it yet." }
+            }
             if !confirmed {
                 problem = "macOS has not confirmed this limit. Try again."
-            } else if request == requested {
+            } else if request == requested, problem == nil {
                 // Saved only once macOS holds it, so "Set by Hachibu" is always true.
                 Preferences.shared.savedLimit = value
             }

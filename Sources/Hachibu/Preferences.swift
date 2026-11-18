@@ -68,6 +68,13 @@ final class Preferences {
         opensAtLogin = !Store.isOverridden && SMAppService.mainApp.status == .enabled
     }
 
+    /// Takes the saved limit from the store again, in case another copy of
+    /// Hachibu (the command line) changed it.
+    func reloadSavedLimit() {
+        let stored = defaults.object(forKey: Key.savedLimit) as? Int
+        if stored != savedLimit { savedLimit = stored }
+    }
+
     /// Reads a saved value straight from the store, for the self-test.
     func storedValue(_ key: String) -> Any? {
         defaults.synchronize()

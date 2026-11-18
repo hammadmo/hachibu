@@ -120,6 +120,28 @@ nonisolated enum ChargeLimit {
         }
     }
 
+    /// The limit macOS's power management is enforcing right now, as
+    /// `pmset -g battlimit` reports it. nil when there is none or it cannot
+    /// be read. A limit set through the helper shows up here a minute or two
+    /// after the charging service accepts it (measured: about 90 seconds).
+    static func enforced() -> Int? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
+        process.arguments = ["-g", "battlimit"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return nil }
+        let text = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        process.waitUntilExit()
+        return enforcedLimit(inPmsetOutput: text)
+    }
+
+    static func enforcedLimit(inPmsetOutput text: String) -> Int? {
+        guard let match = text.firstMatch(of: /chargeSocLimitSoc\s*=\s*(\d+)/) else { return nil }
+        return Int(match.1)
+    }
+
     /// Sets the limit; 100 turns it off. Returns nil on success, or why it failed.
     static func set(_ value: Int) -> String? {
         guard !Store.isOverridden else { return "Test runs never change the real limit." }

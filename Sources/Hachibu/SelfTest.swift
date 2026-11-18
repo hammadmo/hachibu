@@ -85,6 +85,11 @@ enum SelfTest {
         check("the helper started by hand refuses to run", helperExitCode() == 1)
         check("the real limit is unchanged after the refused write", ChargeLimit.read().limit == limit.limit)
 
+        check("the enforced limit is read from pmset's report",
+              ChargeLimit.enforcedLimit(inPmsetOutput: "{ chargeSocLimitReason = manualChargeLimit; chargeSocLimitSoc = 70; }") == 70
+                  && ChargeLimit.enforcedLimit(inPmsetOutput: "Battery level limits:\n(\n)") == nil)
+        if let held = limit.limit { check("power management enforces the limit macOS reports", ChargeLimit.enforced() == held) }
+
         // S-001: the template's sample window is gone; this is a menu bar app.
         check("the app has no Dock icon", NSApp.activationPolicy() == .accessory)
         check("no window is open at launch", NSApp.windows.filter { $0.isVisible && $0.canBecomeMain }.isEmpty)

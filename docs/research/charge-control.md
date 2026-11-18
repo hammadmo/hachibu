@@ -218,3 +218,16 @@ Decision changes:
   today; a Developer ID Application certificate must be created first.
 - Official limits (80–100 in steps of 5) can be set without root. Root is
   needed only for targets below 80% and for adapter cut.
+
+## Helper results (2026-11-18, approved by the user)
+
+- `SMAppService.daemon` registers with an "Apple Development" certificate;
+  Developer ID is not needed on the developer's own Mac. Before the first
+  `register()`, `status` is `.notFound`, not `.notRegistered`. [D]
+- A limit of 70% written by the root helper is reported by the PowerUI
+  client at once, but `pmset -g battlimit` showed it after 90 s in one run
+  and 26 s in another (battery at 62–65%, charging). A limit of 80% set
+  with `setMCLLimit:` shows in pmset immediately. [D]
+- The helper's caller check (`setConnectionCodeSigningRequirement`) refused
+  an unsigned program and one signed ad hoc with Hachibu's identifier
+  (XPC error 4097). [D]
