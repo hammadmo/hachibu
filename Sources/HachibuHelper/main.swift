@@ -5,10 +5,11 @@ import HachibuSystem
 // Hachibu's helper. macOS starts it, as root, when the app sends a request,
 // and it quits by itself a few seconds after the app lets go.
 //
-// It carries out four requests (HelperRequest) and nothing else, and only
+// It carries out three requests (HelperRequest) and nothing else, and only
 // for a caller signed as Hachibu by the same Apple team that signed this
-// helper. Whenever the app goes away, and when the helper starts or stops,
-// the charger is reconnected: a cut must never outlive the app that asked.
+// helper. It cannot cut the charger. If it ever finds the charger cut (by
+// an older helper, or by another tool), it reconnects it: when it starts,
+// when its caller leaves, and when it stops.
 
 final class Service: NSObject, NSXPCListenerDelegate, HelperXPC, @unchecked Sendable {
     /// Seconds without a caller before the helper quits.
@@ -69,8 +70,7 @@ final class Service: NSObject, NSXPCListenerDelegate, HelperXPC, @unchecked Send
             var problem: String?
             switch HelperRequest(name: name, value: value) {
             case .setLimit(let limit): problem = self.setLimit(limit)
-            case .cutAdapter: problem = hb_root_adapter_set(true) ? nil : "The charger could not be disconnected."
-            case .restoreAdapter: problem = hb_root_adapter_set(false) ? nil : "The charger could not be reconnected."
+            case .restoreAdapter: problem = hb_root_adapter_restore() ? nil : "The charger could not be reconnected."
             case .readStatus: break
             case nil: problem = "The helper does not know this request."
             }
@@ -92,7 +92,7 @@ final class Service: NSObject, NSXPCListenerDelegate, HelperXPC, @unchecked Send
     }
 
     private func restoreAdapter() {
-        if adapterIsCut() { _ = hb_root_adapter_set(false) }
+        if adapterIsCut() { _ = hb_root_adapter_restore() }
     }
 
     private func callerLeft() {

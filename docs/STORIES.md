@@ -209,8 +209,9 @@ Acceptance:
   the helper appears once in System Settings > Login Items.
 - [manual] The helper refuses connections from any program not signed
   with Hachibu's Developer ID.
-- [unit] Helper requests are a closed list: set limit, cut adapter,
-  restore adapter, read status. Nothing else is accepted.
+- [unit] Helper requests are a closed list: set limit, restore adapter,
+  read status. Nothing else is accepted. ("Cut adapter" was on this list
+  until 2026-11-19; it went with the Discharge story.)
 - [manual] The app and helper are signed with a Developer ID
   certificate and the build is notarized.
 Status: done (2026-11-18: signed with Developer ID and accepted by
@@ -300,8 +301,8 @@ Status: dropped (2026-11-18, the user's decision).
   seconds, then released) left the Mac on battery for two minutes, until
   the limit was turned off. See `docs/research/charge-control.md`,
   "Adapter cut with a limit below the level".
-- The Discharge code was removed. The helper still accepts "cut adapter"
-  and "restore adapter"; nothing in the app sends a cut.
+- The Discharge code was removed, and since 2026-11-19 the helper no
+  longer accepts "cut adapter". It can only reconnect the charger.
 
 ### S-022 Sail between two levels
 As the user, I set a sailing range in Settings, and the battery drifts

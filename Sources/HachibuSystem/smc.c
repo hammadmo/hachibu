@@ -4,7 +4,7 @@
 #include <string.h>
 
 // SMC access through the AppleSMC user client. Reads need no rights; the
-// one write (the charger cut, key CHIE) needs root.
+// one write (reconnecting the charger, key CHIE) needs root.
 
 typedef struct { char major, minor, build, reserved[1]; UInt16 release; } smc_version_t;
 typedef struct { UInt16 version, length; UInt32 cpuPLimit, gpuPLimit, memPLimit; } smc_plimit_t;
@@ -72,9 +72,11 @@ int hb_smc_read(const char *key, uint8_t *bytes, int capacity, char type[5]) {
     return (int)length;
 }
 
-// CHIE: 08 cuts power from the charger, 00 restores it. Proven on macOS 27.2
-// (docs/research/charge-control.md, "Write test results").
-bool hb_root_adapter_set(bool cut) {
+// CHIE: 08 cuts power from the charger, 00 restores it. Hachibu never cuts:
+// a cut left the Mac on battery after it was released
+// (docs/research/charge-control.md). This only ever writes 00, so that a
+// cut left by anything else can be undone.
+bool hb_root_adapter_restore(void) {
     io_connect_t conn = connection();
     if (conn == 0) return false;
     smc_param_t in, out;
@@ -84,7 +86,7 @@ bool hb_root_adapter_set(bool cut) {
     in.key = code("CHIE");
     in.keyInfo.dataSize = 1;
     in.data8 = kSMCWriteKey;
-    in.bytes[0] = cut ? 0x08 : 0x00;
+    in.bytes[0] = 0x00;
     return IOConnectCallStructMethod(conn, kSMCUserClient, &in, sizeof(in), &out, &size) == kIOReturnSuccess
         && out.result == 0;
 }

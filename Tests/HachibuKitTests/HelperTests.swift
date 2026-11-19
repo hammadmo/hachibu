@@ -2,24 +2,23 @@ import Foundation
 import Testing
 @testable import HachibuKit
 
-@Test("The helper's requests are a closed list of four")
+@Test("The helper's requests are a closed list of three, and none of them cuts the charger")
 func helperRequestsAreClosed() {
     #expect(HelperRequest(name: "set-limit", value: 70) == .setLimit(70))
-    #expect(HelperRequest(name: "cut-adapter", value: 0) == .cutAdapter)
     #expect(HelperRequest(name: "restore-adapter", value: 0) == .restoreAdapter)
     #expect(HelperRequest(name: "read-status", value: 0) == .readStatus)
-    for name in ["", "set-limit ", "SET-LIMIT", "write-smc", "run", "cut-adapter;restore-adapter", "quit"] {
+    for name in ["", "set-limit ", "SET-LIMIT", "write-smc", "run", "cut-adapter", "cut-adapter;restore-adapter", "quit"] {
         #expect(HelperRequest(name: name, value: 50) == nil)
         #expect(HelperRequest(name: name, value: 0) == nil)
     }
     // A request that takes no value refuses one.
-    #expect(HelperRequest(name: "cut-adapter", value: 8) == nil)
+    #expect(HelperRequest(name: "restore-adapter", value: 8) == nil)
     #expect(HelperRequest(name: "read-status", value: 1) == nil)
 }
 
 @Test("Every request survives the trip to the helper unchanged")
 func helperRequestRoundTrip() {
-    for request in [HelperRequest.setLimit(15), .setLimit(100), .cutAdapter, .restoreAdapter, .readStatus] {
+    for request in [HelperRequest.setLimit(15), .setLimit(100), .restoreAdapter, .readStatus] {
         #expect(HelperRequest(name: request.name, value: request.value) == request)
     }
 }

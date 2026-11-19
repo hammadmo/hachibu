@@ -8,7 +8,8 @@ public enum HelperID {
     public static let service = "app.hachibu.mac.helper"
     public static let plist = "app.hachibu.mac.helper.plist"
     /// 2: the helper accepts limits from 15, for calibration.
-    public static let version = 2
+    /// 3: the helper no longer accepts "cut adapter".
+    public static let version = 3
     /// The oldest build of the app the helper listens to. Builds before
     /// this one were signed without the hardened runtime, so other code
     /// could be loaded into them and speak to the helper in Hachibu's name.
@@ -16,9 +17,10 @@ public enum HelperID {
 }
 
 /// Everything the helper can be asked to do. The list is closed: a request
-/// that does not parse into one of these four is refused.
+/// that does not parse into one of these three is refused. There is no
+/// request that cuts the charger; "restore adapter" only reconnects it.
 public enum HelperRequest: Equatable, Sendable {
-    case setLimit(Int), cutAdapter, restoreAdapter, readStatus
+    case setLimit(Int), restoreAdapter, readStatus
 
     /// The limits the helper accepts. The slider stops at 20
     /// (`LimitStops.sliderRange`); only calibration goes down to 15.
@@ -27,7 +29,6 @@ public enum HelperRequest: Equatable, Sendable {
     public var name: String {
         switch self {
         case .setLimit: "set-limit"
-        case .cutAdapter: "cut-adapter"
         case .restoreAdapter: "restore-adapter"
         case .readStatus: "read-status"
         }
@@ -45,7 +46,6 @@ public enum HelperRequest: Equatable, Sendable {
         case "set-limit":
             guard Self.limitRange.contains(value) else { return nil }
             self = .setLimit(value)
-        case "cut-adapter" where value == 0: self = .cutAdapter
         case "restore-adapter" where value == 0: self = .restoreAdapter
         case "read-status" where value == 0: self = .readStatus
         default: return nil
@@ -57,7 +57,8 @@ public enum HelperRequest: Equatable, Sendable {
 public struct HelperReply: Equatable, Sendable {
     /// nil when the request was carried out.
     public var problem: String?
-    /// True while the helper holds the charger disconnected.
+    /// True when the charger reads as cut. Hachibu never cuts it; this is
+    /// for a cut left by something else.
     public var adapterCut: Bool
     public var version: Int
 

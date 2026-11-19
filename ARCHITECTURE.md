@@ -53,7 +53,12 @@ Neither of those depends on anything else in the project. Rules go in
   touches anything real. Snapshot fixtures are in
   `BatteryMonitor+Preview.swift`.
 - `HelperXPC` (Kit): the one message between the app and the helper. The
-  request list in `HelperRequest` is closed.
+  request list in `HelperRequest` is closed: set limit, restore adapter,
+  read status.
+- `LimitText` (Kit): from plain facts to the value, the caption, and the
+  button in the limit block. The monitor only gathers the facts.
+- `LaunchCommand` (Kit): the command line, parsed. `Launch.swift` in the
+  app carries a command out.
 
 ## Rules that are easy to break
 
@@ -64,7 +69,9 @@ Neither of those depends on anything else in the project. Rules go in
   `--try` runs a mode, so quit the menu bar copy before using it.
 - A command-line run puts the limit back before it calls
   `NSApp.terminate`, not from inside the quit.
-- Hachibu never cuts the charger (`docs/research/charge-control.md`).
+- Hachibu never cuts the charger (`docs/research/charge-control.md`),
+  and nothing in the app or the helper can: the only write to that key
+  is the one that reconnects it.
 - A mode writes down what it asked macOS for and the user's limit it
   stood in for (`ModeRecord`, kept by `Preferences.modeRecord`). The
   record is erased only when macOS confirms the user's limit. At launch a

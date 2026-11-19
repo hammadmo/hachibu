@@ -37,8 +37,9 @@ bool hb_full_charge_override(void);
 /// writing the charging service's own settings and telling it to reload.
 bool hb_root_limit_set(int limit);
 
-/// Root only. Cuts (true) or restores (false) power from the charger.
-bool hb_root_adapter_set(bool cut);
+/// Root only. Reconnects the charger if something has cut it. There is no
+/// call that cuts it.
+bool hb_root_adapter_restore(void);
 
 /// Whether the charger is cut. Returns false when it cannot be read.
 bool hb_adapter_is_cut(bool *cut);

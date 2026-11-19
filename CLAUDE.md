@@ -13,7 +13,7 @@ Update it when a milestone ends or a decision changes.
 - `Sources/Hachibu/BatteryMonitor.swift` watches the battery and the limit and applies the limit the user chooses. Views read everything from it.
 - `Sources/Hachibu/SystemBattery.swift` reads the real battery (`SystemBattery`) and macOS's own charge limit (`ChargeLimit`).
 - `Sources/HachibuSystem/` C and Objective-C: the battery controller (SMC) and the private PowerUI framework. Read `docs/research/charge-control.md` before touching it.
-- `Sources/HachibuHelper/` the root helper, and `Sources/Hachibu/HelperManager.swift`, the app's side of it. The requests they share are in `Sources/HachibuKit/Helper.swift`. The helper accepts four requests and nothing else; keep that list closed.
+- `Sources/HachibuHelper/` the root helper, and `Sources/Hachibu/HelperManager.swift`, the app's side of it. The requests they share are in `Sources/HachibuKit/Helper.swift`. The helper accepts three requests and nothing else (set limit, restore adapter, read status); keep that list closed. It cannot cut the charger.
 - `Sources/HachibuKit/` rules with no SwiftUI: status, limit source, the "Limit not holding" watch, formatting. Tests in `Tests/HachibuKitTests/`.
 - `Sources/Hachibu/DesignKit/` the design kit. `design/KIT.md` is its spec.
 - `Package.swift` a Swift package. There is no Xcode project.
@@ -29,9 +29,10 @@ Update it when a milestone ends or a decision changes.
 - After every UI change, take snapshots and look at them: `tools/snap.sh`. It writes `/tmp/Hachibu-shots/<page>-light.png` and `-dark.png` for the popover states, every Settings tab, and History, then quits. `APP_SNAPSHOT_PAGES=popover,settings,history tools/snap.sh` limits the groups. A new popover state is a case in `PopoverPreview`.
 - Every snapshot state is a fixture. Snapshots never read or change the real battery.
 - Test runs set `APP_STORE`. With it set, the app never writes real preferences, registers login items, sends notifications, or changes the charge limit (`Store.isOverridden`). Keep that true for every new feature that changes something real.
-- `Hachibu --try topup|sailing <seconds>` runs a real mode. Quit the copy in the menu bar first, or the two pull against each other.
+- Command-line flags are parsed in `Sources/HachibuKit/LaunchCommand.swift` (tested) and carried out in `Sources/Hachibu/Launch.swift`; add a new one in both.
+- `Hachibu --try topup|sailing|calibration|heat <seconds>` runs a real mode. Quit the copy in the menu bar first, or the two pull against each other.
 - `Hachibu --set-limit <n>` changes the real limit through the same path as the slider. Run it only when the user has agreed to a real change, and restore the limit afterwards.
-- For a refactor that must not change the screen: copy `/tmp/Hachibu-shots` somewhere first, then `tools/compare-shots.sh <that folder>` after. It prints SAME. The About page always differs: it shows the build number.
+- For a refactor that must not change the screen: copy `/tmp/Hachibu-shots` somewhere first, then `tools/compare-shots.sh <that folder>` after. It prints SAME. Snapshot runs ignore the pointer, so two runs of one build match; the About page can differ when the build number does.
 - Then check the grid: `tools/grid-lint.sh` and `swift tools/check-layout.swift /tmp/Hachibu-shots/*-layout.json`. Both print PASS.
 - A change is done when the build has no errors or warnings, tests and checks pass, and you looked at the light and dark snapshots.
 - Run commands one per line or joined with `&&`, never `;`, so a failing check stops a commit. Never pipe a check into `tail` or `grep` before `&&` either: the pipe hides its exit code.
