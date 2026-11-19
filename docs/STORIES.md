@@ -542,7 +542,7 @@ Acceptance:
 - [snap] General has an "Open at login" toggle.
 - [manual] After a restart, Hachibu is in the menu bar without my doing
   anything.
-Status: todo
+Status: done (the user confirmed it on 2026-11-19)
 
 ### S-051 Choose what the menu bar shows
 As the user, I choose whether the menu bar item shows the percentage.
