@@ -434,3 +434,19 @@ under the battery's 38.2 °C.
   the Mac's own work heats it too. Pausing the charge removes only the
   charging part of the heat.
 
+
+## A helper limit set on battery (2026-11-19)
+
+Measured on this Mac (MacBook Air M1, macOS 27), battery at 45%.
+
+- With the charger off, `pmset -g battlimit` kept showing the old limit
+  (80) for about five and a half minutes, then "No battery level limits
+  set". The limit macOS reports through PowerUI did not change.
+- A 70% limit written by the helper while pmset showed no limit was
+  reported by PowerUI at once. pmset still showed none.
+- The charger was connected 26 seconds later: pmset showed 70
+  (`manualChargeLimit`) in the same second, and the battery was charging
+  within a minute.
+- So on battery there is no enforcement signal to wait for, and a limit
+  set there is taken up when the charger returns. Not measured: charging
+  stopping at such a limit.
