@@ -551,7 +551,8 @@ Depends: S-001
 Acceptance:
 - [snap] General has a "Show percentage" toggle.
 - [manual] Turning it off leaves only the icon.
-Status: todo
+Status: done (the switch and the menu bar were built in M1; the rule has
+a unit test. Not confirmed by eye on the real menu bar.)
 
 ### S-052 Choose which notifications I get
 As the user, I turn each notification on or off: limit not holding,
@@ -560,7 +561,9 @@ Screens: settings-general
 Acceptance:
 - [snap] General lists the four toggles.
 - [unit] A disabled kind is never sent.
-Status: todo
+Status: done (`Notice` in HachibuKit decides it. "Top Up finished" is
+sent when the battery is seen at 100% during a Top Up; no real
+notification of that kind has been seen yet.)
 
 ### S-053 App icon
 As the user, I see a Hachibu icon in Finder and Settings.

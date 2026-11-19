@@ -426,3 +426,22 @@ func outsideChangeDuringLaunchRestore() {
     rig.read(battery(50), own: false)
     #expect(rig.asked.isEmpty && !rig.modes.isOverriding && rig.record == nil && rig.modes.problem == nil)
 }
+
+@Test("Top Up finished is said once, when the battery is seen at 100%")
+func topUpFinishedNotice() {
+    var rig = Rig()
+    rig.modes.toggleTopUp(battery(80), system: 80, limitIsOwn: true)
+    rig.read(battery(80)); rig.held()
+    rig.read(battery(99), own: false)
+    #expect(rig.notices.isEmpty)
+    rig.read(battery(100), own: false)
+    rig.read(battery(100), own: false)
+    #expect(rig.notices == [.topUpFinished(limit: 80)])
+    // Stopped before it is full: nothing is said.
+    var other = Rig()
+    other.modes.toggleTopUp(battery(80), system: 80, limitIsOwn: true)
+    other.read(battery(80)); other.held()
+    other.modes.toggleTopUp(battery(90), system: 100, limitIsOwn: false)
+    other.read(battery(90), own: false)
+    #expect(other.notices.isEmpty)
+}

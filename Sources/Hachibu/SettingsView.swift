@@ -26,6 +26,9 @@ struct SettingsView: View {
                 }
             }
             .padding(Space.xxl)
+            // Never squeezed: the window takes the height the tab needs,
+            // from its first frame on.
+            .fixedSize(horizontal: false, vertical: true)
         }
         .kitWindow(width: Metric.settingsWidth)
         .overlay {
@@ -127,10 +130,10 @@ struct GeneralSettings: View {
                 SettingsRow(title: "Full charge by macOS", detail: "macOS charges past your limit to keep its estimates accurate.") {
                     Toggle("Full charge by macOS", isOn: $preferences.notifyFullCharge).toggleStyle(.kit)
                 }
-                SettingsRow(title: "Top Up finished") {
+                SettingsRow(title: "Top Up finished", detail: "A Top Up has charged the battery to 100%.") {
                     Toggle("Top Up finished", isOn: $preferences.notifyTopUpFinished).toggleStyle(.kit)
                 }
-                SettingsRow(title: "Calibration finished") {
+                SettingsRow(title: "Calibration finished", detail: "A calibration is over and your limit is back.") {
                     Toggle("Calibration finished", isOn: $preferences.notifyCalibrationFinished).toggleStyle(.kit)
                 }
             }

@@ -65,6 +65,16 @@ final class Preferences {
     /// Degrees Celsius.
     var heatThreshold: Int { didSet { defaults.set(heatThreshold, forKey: Key.heatThreshold) } }
 
+    /// The kinds of notification left switched on.
+    var allowedNotices: Set<Notice.Kind> {
+        var kinds = Set<Notice.Kind>()
+        if notifyLimitNotHolding { kinds.insert(.limitNotHolding) }
+        if notifyFullCharge { kinds.insert(.fullCharge) }
+        if notifyTopUpFinished { kinds.insert(.topUpFinished) }
+        if notifyCalibrationFinished { kinds.insert(.calibrationFinished) }
+        return kinds
+    }
+
     /// What a mode last asked macOS for, as one value. Kept in the three
     /// settings above, so a note written by an earlier build still reads.
     var modeRecord: ModeRecord? {

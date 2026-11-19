@@ -156,3 +156,18 @@ up is put back like a Top Up's limit (`ModeCoordinator.launched`).
 Rule: a limit a mode asked for has two ways out at launch, carry on or
 put back. Forgetting the note is only for a limit that is no longer the
 one Hachibu asked for.
+
+## 2026-11-19 The Settings window opened squeezed
+
+Symptom: the first snapshot of a run (General, light) was 56 pt shorter
+than the dark one of the same page. The real window did the same: it
+opened at 589 pt where General needs 645, and Charging at 662 where it
+needs 690. Rows lost their padding and the wave band was cut.
+Cause: the window took its first height from a layout pass in which the
+tab could still be compressed, and never grew until something else
+changed (the dark snapshot, a tab switch).
+Fix: the tab's content keeps its full height
+(`.fixedSize(horizontal: false, vertical: true)` in `SettingsView`).
+Rule: when the light and dark snapshot of one page differ in size, the
+layout is wrong, not the snapshot. Compare their sizes, not only each
+page with its own baseline.

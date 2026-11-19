@@ -19,6 +19,8 @@ public struct ModeRecord: Equatable, Sendable {
 }
 
 public enum ModeNotice: Equatable, Sendable {
+    /// A Top Up reached 100%. `limit` is the user's, which returns on unplug.
+    case topUpFinished(limit: Int)
     case calibrationFinished(limit: Int)
 }
 
@@ -149,7 +151,10 @@ public struct ModeCoordinator: Equatable, Sendable {
         let inputs = inputs(reading, system: system, limitIsOwn: limitIsOwn, now: now)
         let plan = engine.step(inputs, now: now)
         let wasCalibrating = calibrationStep != nil
+        let wasToppedUp = isToppedUp
         show(plan)
+        // Said once, when the battery is seen full: that is measured.
+        if plan.isToppedUp, !wasToppedUp { effects.append(.notify(.topUpFinished(limit: inputs.limit))) }
         if wasCalibrating, plan.calibration == nil {
             // Said only once the user's limit is really back.
             if engine.lastEnd == .finished { owesFinishedNotice = true }

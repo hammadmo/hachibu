@@ -298,7 +298,7 @@ final class BatteryMonitor {
         }
         runModes(now: now)
         if !isPreview, let reading, fullCharge.update(isFullCharge: reading.fullChargeOverride) {
-            Notifier.fullChargeByMacOS(limit: userLimit)
+            Notifier.send(.fullChargeByMacOS(limit: userLimit))
         }
         if !isPreview, let reading {
             // The user's limit, not the level sailing holds (none while the
@@ -311,7 +311,7 @@ final class BatteryMonitor {
         isWarning = watch.isWarning
         hasLoaded = true
         if justStarted, let reading, let held = limit.system {
-            Notifier.limitNotHolding(percent: reading.percent, limit: held)
+            Notifier.send(.limitNotHolding(percent: reading.percent, limit: held))
         }
     }
 
@@ -510,8 +510,10 @@ final class BatteryMonitor {
                 enqueueApply(limit, after: nil, remember: false)
             case .write(let record):
                 Preferences.shared.modeRecord = record
+            case .notify(.topUpFinished(let limit)):
+                Notifier.send(.topUpFinished(limit: limit))
             case .notify(.calibrationFinished(let limit)):
-                Notifier.calibrationFinished(limit: limit)
+                Notifier.send(.calibrationFinished(limit: limit))
             case .refreshHelper:
                 Task { await helper.refresh() }
             case .limitProblem(let text):
