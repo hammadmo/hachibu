@@ -119,25 +119,25 @@ public struct ChargeEngine: Equatable, Sendable {
     public static let sailingStep = 2
 
     public internal(set) var mode = ChargeMode.normal
-    /// Why the last Top Up ended. Cleared when one starts.
+    /// Why the last Top Up or calibration ended. Cleared when one starts.
     public private(set) var lastEnd: ModeEnd?
+    // One rule each, with its own state; see ChargeRules.swift.
+    private var sailing = SailingRule()
+    private var calibration = CalibrationRule()
+    private var heat = HeatRule()
+
     /// Sailing: true while charging back up to the limit.
-    public private(set) var isRecharging = false
+    public var isRecharging: Bool { sailing.isRecharging }
     /// Sailing: the level macOS is asked to hold. nil when none.
-    public private(set) var hold: Int?
-    private var sailingStarted = false
+    public var hold: Int? { sailing.hold }
     /// The step a calibration is on.
-    public private(set) var calibrationStep: CalibrationStep?
+    public var calibrationStep: CalibrationStep? { calibration.step }
     /// How long the battery has rested at 100% on the charger.
-    public private(set) var rested: TimeInterval = 0
-    private var stepSince: Date?
-    private var nearSince: Date?
-    private var lastTick: Date?
+    public var rested: TimeInterval { calibration.rested }
     /// Heat protection: whether the battery is over the threshold (with the
     /// margin on the way down), and the level being held because of it.
-    public private(set) var isHot = false
-    public private(set) var heatHold: Int?
-    private var hotSince: Date?
+    public var isHot: Bool { heat.isHot }
+    public var heatHold: Int? { heat.hold }
 
     public init() {}
 
@@ -159,8 +159,7 @@ public struct ChargeEngine: Equatable, Sendable {
         guard inputs.helperRunning else { return "Calibration needs the helper." }
         guard inputs.chargerAttached else { return "Connect the charger to calibrate." }
         mode = .calibrating
-        calibrationStep = inputs.percent <= Self.calibrationFloor ? .charging : .draining
-        resetCalibrationClocks()
+        calibration.start(at: inputs.percent)
         lastEnd = nil
         return nil
     }
@@ -173,24 +172,19 @@ public struct ChargeEngine: Equatable, Sendable {
         guard mode != .normal else { return }
         mode = .normal
         lastEnd = reason
-        calibrationStep = nil
-        resetCalibrationClocks()
+        calibration.reset()
         // Whatever the mode did to the level, sailing starts over from it.
-        resetSailing()
+        sailing.reset()
     }
 
     /// Takes up a hold that Hachibu left in place when it last ran.
     public mutating func adopt(hold level: Int) {
-        hold = level
-        sailingStarted = true
-        isRecharging = false
+        sailing.adopt(hold: level)
     }
 
     /// Forgets where sailing was, for when it is switched off or paused.
     public mutating func resetSailing() {
-        sailingStarted = false
-        isRecharging = false
-        hold = nil
+        sailing.reset()
     }
 
     // MARK: Each reading
@@ -206,180 +200,17 @@ public struct ChargeEngine: Equatable, Sendable {
         case .toppingUp:
             plan = ChargePlan(mode: mode, limit: 100, isToppedUp: inputs.percent >= 100)
         case .calibrating:
-            plan = calibrate(inputs, now: now)
+            switch calibration.plan(inputs, now: now) {
+            case .running(let running):
+                plan = running
+            case .ended(let reason):
+                end(reason)
+                plan = sailing.plan(inputs)
+            }
         case .normal:
-            plan = sailing(inputs)
+            plan = sailing.plan(inputs)
         }
-        return protectFromHeat(plan, inputs, now: now)
-    }
-
-    // MARK: Heat protection
-
-    /// While the battery is hot and the plan would charge it, macOS is asked
-    /// to hold the level the battery is at instead, whatever the mode. The
-    /// mode itself goes on, and its own limit returns when the battery has
-    /// cooled. The same move as sailing, so it needs the helper too.
-    private mutating func protectFromHeat(_ plan: ChargePlan, _ inputs: ChargeInputs, now: Date) -> ChargePlan {
-        guard let threshold = inputs.heatThreshold, let temperature = inputs.temperatureC, inputs.helperRunning else {
-            isHot = false
-            hotSince = nil
-            heatHold = nil
-            return plan
-        }
-        if isHot {
-            if temperature <= Double(threshold) - Self.heatMargin {
-                isHot = false
-                hotSince = nil
-            }
-        } else if temperature > Double(threshold) {
-            // Hot only once it has stayed above the threshold for a while.
-            let since = hotSince ?? now
-            hotSince = since
-            if now.timeIntervalSince(since) >= Self.heatSustain { isHot = true }
-        } else {
-            hotSince = nil
-        }
-        // Nothing to pause when the plan would not charge anyway, off the
-        // charger, during macOS's own full charge (it cannot be stopped), or
-        // so low that holding the level is not a limit the helper sets.
-        guard isHot, inputs.chargerAttached, !inputs.macOSFullCharge, inputs.percent < plan.limit,
-              inputs.percent >= LimitStops.sliderRange.lowerBound else {
-            heatHold = nil
-            return plan
-        }
-        // macOS takes a minute or two to act while charging, and the level
-        // climbs meanwhile. So the hold is one percent above the level: a
-        // limit below the level would make macOS drain the battery, and
-        // asking again for every percent would never let one take effect.
-        let headroom = min(inputs.percent + 1, plan.limit)
-        if let held = heatHold {
-            if inputs.percent > held || inputs.percent <= held - 1 - Self.sailingStep { heatHold = headroom }
-        } else {
-            heatHold = headroom
-        }
-        var paused = plan
-        paused.limit = heatHold ?? inputs.percent
-        paused.isSailing = false
-        paused.isPausedForHeat = true
-        return paused
-    }
-
-    // MARK: Calibration
-
-    /// Three limits in a row: 15% until the battery is there (macOS drains to
-    /// a limit below the level by itself, on AC power), none until 100%, and
-    /// none for two more hours on the charger. Then the mode ends and the
-    /// user's limit returns. Off the charger the step waits; nothing is
-    /// changed. A step that does not complete in twelve hours ends it.
-    private mutating func calibrate(_ inputs: ChargeInputs, now: Date) -> ChargePlan {
-        // Entered without a start (tests set the mode directly): charge.
-        var step = calibrationStep ?? .charging
-        let sinceLastReading = max(now.timeIntervalSince(lastTick ?? now), 0)
-        lastTick = now
-        if stepSince == nil { stepSince = now }
-        if inputs.chargerAttached {
-            switch step {
-            case .draining:
-                if reached(inputs.percent <= Self.calibrationFloor, near: inputs.percent <= Self.calibrationFloor + 1, now) {
-                    step = .charging
-                    startStep(now)
-                }
-            case .charging:
-                if reached(inputs.percent >= 100, near: inputs.percent >= 99, now) {
-                    step = .resting
-                    startStep(now)
-                }
-            case .resting:
-                if inputs.percent < 99 {
-                    // Used on battery in the middle of the rest: fill it again.
-                    step = .charging
-                    startStep(now)
-                } else {
-                    // Only time on the charger at full counts as rest.
-                    rested += sinceLastReading
-                    if rested >= Self.calibrationRest {
-                        end(.finished)
-                        return sailing(inputs)
-                    }
-                }
-            }
-        }
-        if step != .resting, let since = stepSince, now.timeIntervalSince(since) > Self.calibrationStepLimit {
-            end(.timedOut)
-            return sailing(inputs)
-        }
-        calibrationStep = step
-        return ChargePlan(mode: .calibrating, limit: step == .draining ? Self.calibrationFloor : 100,
-                          calibration: step, isWaitingForCharger: !inputs.chargerAttached)
-    }
-
-    /// True when a step's target is met: exactly, or one percent short of
-    /// it for half an hour.
-    private mutating func reached(_ exactly: Bool, near: Bool, _ now: Date) -> Bool {
-        if exactly { return true }
-        guard near else {
-            nearSince = nil
-            return false
-        }
-        let since = nearSince ?? now
-        nearSince = since
-        return now.timeIntervalSince(since) >= Self.calibrationNearGrace
-    }
-
-    private mutating func startStep(_ now: Date) {
-        stepSince = now
-        nearSince = nil
-        rested = 0
-    }
-
-    private mutating func resetCalibrationClocks() {
-        stepSince = nil
-        nearSince = nil
-        lastTick = nil
-        rested = 0
-    }
-
-    // MARK: Sailing
-
-    /// With a sailing range, the battery is not charged back to the limit
-    /// until it has drifted down by the whole range. Between the two levels
-    /// macOS is asked to hold the level the battery is at.
-    private mutating func sailing(_ inputs: ChargeInputs) -> ChargePlan {
-        let limit = inputs.limit
-        let range = min(max(inputs.sailingRange, 0), limit - LimitStops.sliderRange.lowerBound)
-        // Not with "no limit": there is nothing to sail under.
-        guard range > 0, inputs.helperRunning, limit < 100 else {
-            resetSailing()
-            return ChargePlan(mode: .normal, limit: limit)
-        }
-        let low = limit - range
-        if !sailingStarted {
-            sailingStarted = true
-            isRecharging = inputs.percent <= low
-        } else if inputs.percent <= low {
-            isRecharging = true
-            hold = nil
-        } else if isRecharging, inputs.percent >= limit - 1 {
-            // macOS can stop a percent short of the limit; that is "back up".
-            isRecharging = false
-        }
-        // Off the charger nothing changes: whatever was held stays asked
-        // for, and the level decides again when the charger is back.
-        guard inputs.chargerAttached else { return ChargePlan(mode: .normal, limit: hold ?? limit) }
-        // At the limit, while recharging, and during macOS's own full
-        // charge, the limit itself is asked for and nothing is held.
-        guard !isRecharging, !inputs.macOSFullCharge, inputs.percent < limit else {
-            hold = nil
-            return ChargePlan(mode: .normal, limit: limit)
-        }
-        if let held = hold {
-            // Follow the level only when it has really moved.
-            if abs(inputs.percent - held) >= Self.sailingStep { hold = inputs.percent }
-        } else if inputs.percent <= limit - Self.sailingStep {
-            hold = inputs.percent
-        }
-        guard let hold else { return ChargePlan(mode: .normal, limit: limit) }
-        return ChargePlan(mode: .normal, limit: hold, isSailing: true)
+        return heat.protect(plan, inputs, now: now)
     }
 }
 
