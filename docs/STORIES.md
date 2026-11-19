@@ -570,7 +570,8 @@ As the user, I see a Hachibu icon in Finder and Settings.
 Screens: none (icon review sheet)
 Acceptance:
 - [manual] `tools/icon_review.sh` shows the icon in every look.
-Status: todo
+Status: done (reviewed 2026-11-19: Default, Dark, Tinted, Clear, and at
+32 and 16 pt)
 
 ### S-054 Publish as open source
 As a visitor, I can read what Hachibu does, how it controls charging,
@@ -583,7 +584,10 @@ Acceptance:
 - [manual] A license file exists.
 - [manual] The repo has no personal names, emails, or team IDs in
   tracked files.
-Status: todo
+Status: in progress. `README.md` is written (2026-11-19). Tracked files
+were searched for names, emails, home paths, and the team ID: none
+found. Open, both the user's call: the license, and the commit history,
+whose author line carries a name and an email address.
 
 ## Later
 
