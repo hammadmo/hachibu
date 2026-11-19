@@ -171,3 +171,14 @@ Fix: the tab's content keeps its full height
 Rule: when the light and dark snapshot of one page differ in size, the
 layout is wrong, not the snapshot. Compare their sizes, not only each
 page with its own baseline.
+
+## 2026-11-19 The self-test failed on battery
+
+Symptom: `tools/selftest.sh` failed "power management enforces the limit
+macOS reports" with nothing wrong. The Mac was unplugged.
+Cause: on battery macOS withdraws the limit from power management, and
+`pmset -g battlimit` prints "No battery level limits set". The check
+compared that with the limit macOS still reports (80).
+Fix: the check runs only while the charger is connected.
+Rule: a check that reads the real Mac must say which state of the Mac it
+holds in (charger connected, helper running), and skip the others.

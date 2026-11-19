@@ -373,7 +373,7 @@ struct AboutSettings: View {
                 UmeBlossom(size: Metric.blossom)
                 KitDivider()
             }
-            Text("The way to control charging on macOS 27 was documented by the open-source batt project.")
+            Text("Made by Mohamed Hammad")
                 .kitType(.meta).foregroundStyle(Ink.textSoft)
                 .multilineTextAlignment(.center)
         }

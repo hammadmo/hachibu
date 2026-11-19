@@ -93,7 +93,11 @@ enum SelfTest {
         check("the enforced limit is read from pmset's report",
               ChargeLimit.enforcedLimit(inPmsetOutput: "{ chargeSocLimitReason = manualChargeLimit; chargeSocLimitSoc = 70; }") == 70
                   && ChargeLimit.enforcedLimit(inPmsetOutput: "Battery level limits:\n(\n)") == nil)
-        if let held = limit.limit { check("power management enforces the limit macOS reports", ChargeLimit.enforced() == held) }
+        // On battery macOS withdraws the limit from power management and
+        // puts it back on plug-in, so there is nothing to compare then.
+        if let held = limit.limit, reading?.isPluggedIn == true {
+            check("power management enforces the limit macOS reports", ChargeLimit.enforced() == held)
+        }
 
         // S-031: samples go to a /tmp store and come back in time order.
         let historyFile = URL(fileURLWithPath: HistoryCenter.file.path + "-selftest")
