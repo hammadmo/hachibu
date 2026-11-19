@@ -36,6 +36,25 @@ private struct FitsContent: ViewModifier {
     }
 }
 
+/// Gives its one child the height it wants, up to `cap`. Around a
+/// ScrollView this makes a page that is exactly as tall as its content
+/// and scrolls only when the content is taller than the cap. The height is
+/// worked out in the layout pass itself, so the window has it from its
+/// first frame.
+struct CappedHeight: Layout {
+    var cap: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let ideal = child.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
+        return CGSize(width: proposal.width ?? ideal.width, height: min(ideal.height, cap))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+    }
+}
+
 /// A zero-size view that reaches the NSWindow it sits in.
 private struct WindowHook: NSViewRepresentable {
     func makeNSView(context: Context) -> Probe {

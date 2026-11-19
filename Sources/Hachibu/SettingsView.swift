@@ -8,6 +8,18 @@ import SwiftUI
 struct SettingsView: View {
     static let windowID = "settings"
     @Environment(AppModel.self) private var model
+    @State private var screenHeight = SettingsView.usableScreenHeight
+
+    /// What the window has besides the tab: the title bar and tab bar above
+    /// it and the wave band below (177 pt, measured), and a little air so
+    /// the window does not touch the screen's edges.
+    private static let chromeHeight: CGFloat = 192
+    /// The tab is never shorter than this, however small the screen.
+    private static let shortestTab: CGFloat = 240
+
+    private static var usableScreenHeight: CGFloat {
+        NSScreen.main?.visibleFrame.height ?? 800
+    }
 
     var body: some View {
         @Bindable var model = model
@@ -17,18 +29,29 @@ struct SettingsView: View {
                 .padding(.top, Metric.titleBarInset)
                 .padding(.bottom, Space.sm)
             KitDivider()
-            Group {
-                switch model.settingsTab {
-                case .general: GeneralSettings()
-                case .charging: ChargingSettings()
-                case .helper: HelperSettings()
-                case .about: AboutSettings()
+            // The window is as tall as its tab, never squeezed. On a screen
+            // too small for the tab, it stops at the screen and the tab scrolls.
+            CappedHeight(cap: max((model.settingsScreenHeight ?? screenHeight) - Self.chromeHeight, Self.shortestTab)) {
+                ScrollView {
+                    Group {
+                        switch model.settingsTab {
+                        case .general: GeneralSettings()
+                        case .charging: ChargingSettings()
+                        case .helper: HelperSettings()
+                        case .about: AboutSettings()
+                        }
+                    }
+                    .padding(Space.xxl)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
+                .scrollBounceBehavior(.basedOnSize)
+                // Shows that there is more below. Not in snapshots: a
+                // fading bar would differ from one run to the next.
+                .scrollIndicatorsFlash(trigger: Snapshot.isRunning ? nil : model.settingsTab)
             }
-            .padding(Space.xxl)
-            // Never squeezed: the window takes the height the tab needs,
-            // from its first frame on.
-            .fixedSize(horizontal: false, vertical: true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+            screenHeight = Self.usableScreenHeight
         }
         .kitWindow(width: Metric.settingsWidth)
         .overlay {

@@ -18,6 +18,9 @@ final class AppModel {
     var popoverPreview: PopoverPreview = .holding
     /// The fixed battery and helper state Settings shows in snapshot runs.
     var settingsPreview: BatteryMonitor?
+    /// Snapshot runs set this to draw Settings as on a smaller screen:
+    /// the height of the screen's usable area, in points.
+    var settingsScreenHeight: CGFloat?
     /// The dialog that says how to allow the helper in Login Items.
     var showingHelperApproval = false
     /// The dialog that explains a calibration before it starts, or shows

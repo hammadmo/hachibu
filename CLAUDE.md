@@ -43,6 +43,7 @@ Hachibu has its own design kit. The spec is `design/KIT.md`; the code is
 `Sources/Hachibu/DesignKit/`. Read the spec before building or changing a part.
 
 - Everything uses kit parts only: the popover, the menu bar item, Settings, and History.
+- The Settings window is as tall as the tab it shows and scrolls only on a screen too small for it. The `settings-*-small` snapshots show that case.
 - Settings and History are plain `Window` scenes with a hidden title bar and `.kitWindow(width:)`, not a SwiftUI `Settings` scene. A new tab is a case in `SettingsTab`; a setting is a `SettingsRow` in a `SettingsSection`, saved in `Preferences`.
 - A row for a feature this build cannot do yet is disabled and says why (`Capability`). Never a control that silently does nothing.
 - Views read colors only from `Ink`, fonts only through `.kitType(...)`, sizes from `Metric` and `Space`, motion from `Motion`, icons from `KitIcon`. Never a hex color, `.font(.system...)`, or `systemName:` outside `DesignKit/`.

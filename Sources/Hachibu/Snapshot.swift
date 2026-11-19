@@ -72,6 +72,7 @@ enum Snapshot {
                     model.confirmingHelperRemoval = fixture.confirmingRemoval
                     model.showingHelperApproval = fixture.showingApproval
                     model.showingCalibration = fixture.showingCalibration
+                    model.settingsScreenHeight = fixture.screenHeight
                 }
             }
             if wants("history") {
@@ -142,7 +143,8 @@ struct SettingsFixture {
     /// The pages beyond one per tab.
     static let pages = ["settings-charging-helper", "settings-helper-approval", "settings-helper-running",
                         "settings-helper-failed", "settings-helper-unavailable", "settings-helper-remove", "settings-helper-allow",
-                        "settings-charging-calibrate", "settings-charging-calibrating"]
+                        "settings-charging-calibrate", "settings-charging-calibrating",
+                        "settings-charging-small", "settings-general-small"]
 
     var tab: SettingsTab = .general
     var battery: PopoverPreview = .holding
@@ -150,6 +152,8 @@ struct SettingsFixture {
     var confirmingRemoval = false
     var showingApproval = false
     var showingCalibration = false
+    /// The usable height of a small screen, to show the tab scrolling. nil is the real screen.
+    var screenHeight: CGFloat?
 
     init(page: String) {
         let parts = page.split(separator: "-").dropFirst().map(String.init)
@@ -161,6 +165,9 @@ struct SettingsFixture {
         case "allow": (helper, showingApproval) = (.needsApproval, true)
         case "calibrate": (battery, helper, showingCalibration) = (.lowLimit, .running, true)
         case "calibrating": (battery, helper, showingCalibration) = (.calibrating, .running, true)
+        // A 13-inch display set to "Larger Text": 1024 by 640 points,
+        // less the menu bar and the Dock.
+        case "small": screenHeight = 590
         case "failed": helper = .failed("The helper did not answer.")
         case "unavailable": helper = .unavailable("This copy of Hachibu is not signed with an Apple certificate, which the helper needs.")
         default: break
