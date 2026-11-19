@@ -197,7 +197,7 @@ func userLimitDuringMode() {
     #expect(rig.modes.override == .restoring(user: 80))
     #expect(rig.record == ModeRecord(asked: 15, user: 80, isSailingHold: false))
     // It fails: 80 is asked for again after a minute; 15 does not stay.
-    rig.apply(rig.modes.userRequestSettled(held: false, now: rig.now))
+    rig.apply(rig.modes.userRequestSettled(accepted: false, now: rig.now))
     rig.now = t0.addingTimeInterval(60)
     rig.read(battery(60), own: false)
     #expect(rig.asked == [15, 80])
@@ -207,7 +207,7 @@ func userLimitDuringMode() {
     other.read(battery(60)); other.held()
     other.apply(other.modes.userAsked(system: other.system))
     other.system = 70
-    other.apply(other.modes.userRequestSettled(held: true, now: other.now))
+    other.apply(other.modes.userRequestSettled(accepted: true, now: other.now))
     #expect(!other.modes.isOverriding && other.record == nil)
 }
 
@@ -317,4 +317,112 @@ func quitAndRemoval() {
     rig.apply(removal.effects)
     #expect(removal.user == 80)
     #expect(!rig.modes.isSailing && rig.modes.override == .restoring(user: 80))
+}
+
+// From the independent review of the refactors (2026-11-19).
+
+@Test("A sailing hold left behind is put back at launch when sailing can no longer take it up")
+func sailingLeftoverAtLaunch() {
+    // Sailing was switched off, and Hachibu stopped before 80 was confirmed back.
+    var rig = Rig()
+    rig.system = 72
+    let found = ModeRecord(asked: 72, user: 80, isSailingHold: true)
+    rig.record = found
+    rig.apply(rig.modes.launched(record: found, system: 72, saved: 80, sailingRange: 0, now: rig.now))
+    #expect(rig.modes.override == .restoring(user: 80))
+    #expect(rig.record == found)
+    rig.read(battery(72), own: false)
+    #expect(rig.asked == [80])
+    rig.held()
+    #expect(!rig.modes.isOverriding && rig.record == nil && rig.modes.problem == nil)
+
+    // With sailing still on, it is taken up again and nothing is asked.
+    rig = Rig()
+    rig.system = 72
+    rig.apply(rig.modes.launched(record: found, system: 72, saved: 80, sailingRange: 10, now: rig.now))
+    #expect(rig.modes.override == .holding(limit: 72, user: 80) && rig.modes.isSailing)
+
+    // A limit that is not the hold was set elsewhere: left alone, note erased.
+    rig = Rig()
+    rig.system = 75
+    rig.record = found
+    rig.apply(rig.modes.launched(record: found, system: 75, saved: 80, sailingRange: 0, now: rig.now))
+    #expect(!rig.modes.isOverriding && rig.record == nil && rig.modes.problem == nil)
+}
+
+@Test("A limit the user sets during a mode that macOS accepts but enforces late is not undone")
+func userLimitAcceptedLate() {
+    var rig = Rig()
+    rig.read(battery(77, range: 5)); rig.held()
+    rig.apply(rig.modes.userAsked(system: rig.system))
+    #expect(rig.modes.override == .restoring(user: 80))
+    // macOS took 60 but does not report it as enforced yet.
+    rig.apply(rig.modes.userRequestSettled(accepted: true, now: rig.now))
+    rig.system = 60
+    rig.now = t0.addingTimeInterval(120)
+    rig.read(battery(77), own: false)
+    #expect(rig.asked == [77])
+    #expect(!rig.modes.isOverriding && rig.record == nil)
+}
+
+@Test("A heat pause that does not take says so, and is not asked for again for ten minutes")
+func heatHoldFails() {
+    var rig = Rig()
+    let hot = battery(60, temperature: 42, threshold: 40)
+    rig.read(hot)
+    rig.now = t0.addingTimeInterval(ChargeEngine.heatSustain)
+    rig.read(hot)
+    #expect(rig.asked == [61] && rig.modes.isPausedForHeat)
+    rig.failed(.notAccepted(viaHelper: true))
+    #expect(rig.modes.problem == "Heat protection is paused for ten minutes: the helper did not answer.")
+    #expect(!rig.modes.isPausedForHeat)
+    // macOS never took 61: nothing to put back, and nothing asked while it waits.
+    rig.now = rig.now.addingTimeInterval(30)
+    rig.read(hot)
+    rig.now = rig.now.addingTimeInterval(500)
+    rig.read(hot)
+    #expect(rig.asked == [61])
+    // Ten minutes on it is still hot: after the three minutes again, the pause is asked for.
+    rig.now = t0.addingTimeInterval(ChargeEngine.heatSustain + ModeCoordinator.sailingPause)
+    rig.read(hot)
+    rig.now = rig.now.addingTimeInterval(ChargeEngine.heatSustain)
+    rig.read(hot)
+    #expect(rig.asked == [61, 61])
+    #expect(rig.modes.problem == nil)
+}
+
+@Test("Once Hachibu is quitting, a reading asks macOS for nothing")
+func quittingAsksNothing() {
+    var rig = Rig()
+    rig.read(battery(77, range: 5)); rig.held()
+    #expect(rig.modes.quitting(system: 77) == 80)
+    // The level drops while the limit is being written back.
+    rig.apply(rig.modes.reading(battery(74, range: 5), system: 77, limitIsOwn: true, canAsk: true, now: rig.now))
+    #expect(rig.asked == [77])
+    #expect(rig.record == ModeRecord(asked: 77, user: 80, isSailingHold: true))
+}
+
+@Test("A Top Up ends when the charger is unplugged, and the limit comes back")
+func topUpUnplugged() {
+    var rig = Rig()
+    rig.modes.toggleTopUp(battery(80), system: 80, limitIsOwn: true)
+    rig.read(battery(80)); rig.held()
+    rig.read(battery(95, attached: false), own: false)
+    #expect(rig.modes.mode == .normal && rig.asked == [100, 80])
+    rig.held()
+    #expect(!rig.modes.isOverriding && rig.record == nil)
+}
+
+@Test("A limit changed outside Hachibu while a launch restore waits: left alone, note erased")
+func outsideChangeDuringLaunchRestore() {
+    var rig = Rig()
+    rig.system = 15
+    let found = ModeRecord(asked: 15, user: 80, isSailingHold: false)
+    rig.record = found
+    rig.apply(rig.modes.launched(record: found, system: 15, saved: 80, sailingRange: 0, now: rig.now))
+    #expect(rig.modes.problem != nil)
+    // Someone sets 80 in System Settings before Hachibu's request goes out.
+    rig.system = 80
+    rig.read(battery(50), own: false)
+    #expect(rig.asked.isEmpty && !rig.modes.isOverriding && rig.record == nil && rig.modes.problem == nil)
 }

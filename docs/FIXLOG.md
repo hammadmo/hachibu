@@ -142,3 +142,17 @@ masks the window's corners and title-bar buttons.
 Rule: a picture used as proof must not depend on anything outside the
 program: the pointer, the focused window, hidden pixels.
 
+## 2026-11-19 A sailing hold could stay as the limit after a crash
+
+Symptom: found by an independent review, not seen on the Mac. Sailing
+holds 72 under a limit of 80; sailing is switched off and Hachibu stops
+before macOS confirms 80. The next launch left 72 in place as "Set
+outside Hachibu".
+Cause: the launch treated a sailing note as "take it up or forget it".
+With sailing off it could not take it up, so it erased the note. Every
+other mode's note meant "put the limit back".
+Fix: a sailing hold that is still exactly in place and cannot be taken
+up is put back like a Top Up's limit (`ModeCoordinator.launched`).
+Rule: a limit a mode asked for has two ways out at launch, carry on or
+put back. Forgetting the note is only for a limit that is no longer the
+one Hachibu asked for.

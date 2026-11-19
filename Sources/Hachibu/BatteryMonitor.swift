@@ -393,9 +393,9 @@ final class BatteryMonitor {
         case .superseded:
             return
         }
-        // Held: whatever a mode left behind is gone. Not held while a
-        // mode's limit was still in place: the limit from before returns.
-        carryOut(modes.userRequestSettled(held: outcome == .held, now: .now))
+        // Taken by macOS: whatever a mode left behind is gone. Not taken
+        // while a mode's limit was still in place: the limit from before returns.
+        carryOut(modes.userRequestSettled(accepted: outcome == .held || outcome == .notEnforced, now: .now))
         applyProblem = problem
         Task { await reloadNow() }
     }

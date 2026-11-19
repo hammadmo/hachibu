@@ -21,7 +21,8 @@ public enum LaunchCommand: Equatable, Sendable {
     case restoreCharger
     case selfTest
     case showSettings(tab: String?)
-    /// A flag that needs a value and did not get a usable one.
+    /// A flag that needs a value and did not get a usable one, or a flag
+    /// Hachibu does not know.
     case usage(String)
 
     public static let showSettingsFlag = "--show-settings"
@@ -47,7 +48,7 @@ public enum LaunchCommand: Equatable, Sendable {
             }
             self = .probeLimit(limit)
         } else if arguments.contains("--try") {
-            guard let mode = value(after: "--try"), let seconds = value(after: "--try", offset: 2).flatMap(Int.init) else {
+            guard let mode = value(after: "--try"), let seconds = value(after: "--try", offset: 2).flatMap(Int.init), seconds > 0 else {
                 self = .usage("usage: Hachibu --try topup|sailing|calibration|heat <seconds>")
                 return
             }
@@ -60,6 +61,11 @@ public enum LaunchCommand: Equatable, Sendable {
             self = .helperStatus
         } else if arguments.contains("--selftest") {
             self = .selfTest
+        } else if let unknown = arguments.dropFirst().first(where: { $0.hasPrefix("--") }) {
+            // A misspelled flag must not start a second copy that runs modes
+            // against the one in the menu bar. (macOS's own arguments start
+            // with one dash.)
+            self = .usage("Hachibu does not know \(unknown). The flags are listed in LaunchCommand.swift.")
         } else {
             return nil
         }

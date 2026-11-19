@@ -61,6 +61,10 @@ public struct ModeCoordinator: Equatable, Sendable {
     private var record: ModeRecord?
     private var restoreRetryAt: Date?
     private var sailingPausedUntil: Date?
+    /// After a heat pause failed to take, heat protection waits this long too.
+    private var heatPausedUntil: Date?
+    /// Hachibu is quitting: the limit is being written back, so no mode asks for one.
+    private var isQuitting = false
     /// A calibration finished; say so once the user's limit is really back.
     private var owesFinishedNotice = false
     /// `problem` is the notice from a launch that found a leftover limit.
@@ -92,6 +96,7 @@ public struct ModeCoordinator: Equatable, Sendable {
         inputs.limit = userLimit(system: system)
         if !(isOverriding || limitIsOwn) { inputs.sailingRange = 0 }
         if let until = sailingPausedUntil, now < until { inputs.sailingRange = 0 }
+        if let until = heatPausedUntil, now < until { inputs.heatThreshold = nil }
         return inputs
     }
 
@@ -101,8 +106,9 @@ public struct ModeCoordinator: Equatable, Sendable {
     /// calibration, or a heat pause that Hachibu did not get to undo is
     /// undone: if macOS still holds exactly what was asked, it is Hachibu's
     /// own leftover and the user's limit is put back. A sailing hold that is
-    /// still exactly in place is taken up again. Anything else was set
-    /// outside Hachibu and is left alone, and the record is erased.
+    /// still exactly in place is taken up again, or undone like the others
+    /// when sailing is no longer on. Anything else was set outside Hachibu
+    /// and is left alone, and the record is erased.
     public mutating func launched(record found: ModeRecord?, system: Int, saved: Int?, sailingRange: Int,
                                   now: Date) -> [ModeEffect] {
         var effects: [ModeEffect] = []
@@ -113,15 +119,23 @@ public struct ModeCoordinator: Equatable, Sendable {
                 isSailing = true
                 override = .holding(limit: found.asked, user: saved)
                 engine.adopt(hold: found.asked)
+            } else if system == found.asked, let saved, saved != found.asked {
+                // Sailing cannot go on (switched off, or no helper), and the
+                // hold is still in place: it must not stay as the limit.
+                restoreAtLaunch(user: saved, now: now)
             }
         } else if system == found.asked, found.user != found.asked {
-            override = .restoring(user: found.user)
-            restoreRetryAt = now
-            problem = "Hachibu stopped during a Top Up or a calibration. Your limit is being put back."
-            showsLaunchNotice = true
+            restoreAtLaunch(user: found.user, now: now)
         }
         sync(&effects)
         return effects
+    }
+
+    private mutating func restoreAtLaunch(user: Int, now: Date) {
+        override = .restoring(user: user)
+        restoreRetryAt = now
+        problem = "Hachibu stopped while a limit of its own was in place. Your limit is being put back."
+        showsLaunchNotice = true
     }
 
     // MARK: Each reading
@@ -144,8 +158,8 @@ public struct ModeCoordinator: Equatable, Sendable {
             }
         }
         // A mode that is running again has nothing left to explain.
-        if plan.mode != .normal || plan.isSailing { clearProblem() }
-        guard canAsk else { return effects }
+        if plan.mode != .normal || plan.isSailing || plan.isPausedForHeat { clearProblem() }
+        guard canAsk, !isQuitting else { return effects }
         let wanted: Int? = plan.limit == inputs.limit ? nil : plan.limit
         let retryDue = restoreRetryAt.map { now >= $0 } ?? false
         if let limit = override.follow(wanted: wanted, userLimit: inputs.limit, retryDue: retryDue) {
@@ -215,9 +229,14 @@ public struct ModeCoordinator: Equatable, Sendable {
         case .holding(_, let user):
             // What the mode asked for did not take. Stop the mode, say why,
             // and put the user's limit back; the Mac may be in between.
+            // A hold that failed is not asked for again on the next
+            // reading: the rule that wanted it waits ten minutes.
+            if isPausedForHeat { heatPausedUntil = now.addingTimeInterval(Self.sailingPause) }
             switch mode {
             case .toppingUp: problem = "The Top Up was stopped: \(reason)."
             case .calibrating: problem = "The calibration was stopped: \(reason)."
+            case .normal where isPausedForHeat:
+                problem = "Heat protection is paused for ten minutes: \(reason)."
             case .normal:
                 sailingPausedUntil = now.addingTimeInterval(Self.sailingPause)
                 problem = "Sailing is paused for ten minutes: \(reason)."
@@ -254,10 +273,13 @@ public struct ModeCoordinator: Equatable, Sendable {
         return effects
     }
 
-    /// The outcome of a limit the user asked for.
-    public mutating func userRequestSettled(held: Bool, now: Date) -> [ModeEffect] {
+    /// The outcome of a limit the user asked for. `accepted` is true when
+    /// macOS took it, even if it is not enforcing it yet: from then on the
+    /// limit in place is the user's new one, and going back to the limit
+    /// from before the mode would undo their choice.
+    public mutating func userRequestSettled(accepted: Bool, now: Date) -> [ModeEffect] {
         var effects: [ModeEffect] = []
-        if held {
+        if accepted {
             // Only now is whatever a mode left behind really gone.
             override = .none
             restoreRetryAt = nil
@@ -306,6 +328,7 @@ public struct ModeCoordinator: Equatable, Sendable {
         let target = userLimit(system: system)
         engine.stop()
         mode = .normal
+        isQuitting = true
         return isOverriding ? target : nil
     }
 

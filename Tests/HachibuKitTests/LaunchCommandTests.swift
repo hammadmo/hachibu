@@ -24,13 +24,26 @@ func launchCommands() {
 @Test("A flag without a usable value prints how to use it and changes nothing")
 func launchUsage() {
     for bad in [command("--set-limit"), command("--set-limit", "eighty"), command("--probe-limit"),
-                command("--try", "topup"), command("--try", "topup", "soon")] {
+                command("--try", "topup"), command("--try", "topup", "soon"), command("--try", "topup", "-5")] {
         guard case .usage(let text)? = bad else {
             Issue.record("expected usage, got \(String(describing: bad))")
             continue
         }
         #expect(text.hasPrefix("usage: Hachibu --"))
     }
+}
+
+@Test("A flag Hachibu does not know prints a line and quits, so no second copy runs modes")
+func launchUnknownFlag() {
+    for bad in [command("--set-limt", "70"), command("--help"), command("-NSQuitAlwaysKeepsWindows", "NO", "--tryy")] {
+        guard case .usage? = bad else {
+            Issue.record("expected usage, got \(String(describing: bad))")
+            continue
+        }
+        #expect(bad?.runsModes == false)
+    }
+    // The first flag that is known wins; a bad value never falls through to a plain launch.
+    #expect(command("--set-limit", "70", "--try", "topup", "5") == .setLimit(70))
 }
 
 @Test("Only the menu bar copy, and a --try run, run modes; every one-shot run leaves recording alone")
