@@ -373,9 +373,16 @@ struct AboutSettings: View {
                 UmeBlossom(size: Metric.blossom)
                 KitDivider()
             }
-            Text("Made by Mohamed Hammad")
-                .kitType(.meta).foregroundStyle(Ink.textSoft)
-                .multilineTextAlignment(.center)
+            // The maker's line, set like a colophon: a small label, the
+            // name in the serif face, and the rights underneath.
+            VStack(spacing: Space.xs) {
+                Text("DESIGNED AND BUILT BY")
+                    .kitType(.section).tracking(1.5).foregroundStyle(Ink.accentText)
+                    .accessibilityLabel("Designed and built by")
+                Text("Mohamed Hammad").kitType(.numeral).foregroundStyle(Ink.text)
+                Text("© 2026 · MIT License").kitType(.meta).foregroundStyle(Ink.textSoft)
+                    .padding(.top, Space.xs)
+            }
         }
         .frame(maxWidth: .infinity)
     }
