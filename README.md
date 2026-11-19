@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/hammadmo/hachibu/releases/latest"><img src="https://img.shields.io/badge/download-0.1-b8934a" alt="Download 0.1"></a>
   <img src="https://img.shields.io/badge/macOS-27-1d1a17" alt="macOS 27">
   <img src="https://img.shields.io/badge/Apple%20silicon-only-1d1a17" alt="Apple silicon only">
   <img src="https://img.shields.io/badge/Swift-6-b8934a" alt="Swift 6">
@@ -29,7 +30,7 @@ sends nothing anywhere.
 
 ## Features
 
-| | |
+| Feature | What it does |
 | --- | --- |
 | **Charge limit** | Pick any limit from 20% to 100%. A limit is shown as set only after macOS reports that it holds it. |
 | **Top Up** | Charge to 100% once, for a day away from the charger. Your limit returns when you unplug or press Stop. |
@@ -72,8 +73,18 @@ The pictures show sample data, not a real battery.
 
 ## Install
 
-There is no packaged download yet. Build it from source with one
-command:
+1. Download `Hachibu-0.1.zip` from the
+   [latest release](https://github.com/hammadmo/hachibu/releases/latest)
+   and unzip it.
+2. Move `Hachibu.app` to your Applications folder and open it. It lives
+   in the menu bar; there is no Dock icon.
+3. For limits below 80%, sailing, heat protection, and calibration,
+   install the helper from Settings > Helper and allow it once in
+   System Settings > General > Login Items.
+
+The download is signed with a Developer ID and notarized by Apple.
+
+### Build from source
 
 ```bash
 ./build.sh --open
