@@ -55,7 +55,7 @@ struct KitChart: View {
         .contentShape(.rect)
         .onContinuousHover(coordinateSpace: .local) { phase in
             switch phase {
-            case .active(let point): hover = min(max(point.x / max(chartWidth, 1), 0), 1)
+            case .active(let point): hover = Snapshot.isRunning ? nil : min(max(point.x / max(chartWidth, 1), 0), 1)
             case .ended: hover = nil
             }
         }

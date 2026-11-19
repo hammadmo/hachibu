@@ -13,16 +13,7 @@ nonisolated let modeLog = Logger(subsystem: "app.hachibu.mac", category: "modes"
 /// from here.
 @Observable
 final class BatteryMonitor {
-    enum LimitAction: Equatable {
-        case useSaved(Int), keepSystem
-
-        var title: String {
-            switch self {
-            case .useSaved: "Use Hachibu's Limit"
-            case .keepSystem: "Keep This Limit"
-            }
-        }
-    }
+    typealias LimitAction = HachibuKit.LimitAction
 
     private(set) var reading: BatteryReading?
     private(set) var limit = LimitState(system: nil, saved: nil)
@@ -165,59 +156,40 @@ final class BatteryMonitor {
     /// set a limit without knowing the real one.
     var canChangeLimit: Bool { limitSupported && limitKnown && !isRemovingHelper }
 
-    /// The limit in words. While the slider is being dragged or a request is
-    /// under way it shows where the slider is; the caption says "Applying…".
-    var limitValueText: String {
-        guard limitKnown else { return "–" }
-        // Read the slider first, always: the view then redraws on every step of a drag.
-        let target = LimitState(system: sliderValue, saved: nil).valueText
-        // A limit the user is setting shows at once, even over a mode's.
-        if userRequestPending { return target }
-        if isOverriding { return LimitState(system: userLimit, saved: nil).valueText }
-        return isBusy ? target : limit.valueText
-    }
-
     /// A limit request is waiting or under way.
     var isBusy: Bool { setter.isBusy }
 
-    var limitCaption: String {
-        if !hasLoaded { return "Reading the limit…" }
-        if !limitSupported { return "This version of macOS does not offer a charge limit." }
-        _ = sliderValue // redraw the caption as soon as a drag starts
-        if isPausedForHeat, let heatThreshold {
-            return "Paused for heat. Charging resumes at \(heatThreshold - Int(ChargeEngine.heatMargin)) °C."
-        }
-        if mode == .calibrating {
-            return isWaitingForCharger ? "Calibrating. Connect the charger to go on."
-                : "Calibrating. Your limit returns when it is done."
-        }
-        if mode == .toppingUp {
-            return isToppedUp ? "Topped up. Your limit returns when you unplug."
-                : "Charging to 100% once. Your limit returns when you unplug."
-        }
-        if isBusy {
-            if userRequestPending { return isWaitingForMacOS ? "Applying… macOS can take two minutes." : "Applying…" }
-            if case .restoring = override { return "Putting your limit back…" }
-            if isSailing, isOverriding { return sailingCaption }
-            return isWaitingForMacOS ? "Applying… macOS can take two minutes." : "Applying…"
-        }
-        if let modeProblem { return modeProblem }
-        if let applyProblem { return applyProblem }
-        if isSailing, isOverriding { return sailingCaption }
-        if case .restoring = override { return "Putting your limit back…" }
-        return limitKnown ? limit.sourceText : "The limit could not be read. Trying again…"
+    /// The words in the limit block. The rules are `LimitText` in
+    /// HachibuKit; this only gathers the facts. The slider is read first,
+    /// always, so the views redraw on every step of a drag.
+    var limitText: LimitText {
+        var facts = LimitFacts()
+        facts.sliderValue = sliderValue
+        facts.hasLoaded = hasLoaded
+        facts.limitSupported = limitSupported
+        facts.limitKnown = limitKnown
+        facts.canChange = canChangeLimit
+        facts.limit = limit
+        facts.userLimit = userLimit
+        facts.isBusy = isBusy
+        facts.isWaitingForMacOS = isWaitingForMacOS
+        facts.userRequestPending = userRequestPending
+        facts.override = override
+        facts.mode = mode
+        facts.isSailing = isSailing
+        facts.isToppedUp = isToppedUp
+        facts.isPausedForHeat = isPausedForHeat
+        facts.isWaitingForCharger = isWaitingForCharger
+        facts.heatThreshold = heatThreshold
+        facts.sailingRange = Preferences.shared.sailingRange
+        facts.modeProblem = modeProblem
+        facts.applyProblem = applyProblem
+        return LimitText(facts)
     }
 
-    private var sailingCaption: String {
-        let range = Preferences.shared.sailingRange
-        return "Sailing between \(max(userLimit - range, 20))% and \(userLimit)%."
-    }
-
-    var limitAction: LimitAction? {
-        guard canChangeLimit, !isBusy, !isOverriding, mode == .normal else { return nil }
-        if let saved = limit.savedToRestore { return .useSaved(saved) }
-        return limit.source == .outside ? .keepSystem : nil
-    }
+    var limitValueText: String { limitText.value }
+    var limitCaption: String { limitText.caption }
+    var limitAction: LimitAction? { limitText.action }
 
     // MARK: Watching
 

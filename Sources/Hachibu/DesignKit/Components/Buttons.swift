@@ -55,7 +55,7 @@ private struct KitButtonBody: View {
             .opacity(state == .disabled ? 0.4 : 1)
             .scaleEffect(state == .pressed ? 0.98 : 1)
             .animation(Motion.press, value: state)
-            .onHover { hovering = $0 }
+            .onHover { hovering = $0 && !Snapshot.isRunning }
             .contentShape(shape)
     }
 

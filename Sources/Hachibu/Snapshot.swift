@@ -18,6 +18,10 @@ import SwiftUI
 /// APP_SNAPSHOT_PAGES=popover,settings,history limits the groups.
 /// Nothing here reads or changes the real battery: every state is a fixture.
 enum Snapshot {
+    /// True in a snapshot run. Parts then ignore the pointer, so a picture
+    /// does not depend on where the mouse happens to be.
+    nonisolated static let isRunning = !(ProcessInfo.processInfo.environment["APP_SNAPSHOT"] ?? "").isEmpty
+
     static func runIfRequested(model: AppModel, open: @escaping (String) -> Void) {
         let env = ProcessInfo.processInfo.environment
         guard let dir = env["APP_SNAPSHOT"], !dir.isEmpty else { return }

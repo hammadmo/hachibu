@@ -129,3 +129,16 @@ Rules:
   a near-miss rule and a time limit.
 - Do not announce that something is back until it is measured back.
 
+## 2026-11-19 Snapshots depended on where the mouse was
+
+Symptom: after a refactor that changes nothing on screen, 15 popover
+snapshots differed from the ones taken before it.
+Cause: in the earlier run the pointer happened to rest over the Top Up
+button, which was drawn in its hover state. The comparison also counted
+see-through corner pixels, whose hidden colors change between captures.
+Fix: in a snapshot run the kit's parts ignore the pointer
+(`Snapshot.isRunning`), and the comparison flattens transparency and
+masks the window's corners and title-bar buttons.
+Rule: a picture used as proof must not depend on anything outside the
+program: the pointer, the focused window, hidden pixels.
+

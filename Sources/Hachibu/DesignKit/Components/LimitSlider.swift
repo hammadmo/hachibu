@@ -75,7 +75,7 @@ struct LimitSlider: View {
         .opacity(state == .disabled ? 0.4 : 1)
         .animation(Motion.press, value: state)
         .animation(Motion.hover, value: value)
-        .onHover { hovering = $0 }
+        .onHover { hovering = $0 && !Snapshot.isRunning }
         .focusable()
         .focused($focused)
         .focusEffectDisabled()

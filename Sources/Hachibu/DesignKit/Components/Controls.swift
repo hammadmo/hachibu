@@ -53,7 +53,7 @@ private struct KitToggleBody: View {
         .opacity(state == .disabled ? 0.4 : 1)
         .animation(Motion.press, value: isOn)
         .animation(Motion.hover, value: state)
-        .onHover { hovering = $0 }
+        .onHover { hovering = $0 && !Snapshot.isRunning }
         .accessibilityRepresentation {
             Toggle(isOn: configuration.$isOn) { configuration.label }
         }
@@ -139,7 +139,7 @@ struct KitTabStyle: ButtonStyle {
                 }
                 .opacity(state == .disabled ? 0.4 : 1)
                 .animation(Motion.hover, value: state)
-                .onHover { hovering = $0 }
+                .onHover { hovering = $0 && !Snapshot.isRunning }
                 .contentShape(shape)
         }
     }

@@ -14,11 +14,19 @@ for old in $before/*.png; do
   name=${old:t}
   count=$((count + 1))
   [[ -f $now/$name ]] || { echo "missing $name"; bad=$((bad + 1)); continue }
-  # The window's close, minimize, and zoom buttons are painted over: they
-  # are lit or grey depending on which window macOS thinks is active.
+  # Painted over before comparing, because macOS draws them differently
+  # depending on which window it thinks is active: the close, minimize,
+  # and zoom buttons, and the window's four rounded corners.
   # Then: pixels that differ by more than 1%, since capture is not bit-exact.
-  magick $old -fill black -draw "rectangle 0,0 160,64" $work/a.png
-  magick $now/$name -fill black -draw "rectangle 0,0 160,64" $work/b.png
+  size=($(magick identify -format "%w %h" $old))
+  right=$((size[1] - 48)); bottom=$((size[2] - 48))
+  mask=(-fill black -draw "rectangle 0,0 160,64" -draw "rectangle $right,0 $size[1],48"
+        -draw "rectangle 0,$bottom 48,$size[2]" -draw "rectangle $right,$bottom $size[1],$size[2]")
+  # Flattened onto black first: a screenshot's see-through corner pixels
+  # carry colors nobody sees, and those differ from one capture to the next.
+  flat=(-background black -alpha remove -alpha off)
+  magick $old $flat $mask $work/a.png
+  magick $now/$name $flat $mask $work/b.png
   out=$(magick compare -metric AE -fuzz 1% $work/a.png $work/b.png null: 2>&1)
   code=$?
   # 0 is the same, 1 is different, 2 is an error such as two sizes. Only a
