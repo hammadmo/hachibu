@@ -175,6 +175,7 @@ func fullChargeStatus() {
     #expect(BatteryStatus.fullChargeByMacOS.detail(for: charging).contains("macOS"))
     // Even during a Top Up, the truth is that macOS is the one charging.
     #expect(BatteryStatus.derive(from: charging, limit: nil, mode: .toppingUp, isSailing: false) == .fullChargeByMacOS)
+    #expect(BatteryStatus.derive(from: charging, limit: 15, mode: .calibrating, isSailing: false) == .fullChargeByMacOS)
     var watch = LimitWatch()
     let start = Date(timeIntervalSince1970: 0)
     _ = watch.update(reading: charging, limit: 80, now: start)

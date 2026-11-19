@@ -295,58 +295,91 @@ private func paused(_ level: Int, mode: ChargeMode = .normal) -> ChargePlan {
     ChargePlan(mode: mode, limit: level, isPausedForHeat: true)
 }
 
-@Test("Charging pauses above the threshold and resumes 2 °C below it")
-func heatPausesAndResumes() {
+/// An engine that has already been over 40 °C for three minutes.
+private func hotEngine(_ percent: Int, topUp: Bool = false) -> ChargeEngine {
     var engine = ChargeEngine()
-    #expect(engine.step(hot(60, 39.5)) == plain())
-    #expect(engine.step(hot(60, 40.0)) == plain())
-    // Above 40: hold the level the battery is at.
-    #expect(engine.step(hot(60, 40.1)) == paused(60))
-    // Cooling, but not by two degrees yet: still paused.
-    #expect(engine.step(hot(60, 39.0)) == paused(60))
-    #expect(engine.step(hot(60, 38.1)) == paused(60))
-    #expect(engine.step(hot(60, 38.0)) == plain())
-    #expect(engine.step(hot(61, 39.9)) == plain())
+    if topUp { _ = engine.startTopUp(hot(percent, 35)) }
+    _ = engine.step(hot(percent, 41), now: t0)
+    _ = engine.step(hot(percent, 41), now: t0.addingTimeInterval(180))
+    return engine
 }
 
-@Test("The level asked for is never below the battery's level")
-func heatNeverDrains() {
+@Test("Charging pauses only after three minutes above the threshold, and resumes 2 °C below it")
+func heatPausesAndResumes() {
     var engine = ChargeEngine()
-    #expect(engine.step(hot(60, 41)) == paused(60))
-    // macOS was slow to act and the level rose: the hold moves up to it at once.
-    #expect(engine.step(hot(61, 41)) == paused(61))
-    #expect(engine.step(hot(62, 41)) == paused(62))
-    // One percent down is flicker; a real drop is followed.
-    #expect(engine.step(hot(61, 41)) == paused(62))
-    #expect(engine.step(hot(60, 41)) == paused(60))
+    #expect(engine.step(hot(60, 39.5), now: t0) == plain())
+    #expect(engine.step(hot(60, 40.0), now: t0) == plain())
+    // Above 40, but only just now: not yet.
+    #expect(engine.step(hot(60, 40.1), now: t0) == plain())
+    #expect(engine.step(hot(60, 41), now: t0.addingTimeInterval(179)) == plain())
+    // Three minutes on: hold one percent above the level.
+    #expect(engine.step(hot(60, 41), now: t0.addingTimeInterval(180)) == paused(61))
+    // Cooling, but not by two degrees yet: still paused.
+    #expect(engine.step(hot(60, 39.0), now: t0.addingTimeInterval(300)) == paused(61))
+    #expect(engine.step(hot(60, 38.1), now: t0.addingTimeInterval(320)) == paused(61))
+    #expect(engine.step(hot(60, 38.0), now: t0.addingTimeInterval(340)) == plain())
+    #expect(engine.step(hot(61, 39.9), now: t0.addingTimeInterval(360)) == plain())
+}
+
+@Test("A spike that cools again before three minutes starts nothing")
+func heatIgnoresSpikes() {
+    var engine = ChargeEngine()
+    #expect(engine.step(hot(60, 42), now: t0) == plain())
+    #expect(engine.step(hot(60, 39), now: t0.addingTimeInterval(120)) == plain())
+    // Hot again: the three minutes start over.
+    #expect(engine.step(hot(60, 42), now: t0.addingTimeInterval(200)) == plain())
+    #expect(engine.step(hot(60, 42), now: t0.addingTimeInterval(370)) == plain())
+    #expect(engine.step(hot(60, 42), now: t0.addingTimeInterval(380)) == paused(61))
+}
+
+@Test("The hold is never below the battery's level, and one percent of climb asks for nothing new")
+func heatNeverDrains() {
+    var engine = hotEngine(60)
+    let later = t0.addingTimeInterval(400)
+    #expect(engine.step(hot(60, 41), now: later) == paused(61))
+    // macOS is slow to act and the level climbs a percent: still inside the hold.
+    #expect(engine.step(hot(61, 41), now: later) == paused(61))
+    // Past the hold: move it, again with a percent of room.
+    #expect(engine.step(hot(62, 41), now: later) == paused(63))
+    // A real drop is followed down; one or two percent is not.
+    #expect(engine.step(hot(61, 41), now: later) == paused(63))
+    #expect(engine.step(hot(60, 41), now: later) == paused(61))
 }
 
 @Test("A pause also holds during a Top Up, and the Top Up continues when the battery has cooled")
 func heatDuringTopUp() {
-    var engine = ChargeEngine()
-    _ = engine.startTopUp(hot(85, 35))
-    #expect(engine.step(hot(86, 35)) == ChargePlan(mode: .toppingUp, limit: 100))
-    #expect(engine.step(hot(88, 41)) == paused(88, mode: .toppingUp))
+    var engine = hotEngine(88, topUp: true)
+    let later = t0.addingTimeInterval(400)
+    #expect(engine.step(hot(88, 41), now: later) == paused(89, mode: .toppingUp))
     #expect(engine.mode == .toppingUp)
-    #expect(engine.step(hot(88, 37.5)) == ChargePlan(mode: .toppingUp, limit: 100))
+    #expect(engine.step(hot(88, 37.5), now: later) == ChargePlan(mode: .toppingUp, limit: 100))
 }
 
 @Test("Heat protection does nothing when the plan would not charge, when it is off, or without the helper")
 func heatLeavesTheRestAlone() {
-    var engine = ChargeEngine()
+    let later = t0.addingTimeInterval(400)
     // At the limit nothing charges, so nothing is asked.
-    #expect(engine.step(hot(80, 45)) == plain())
+    var engine = hotEngine(80)
+    #expect(engine.step(hot(80, 45), now: later) == plain())
     // Off the charger.
-    #expect(engine.step(hot(60, 45, attached: false)) == plain())
+    engine = hotEngine(60)
+    #expect(engine.step(hot(60, 45, attached: false), now: later) == plain())
     // macOS's own full charge cannot be paused.
-    #expect(engine.step(hot(90, 45, fullCharge: true)) == plain())
+    engine = hotEngine(90)
+    #expect(engine.step(hot(90, 45, fullCharge: true), now: later) == plain())
     // Switched off, no temperature, no helper.
-    engine = ChargeEngine()
-    #expect(engine.step(hot(60, 45, threshold: nil)) == plain())
-    #expect(engine.step(hot(60, nil)) == plain())
-    #expect(engine.step(hot(60, 45, helper: false)) == plain())
+    engine = hotEngine(60)
+    #expect(engine.step(hot(60, 45, threshold: nil), now: later) == plain())
+    engine = hotEngine(60)
+    #expect(engine.step(hot(60, nil), now: later) == plain())
+    engine = hotEngine(60)
+    #expect(engine.step(hot(60, 45, helper: false), now: later) == plain())
     // Too low to hold: charging is more important.
-    #expect(engine.step(hot(12, 45)) == plain())
+    engine = hotEngine(12)
+    #expect(engine.step(hot(12, 45), now: later) == plain())
+    // One under the limit: the hold cannot pass the limit itself.
+    engine = hotEngine(79)
+    #expect(engine.step(hot(79, 45), now: later) == paused(80))
 }
 
 @Test("Heat protection takes over from sailing and gives back to it")
@@ -354,14 +387,65 @@ func heatAndSailing() {
     var engine = ChargeEngine()
     var reading = hot(77, 35)
     reading.sailingRange = 5
-    #expect(engine.step(reading) == sail(77))
+    #expect(engine.step(reading, now: t0) == sail(77))
     // Recharging from the bottom of the range, and it gets hot on the way up.
     reading.percent = 75
-    #expect(engine.step(reading) == plain())
+    #expect(engine.step(reading, now: t0) == plain())
     reading.percent = 76
     reading.temperatureC = 42
-    #expect(engine.step(reading) == paused(76))
+    #expect(engine.step(reading, now: t0.addingTimeInterval(10)) == plain())
+    #expect(engine.step(reading, now: t0.addingTimeInterval(200)) == paused(77))
     reading.temperatureC = 37
-    #expect(engine.step(reading) == plain())
+    #expect(engine.step(reading, now: t0.addingTimeInterval(300)) == plain())
 }
 
+// MARK: S-042, what the review found
+
+@Test("A step that stops one percent short still completes, after half an hour")
+func calibrationNearTargets() {
+    var engine = ChargeEngine()
+    _ = engine.startCalibration(inputs(40))
+    #expect(engine.step(inputs(16), now: t0).calibration == .draining)
+    #expect(engine.step(inputs(16), now: t0.addingTimeInterval(1_799)).calibration == .draining)
+    #expect(engine.step(inputs(16), now: t0.addingTimeInterval(1_800)).calibration == .charging)
+    let charging = t0.addingTimeInterval(20_000)
+    #expect(engine.step(inputs(99), now: charging).calibration == .charging)
+    #expect(engine.step(inputs(99), now: charging.addingTimeInterval(1_800)).calibration == .resting)
+    // Passing through 16% on the way down is not "stuck at 16".
+    engine = ChargeEngine()
+    _ = engine.startCalibration(inputs(40))
+    _ = engine.step(inputs(17), now: t0)
+    #expect(engine.step(inputs(16), now: t0.addingTimeInterval(4_000)).calibration == .draining)
+}
+
+@Test("A step that takes more than twelve hours ends the calibration and gives the limit back")
+func calibrationTimesOut() {
+    var engine = ChargeEngine()
+    _ = engine.startCalibration(inputs(80))
+    #expect(engine.step(inputs(80), now: t0).calibration == .draining)
+    #expect(engine.step(inputs(40), now: t0.addingTimeInterval(12 * 3600)).calibration == .draining)
+    #expect(engine.step(inputs(40), now: t0.addingTimeInterval(12 * 3600 + 1)) == ChargePlan(mode: .normal, limit: 80))
+    #expect(engine.lastEnd == .timedOut)
+    // Waiting for a charger that never comes back counts too.
+    engine = ChargeEngine()
+    _ = engine.startCalibration(inputs(80))
+    _ = engine.step(inputs(80), now: t0)
+    #expect(engine.step(inputs(70, attached: false), now: t0.addingTimeInterval(13 * 3600)).mode == .normal)
+}
+
+@Test("Only time at full on the charger counts as rest")
+func calibrationRestCountsChargerTime() {
+    var engine = ChargeEngine()
+    _ = engine.startCalibration(inputs(10))
+    _ = engine.step(inputs(10), now: t0)
+    #expect(engine.step(inputs(100), now: t0).calibration == .resting)
+    // An hour of rest, then off the charger for three hours without losing a percent.
+    #expect(engine.step(inputs(100), now: t0.addingTimeInterval(3_600)).calibration == .resting)
+    #expect(engine.step(inputs(100, attached: false), now: t0.addingTimeInterval(3_700)).isWaitingForCharger)
+    #expect(engine.step(inputs(100, attached: false), now: t0.addingTimeInterval(14_000)).mode == .calibrating)
+    // Back on the charger: the hour so far stands, the three hours away do not count.
+    #expect(engine.step(inputs(100), now: t0.addingTimeInterval(14_020)).mode == .calibrating)
+    #expect(engine.rested < 3_800)
+    #expect(engine.step(inputs(100), now: t0.addingTimeInterval(14_020 + 3_600)).mode == .normal)
+    #expect(engine.lastEnd == .finished)
+}

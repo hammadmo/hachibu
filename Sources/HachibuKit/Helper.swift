@@ -7,7 +7,8 @@ public enum HelperID {
     /// The helper's launchd label, its service name, and its signing identifier.
     public static let service = "app.hachibu.mac.helper"
     public static let plist = "app.hachibu.mac.helper.plist"
-    public static let version = 1
+    /// 2: the helper accepts limits from 15, for calibration.
+    public static let version = 2
     /// The oldest build of the app the helper listens to. Builds before
     /// this one were signed without the hardened runtime, so other code
     /// could be loaded into them and speak to the helper in Hachibu's name.

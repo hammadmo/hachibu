@@ -19,6 +19,7 @@ final class Preferences {
         static let sailingRange = "charging.sailingRange"
         static let sailingHold = "charging.sailingHold"
         static let modeAsk = "charging.modeAsk"
+        static let modeUser = "charging.modeUser"
         static let heatProtection = "charging.heatProtection"
         static let heatThreshold = "charging.heatThreshold"
     }
@@ -45,12 +46,18 @@ final class Preferences {
             if let sailingHold { defaults.set(sailingHold, forKey: Key.sailingHold) } else { defaults.removeObject(forKey: Key.sailingHold) }
         }
     }
-    /// The limit a Top Up or a calibration last asked macOS for. nil when
-    /// none runs. If Hachibu stops without putting the user's limit back,
-    /// the next launch finds this and does it.
+    /// The limit a Top Up or a calibration last asked macOS for, and (in
+    /// `modeUser`) the user's limit it stood in for. Both nil when the
+    /// user's limit is confirmed back. If Hachibu stops before that, the
+    /// next launch finds them and puts the limit back.
     var modeAsk: Int? {
         didSet {
             if let modeAsk { defaults.set(modeAsk, forKey: Key.modeAsk) } else { defaults.removeObject(forKey: Key.modeAsk) }
+        }
+    }
+    var modeUser: Int? {
+        didSet {
+            if let modeUser { defaults.set(modeUser, forKey: Key.modeUser) } else { defaults.removeObject(forKey: Key.modeUser) }
         }
     }
     var heatProtection: Bool { didSet { defaults.set(heatProtection, forKey: Key.heatProtection) } }
@@ -82,6 +89,7 @@ final class Preferences {
         sailingRange = int(Key.sailingRange, 0)
         sailingHold = store.object(forKey: Key.sailingHold) as? Int
         modeAsk = store.object(forKey: Key.modeAsk) as? Int
+        modeUser = store.object(forKey: Key.modeUser) as? Int
         heatProtection = bool(Key.heatProtection, false)
         heatThreshold = int(Key.heatThreshold, 40)
         opensAtLogin = !Store.isOverridden && SMAppService.mainApp.status == .enabled

@@ -78,7 +78,7 @@ public enum BatteryStatus: Equatable, Sendable {
                               isSailing: Bool) -> BatteryStatus {
         switch mode {
         case .toppingUp: return reading.fullChargeOverride ? .fullChargeByMacOS : .toppingUp
-        case .calibrating: return .calibrating(.charging)
+        case .calibrating: return reading.fullChargeOverride ? .fullChargeByMacOS : .calibrating(.charging)
         case .normal:
             let plain = derive(from: reading, limit: limit)
             // Sailing is only said while nothing flows into the battery.

@@ -52,7 +52,7 @@ struct CalibrationDialog: View {
                       message: monitor.isWaitingForCharger ? "Waiting for the charger. Connect it to go on."
                           : "The battery is at \(monitor.reading?.percent ?? 0)%.",
                       steps: Self.steps, currentStep: CalibrationStep.allCases.firstIndex(of: step),
-                      note: "Keep the charger connected and Hachibu running. The drain waits while the Mac sleeps.",
+                      note: "Keep the charger connected. Quitting Hachibu ends the calibration and puts your limit back. The drain waits while the Mac sleeps.",
                       primaryTitle: "Close", primary: { model.showingCalibration = false },
                       secondaryTitle: "Stop", secondary: {
                           monitor.stopCalibration()
@@ -62,7 +62,7 @@ struct CalibrationDialog: View {
             KitDialog(title: "Calibrate the battery",
                       message: "Corrects the percentage and the health reading. It does not improve the battery, and it uses one full charge cycle.",
                       steps: Self.steps,
-                      note: refusal ?? "Takes several hours. Keep the charger connected and Hachibu running. The drain waits while the Mac sleeps; Hachibu does not keep the Mac awake.",
+                      note: refusal ?? "Takes several hours. Keep the charger connected. Quitting Hachibu ends it. The drain waits while the Mac sleeps; Hachibu does not keep the Mac awake.",
                       primaryTitle: "Calibrate", primary: { refusal = monitor.startCalibration() },
                       secondaryTitle: "Not Now", secondary: { model.showingCalibration = false })
         }

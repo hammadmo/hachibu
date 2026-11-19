@@ -8,7 +8,7 @@ import SwiftUI
 //   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none; 20 to 100 with the helper), print the result, quit
 //   Hachibu --try topup|sailing|calibration <seconds>   run a real Top Up, sailing, or calibration for that long, print what is measured, stop it, quit
 //   Hachibu --restore-charger    ask the helper to reconnect the charger, and print what the battery controller says
-//   Hachibu --probe-limit <n>    ask macOS for any limit the helper accepts (15 to 100) without saving it, and print what macOS then reports
+//   Hachibu --probe-limit <n>    ask macOS for any limit the helper accepts (15 to 100), print what macOS reports, and put the limit from before back
 //   Hachibu --helper-reinstall   take the helper out of macOS and register it again (it does not touch the limit)
 //   Hachibu --helper-status      ask the helper for its state, print it, quit (read-only)
 //   APP_STORE=<file> Hachibu     a test run: no real preferences, login items, notifications, or limit changes
@@ -103,7 +103,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Quitting during a Top Up or while sailing puts the user's limit back first.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let monitor = BatteryMonitor.current, monitor.isOverriding || monitor.mode != .normal,
+        guard let monitor = BatteryMonitor.current, !monitor.hasRestoredForQuit,
+              monitor.isOverriding || monitor.mode != .normal,
               !Store.isOverridden else { return .terminateNow }
         modeLog.notice("quit waits: override \(monitor.overrideLimit ?? -1, privacy: .public), mode \(monitor.mode.rawValue, privacy: .public)")
         Task {
@@ -134,7 +135,7 @@ enum Launch {
     /// Ends a command-line run. The limit is put back here, before the quit
     /// starts: a quit begun from inside a task cannot wait for another task.
     private static func quit(_ monitor: BatteryMonitor) async {
-        if monitor.isOverriding || monitor.mode != .normal {
+        if !monitor.hasRestoredForQuit, monitor.isOverriding || monitor.mode != .normal {
             print("putting the limit back before quitting: Hachibu had asked macOS for "
                 + "\(monitor.overrideLimit.map { "\($0)%" } ?? "nothing"), mode \(monitor.mode.rawValue), yours \(monitor.userLimit)%")
         }

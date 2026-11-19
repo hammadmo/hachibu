@@ -102,3 +102,30 @@ amended after every check passed.
 Rule: never pipe a check into `tail`, `grep`, or `head` in front of `&&`.
 Run it bare, or use `set -o pipefail`.
 
+## 2026-11-19 A calibration could leave a 15% limit behind (found in review of M5)
+
+Symptoms, found by reading the code before a user met them:
+- The note of what a mode had asked macOS for was erased when the user's
+  limit was asked back, not when macOS confirmed it. A failed restore
+  followed by a crash left 15% (or no limit) with nothing to recover it.
+- The launch restore put back the saved limit, not the limit the mode
+  had replaced, and did nothing when no limit had been saved.
+- A calibration could wait forever for exactly 100% or exactly 15%.
+- "Your limit is back" was announced before macOS had confirmed it, and
+  the launch notice "is being put back" never went away.
+- A limit the user set during a mode, if it failed, left the mode's
+  limit in place.
+Fix: what was asked and the user's limit are both written down
+(`Preferences.modeAsk`, `modeUser`) and erased only when the user's limit
+is confirmed. One percent short of a step's target counts after half an
+hour, and a step ends the calibration after twelve hours. Rest counts
+only time on the charger. The notices wait for the confirmation. Proved
+on this Mac: the app was killed mid-calibration with 15% in place, and
+the next launch put 80% back.
+Rules:
+- Erase the record of an intervention when the system confirms it is
+  undone, never when the undo is merely asked for.
+- Any step that waits for the system to reach a value needs a way out:
+  a near-miss rule and a time limit.
+- Do not announce that something is back until it is measured back.
+

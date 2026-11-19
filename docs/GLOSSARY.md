@@ -45,7 +45,7 @@ notifications, and errors.
 | Apply Limit Again | Ask macOS for the limit once more, from the warning banner | retry, fix |
 | Top Up | Start charging to 100% once | charge to full, boost |
 | Stop | End a Top Up or a calibration early | cancel, abort |
-| Calibrate | Run a guided full charge, discharge, and charge | recalibrate, condition |
+| Calibrate | Run a guided drain to 15%, charge to 100%, and rest, to correct the battery reading | recalibrate, condition |
 | Install Helper / Remove Helper | Add or delete the helper | enable, uninstall, register |
 | Settings, Quit | Apple's words | Preferences, Exit |
 

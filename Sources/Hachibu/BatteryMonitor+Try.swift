@@ -54,15 +54,18 @@ extension BatteryMonitor {
     }
 
     /// For `Hachibu --probe-limit <n>`: asks macOS for any limit the helper
-    /// accepts, without saving it as the user's, and prints what the
-    /// charging service and power management then report. Put the limit
-    /// back with `--set-limit` afterwards.
+    /// accepts, without saving it as the user's, prints what the charging
+    /// service and power management then report, and asks for the limit
+    /// from before again.
     func probeLimit(_ value: Int) async -> String {
         runsModes = false
         guard HelperRequest.limitRange.contains(value) else { return "refused: \(value) is outside what the helper accepts" }
         await helper.refresh()
-        let started = Date.now
         let system = MacLimitSystem()
+        // Whatever macOS holds now is put back before this returns.
+        let before = await system.read()
+        guard before.known else { return "refused: the current limit could not be read, so it could not be put back" }
+        let started = Date.now
         let accepted = value >= 100 ? await system.setOfficial(100) : await system.setThroughHelper(value)
         guard accepted else { return "not accepted (helper: \(helper.state.title))" }
         var reported: Int?, enforced: Int?
@@ -74,8 +77,13 @@ extension BatteryMonitor {
             if reportedAfter == nil, reported == value { reportedAfter = seconds }
             if enforced == value { enforcedAfter = seconds } else { try? await Task.sleep(for: .seconds(3)) }
         }
+        let previous = before.limit ?? 100
+        let restored = previous >= 100 || officialStops.contains(previous)
+            ? await system.setOfficial(previous) : await system.setThroughHelper(previous)
+        let back = previous >= 100 ? "no limit" : "\(previous)%"
+        let ending = restored ? "; \(back) was asked for again" : "; PUTTING \(back) BACK FAILED, set it yourself"
         return "asked for \(value)%: the charging service reports \(reported.map { "\($0)%" } ?? "no limit")"
             + " (after \(reportedAfter.map { "\($0)s" } ?? "never")), power management enforces \(enforced.map { "\($0)%" } ?? "none")"
-            + " (after \(enforcedAfter.map { "\($0)s" } ?? "never in 180s"))"
+            + " (after \(enforcedAfter.map { "\($0)s" } ?? "never in 180s"))" + ending
     }
 }

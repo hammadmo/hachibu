@@ -23,8 +23,10 @@ enum Notifier {
         guard !Store.isOverridden, Preferences.shared.notifyFullCharge else { return }
         let content = UNMutableNotificationContent()
         content.title = "Full charge by macOS"
+        // Said without a promise about the limit: a Top Up or a calibration
+        // may be deciding that, not this full charge.
         content.body = limit < 100
-            ? "macOS is charging to 100% to keep its estimates accurate. Your limit of \(limit)% returns afterwards."
+            ? "macOS is charging past your \(limit)% limit to keep its estimates accurate. Nothing is wrong with the limit."
             : "macOS is charging to 100% to keep its estimates accurate."
         let request = UNNotificationRequest(identifier: "full-charge-by-macos", content: content, trigger: nil)
         Task { try? await UNUserNotificationCenter.current().add(request) }
@@ -34,7 +36,7 @@ enum Notifier {
         guard !Store.isOverridden, Preferences.shared.notifyCalibrationFinished else { return }
         let content = UNMutableNotificationContent()
         content.title = "Calibration finished"
-        content.body = limit < 100 ? "Your limit of \(limit)% is back. macOS now drains the battery down to it."
+        content.body = limit < 100 ? "Your limit of \(limit)% is back. macOS drains the battery down to it."
             : "The battery is full and there is no limit."
         let request = UNNotificationRequest(identifier: "calibration-finished", content: content, trigger: nil)
         Task { try? await UNUserNotificationCenter.current().add(request) }
