@@ -551,8 +551,8 @@ Depends: S-001
 Acceptance:
 - [snap] General has a "Show percentage" toggle.
 - [manual] Turning it off leaves only the icon.
-Status: done (the switch and the menu bar were built in M1; the rule has
-a unit test. Not confirmed by eye on the real menu bar.)
+Status: built in M1, with a unit test for the rule. The manual check is
+open: nobody has looked at the real menu bar with it off.
 
 ### S-052 Choose which notifications I get
 As the user, I turn each notification on or off: limit not holding,

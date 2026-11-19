@@ -59,6 +59,9 @@ func limitAfterRemoval() {
     let official = [80, 85, 90, 95, 100]
     #expect(HelperNeed.limitAfterRemoval(current: 60, official: official) == 80)
     #expect(HelperNeed.limitAfterRemoval(current: 85, official: official) == 85)
+    #expect(HelperNeed.limitAfterRemoval(current: 82, official: official) == 85)
+    #expect(HelperNeed.limitAfterRemoval(current: 97, official: official) == 100)
+    #expect(HelperNeed.limitAfterRemoval(current: 100, official: official) == 100)
     #expect(HelperNeed.limitAfterRemoval(current: 87, official: official) == 90)
     #expect(HelperNeed.limitAfterRemoval(current: 100, official: official) == 100)
     #expect(HelperNeed.limitAfterRemoval(current: 60, official: []) == 100)

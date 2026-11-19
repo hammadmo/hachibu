@@ -17,8 +17,9 @@ nothing anywhere.
   before it charges again, instead of topping up all day.
 - **Heat protection.** Pause charging when the battery is hot (40 °C by
   default), and resume when it has cooled.
-- **Calibration.** A guided cycle that corrects the battery's percentage
-  and health reading: drain to 15%, charge to 100%, rest for two hours.
+- **Calibration.** A guided cycle meant to correct the battery's
+  percentage and health reading: drain to 15%, charge to 100%, rest for
+  two hours. Whether it changes the readings has not been measured yet.
 - **History.** Charts of level, temperature, power, and health over a
   day, a week, or a month. The data stays in
   `~/Library/Application Support/Hachibu`.
@@ -26,9 +27,14 @@ nothing anywhere.
   full charge of its own, and when a Top Up or a calibration finishes.
   Each can be switched off.
 
+Limits below 80%, sailing, heat protection, and calibration need the
+helper (see below). Without it Hachibu sets macOS's own limits and runs
+Top Up.
+
 ## Supported Macs
 
-- Apple silicon MacBooks on **macOS 27**.
+- Apple silicon MacBooks on **macOS 27**. The app also opens on
+  macOS 26, where it has never been tried.
 - Developed and tested on one Mac: a MacBook Air (M1). Other models
   should work the same way but have not been tried.
 - Not supported: Intel Macs and earlier versions of macOS. The way
@@ -37,8 +43,8 @@ nothing anywhere.
 
 ## How it controls charging
 
-Hachibu never talks to the battery directly while it charges. It asks
-macOS to hold a limit, in one of two ways.
+Hachibu never switches charging on or off itself. It asks macOS to hold
+a limit, in one of two ways.
 
 1. **macOS's own limit, no helper.** macOS 27 offers limits of 80, 85,
    90, 95, and 100%. Hachibu sets these through the same private system
@@ -46,8 +52,8 @@ macOS to hold a limit, in one of two ways.
    once.
 2. **Any limit from 20%, with the helper.** For limits macOS does not
    offer, a small helper that runs as root writes the limit into macOS's
-   charging settings. macOS then enforces it, usually within two
-   minutes. The helper is installed from Settings > Helper and needs
+   charging settings. macOS then enforces it within a few minutes
+   (26 to 90 seconds when measured here). The helper is installed from Settings > Helper and needs
    your approval in System Settings > General > Login Items.
 
 What follows from that:
@@ -111,10 +117,12 @@ measured about charging on macOS 27.
 ## Uninstall
 
 1. In Hachibu, open Settings > Helper and click **Remove Helper…**. A
-   limit below 80% goes up to the lowest one macOS holds by itself, so
-   nothing is left that only the helper could keep.
-2. Quit Hachibu and delete `~/Applications/Hachibu.app`.
-3. To also remove your choices and history, delete
+   limit macOS does not offer by itself moves up to the next one it
+   does (60% becomes 80%, 82% becomes 85%), so nothing is left that
+   only the helper set.
+2. In Settings > General, switch off **Open at login**.
+3. Quit Hachibu and delete `~/Applications/Hachibu.app`.
+4. To also remove your choices and history, delete
    `~/Library/Application Support/Hachibu` and run:
 
 ```bash

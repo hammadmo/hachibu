@@ -445,3 +445,43 @@ func topUpFinishedNotice() {
     other.read(battery(90), own: false)
     #expect(other.notices.isEmpty)
 }
+
+// From the independent review of M6.
+
+@Test("Top Up finished is not said again when the level dips to 99 and returns, and a new Top Up says it again")
+func topUpFinishedOncePerTopUp() {
+    var rig = Rig()
+    rig.modes.toggleTopUp(battery(80), system: 80, limitIsOwn: true)
+    rig.read(battery(80)); rig.held()
+    for percent in [100, 99, 100, 99, 100] { rig.read(battery(percent), own: false) }
+    #expect(rig.notices == [.topUpFinished(limit: 80)])
+    // Stop, the level falls, and a second Top Up fills it again.
+    rig.modes.toggleTopUp(battery(100), system: 100, limitIsOwn: false)
+    rig.read(battery(100), own: false); rig.held()
+    rig.read(battery(97))
+    rig.modes.toggleTopUp(battery(97), system: 80, limitIsOwn: true)
+    rig.read(battery(97)); rig.held()
+    rig.read(battery(100), own: false)
+    #expect(rig.notices == [.topUpFinished(limit: 80), .topUpFinished(limit: 80)])
+}
+
+@Test("Top Up finished waits for a request under way, and is not said for a Top Up whose request failed")
+func topUpFinishedWaits() {
+    var rig = Rig()
+    rig.modes.toggleTopUp(battery(99), system: 80, limitIsOwn: true)
+    rig.read(battery(99))
+    // 100% is seen while "no limit" is still being asked for.
+    rig.apply(rig.modes.reading(battery(100), system: 80, limitIsOwn: true, canAsk: false, now: rig.now))
+    #expect(rig.notices.isEmpty)
+    rig.held()
+    rig.read(battery(100), own: false)
+    #expect(rig.notices == [.topUpFinished(limit: 80)])
+
+    rig = Rig()
+    rig.modes.toggleTopUp(battery(99), system: 80, limitIsOwn: true)
+    rig.read(battery(99))
+    rig.apply(rig.modes.reading(battery(100), system: 80, limitIsOwn: true, canAsk: false, now: rig.now))
+    rig.failed(.notAccepted(viaHelper: false))
+    rig.read(battery(100))
+    #expect(rig.notices.isEmpty && rig.modes.mode == .normal)
+}

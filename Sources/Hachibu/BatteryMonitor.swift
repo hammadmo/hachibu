@@ -562,8 +562,9 @@ final class BatteryMonitor {
         let now = await Task.detached { ChargeLimit.read() }.value
         guard now.known else { return "The limit could not be read, so the helper was kept. Try again." }
         if !now.available.isEmpty { officialStops = LimitStops.normalized(now.available) }
-        let target = user < HelperNeed.lowestWithoutHelper
-            ? HelperNeed.limitAfterRemoval(current: user, official: officialStops) : user
+        // Any limit macOS does not offer by itself (60, but also 82) moves
+        // up to one it does: nothing is left that only the helper set.
+        let target = HelperNeed.limitAfterRemoval(current: user, official: officialStops)
         if (now.limit ?? 100) != target {
             setSlider(target)
             let outcome = await setter.request(target) { [weak self] in self?.settle(target, $0, remember: true) }.value

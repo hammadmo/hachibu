@@ -49,12 +49,12 @@ public enum Notice: Equatable, Sendable {
         case .topUpFinished(let limit):
             return Message(identifier: "top-up-finished", title: "Top Up finished",
                            body: limit < 100
-                               ? "The battery is full. It stays at 100% until you unplug the charger; then your limit of \(limit)% returns."
-                               : "The battery is full.")
+                               ? "The battery is fully charged. It stays at 100% until you unplug the charger; then your limit of \(limit)% returns."
+                               : "The battery is fully charged.")
         case .calibrationFinished(let limit):
             return Message(identifier: "calibration-finished", title: "Calibration finished",
                            body: limit < 100 ? "Your limit of \(limit)% is back. macOS drains the battery down to it."
-                               : "The battery is full and there is no limit.")
+                               : "The battery is fully charged and there is no limit.")
         }
     }
 }

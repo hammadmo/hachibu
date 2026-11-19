@@ -22,8 +22,8 @@ func noticeWords() {
     #expect(Set(messages.map(\.identifier)).count == 4)
     let topUp = Notice.topUpFinished(limit: 80).message(allowed: all)
     #expect(topUp?.title == "Top Up finished")
-    #expect(topUp?.body == "The battery is full. It stays at 100% until you unplug the charger; then your limit of 80% returns.")
-    #expect(Notice.topUpFinished(limit: 100).message(allowed: all)?.body == "The battery is full.")
+    #expect(topUp?.body == "The battery is fully charged. It stays at 100% until you unplug the charger; then your limit of 80% returns.")
+    #expect(Notice.topUpFinished(limit: 100).message(allowed: all)?.body == "The battery is fully charged.")
     #expect(Notice.calibrationFinished(limit: 100).message(allowed: all)?.body.contains("no limit") == true)
     #expect(Notice.fullChargeByMacOS(limit: 100).message(allowed: all)?.body.contains("your") == false)
 }

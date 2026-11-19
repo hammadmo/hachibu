@@ -112,8 +112,9 @@ public enum HelperNeed {
         return state != .running && state != .checking
     }
 
-    /// Where the limit goes when the helper is removed: unchanged at 80% or
-    /// above, otherwise the lowest limit macOS offers on its own.
+    /// Where the limit goes when the helper is removed: unchanged when
+    /// macOS offers it on its own, otherwise the next limit up that it
+    /// does (60 becomes 80, 82 becomes 85).
     public static func limitAfterRemoval(current: Int, official: [Int]) -> Int {
         let stops = LimitStops.normalized(official).filter { $0 >= lowestWithoutHelper }
         if stops.contains(current) { return current }

@@ -69,6 +69,8 @@ public struct ModeCoordinator: Equatable, Sendable {
     private var isQuitting = false
     /// A calibration finished; say so once the user's limit is really back.
     private var owesFinishedNotice = false
+    /// "Top Up finished" was said for the Top Up that runs now.
+    private var saidTopUpFinished = false
     /// `problem` is the notice from a launch that found a leftover limit.
     private var showsLaunchNotice = false
 
@@ -151,10 +153,8 @@ public struct ModeCoordinator: Equatable, Sendable {
         let inputs = inputs(reading, system: system, limitIsOwn: limitIsOwn, now: now)
         let plan = engine.step(inputs, now: now)
         let wasCalibrating = calibrationStep != nil
-        let wasToppedUp = isToppedUp
         show(plan)
-        // Said once, when the battery is seen full: that is measured.
-        if plan.isToppedUp, !wasToppedUp { effects.append(.notify(.topUpFinished(limit: inputs.limit))) }
+        if plan.mode != .toppingUp { saidTopUpFinished = false }
         if wasCalibrating, plan.calibration == nil {
             // Said only once the user's limit is really back.
             if engine.lastEnd == .finished { owesFinishedNotice = true }
@@ -165,6 +165,13 @@ public struct ModeCoordinator: Equatable, Sendable {
         // A mode that is running again has nothing left to explain.
         if plan.mode != .normal || plan.isSailing || plan.isPausedForHeat { clearProblem() }
         guard canAsk, !isQuitting else { return effects }
+        // Said once per Top Up, when the battery is seen at 100% (the level
+        // can dip to 99 and return), and only with nothing under way and
+        // "no limit" still standing: a Top Up whose request failed is over.
+        if plan.isToppedUp, !saidTopUpFinished, override.asked == 100 {
+            saidTopUpFinished = true
+            effects.append(.notify(.topUpFinished(limit: inputs.limit)))
+        }
         let wanted: Int? = plan.limit == inputs.limit ? nil : plan.limit
         let retryDue = restoreRetryAt.map { now >= $0 } ?? false
         if let limit = override.follow(wanted: wanted, userLimit: inputs.limit, retryDue: retryDue) {
