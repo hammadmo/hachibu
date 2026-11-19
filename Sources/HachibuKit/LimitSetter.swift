@@ -26,6 +26,9 @@ public protocol LimitSystem: Sendable {
     func read() async -> SystemLimit
     /// The limit power management enforces right now (pmset). nil for none or unknown.
     func enforced() async -> Int?
+    /// False on battery. There power management reports no limit at all,
+    /// whatever limit macOS holds, and enforces it when the charger returns.
+    func chargerConnected() async -> Bool
     /// Sets a limit macOS offers by itself; 100 turns the limit off. True when accepted.
     func setOfficial(_ limit: Int) async -> Bool
     /// Sets any limit from 20 to 99 through the helper. True when accepted.
@@ -158,6 +161,13 @@ public final class LimitSetter {
                 isWaitingForMacOS = true
                 var enforced = false
                 for _ in 0..<Self.enforceTries where !enforced && request == requested {
+                    // On battery there is nothing to wait for: macOS has
+                    // confirmed the limit above, and power management shows
+                    // none until the charger is back.
+                    guard await system.chargerConnected() else {
+                        enforced = true
+                        break
+                    }
                     enforced = await system.enforced() == limit
                     if !enforced { await pause(Self.enforcePause) }
                 }

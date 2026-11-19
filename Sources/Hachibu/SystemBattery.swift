@@ -148,6 +148,8 @@ nonisolated enum ChargeLimit {
 nonisolated struct MacLimitSystem: LimitSystem {
     func read() async -> SystemLimit { await Task.detached { ChargeLimit.read() }.value }
     func enforced() async -> Int? { await Task.detached { ChargeLimit.enforced() }.value }
+    // A battery that cannot be read is treated as on the charger: then the wait goes on.
+    func chargerConnected() async -> Bool { await Task.detached { SystemBattery.read()?.isPluggedIn ?? true }.value }
     func setOfficial(_ limit: Int) async -> Bool { await Task.detached { ChargeLimit.set(limit) == nil }.value }
     func setThroughHelper(_ limit: Int) async -> Bool { await HelperClient.send(.setLimit(limit)).succeeded }
 }

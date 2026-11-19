@@ -17,6 +17,9 @@ private final class FakeMac: LimitSystem, @unchecked Sendable {
     var confirmAfter = 1
     var enforceAfter = 1
     var readable = true
+    /// The charger comes off after this many checks of power management. nil: it stays on.
+    var unplugAfter: Int?
+    var plugged = true
 
     var calls: [String] { lock.withLock { log } }
 
@@ -28,8 +31,17 @@ private final class FakeMac: LimitSystem, @unchecked Sendable {
         }
     }
 
+    func chargerConnected() async -> Bool {
+        lock.withLock {
+            if let unplugAfter, checks >= unplugAfter { plugged = false }
+            return plugged
+        }
+    }
+
     func enforced() async -> Int? {
         lock.withLock {
+            // As on the real Mac: on battery power management shows no limit.
+            guard plugged else { return nil }
             checks += 1
             if checks >= enforceAfter { enforcedLimit = held }
             return enforcedLimit
@@ -226,3 +238,33 @@ func supersedeWhileRunning() async {
     #expect(await setter.request(85).value == .held)
 }
 
+
+@MainActor
+@Test("On battery a helper limit is held as soon as macOS reports it: power management shows none there")
+func helperLimitOnBattery() async {
+    let mac = FakeMac()
+    mac.plugged = false
+    mac.enforceAfter = .max
+    let setter = setter(mac)
+    #expect(await setter.request(70).value == .held)
+    #expect(mac.calls == ["helper 70"])
+    #expect(!setter.isWaitingForMacOS)
+    // A limit macOS never reports is still not held, on battery or not.
+    let silent = FakeMac()
+    silent.plugged = false
+    silent.confirmAfter = .max
+    #expect(await outcome(silent, 70) == .notConfirmed)
+}
+
+@MainActor
+@Test("Unplugging while a helper limit waits for power management ends the wait")
+func unpluggedWhileWaiting() async {
+    let mac = FakeMac()
+    mac.enforceAfter = .max
+    mac.unplugAfter = 3
+    #expect(await outcome(mac, 70) == .held)
+    // On the charger, a limit power management never shows is still reported as not enforced.
+    let stuck = FakeMac()
+    stuck.enforceAfter = .max
+    #expect(await outcome(stuck, 70) == .notEnforced)
+}

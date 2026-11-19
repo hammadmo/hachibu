@@ -182,3 +182,20 @@ compared that with the limit macOS still reports (80).
 Fix: the check runs only while the charger is connected.
 Rule: a check that reads the real Mac must say which state of the Mac it
 holds in (charger connected, helper running), and skip the others.
+
+## 2026-11-19 A limit below 80% set on battery waited four minutes and was called "Set outside Hachibu"
+
+Symptom: on battery, `Hachibu --set-limit 70` took 4 minutes 11 seconds
+and ended with "limit 70%, Set outside Hachibu. macOS accepted this
+limit but is not enforcing it yet." The slider did the same. A Top Up
+that ended by unplugging, with a helper limit to put back, would have
+asked again every minute for as long as the Mac stayed on battery.
+Cause: a helper limit counted as held only once `pmset -g battlimit`
+showed it. On battery macOS withdraws the limit from power management
+and pmset shows none, so the wait could never end well.
+Fix: on battery the wait is skipped (`LimitSystem.chargerConnected`).
+The limit is held once macOS reports it, as for a limit macOS offers
+itself. Unplugging during the wait ends it the same way.
+Rule: before waiting for a signal, ask in which states of the Mac that
+signal exists at all (charger connected, awake, helper running), and do
+not wait in the others.
