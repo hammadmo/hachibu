@@ -84,23 +84,8 @@ The pictures show sample data, not a real battery.
 
 The download is signed with a Developer ID and notarized by Apple.
 
-### Build from source
-
-```bash
-./build.sh --open
-```
-
-This builds a release, signs it, installs `~/Applications/Hachibu.app`,
-and opens it. You need Xcode 26 or later. There is no Xcode project; it
-is a Swift package.
-
-How the build is signed decides what works:
-
-| Signing | What you get |
-| --- | --- |
-| None (ad hoc) | macOS's own limits, 80 to 100%, and Top Up. The helper cannot be installed. |
-| Apple Development certificate | Everything, on your own Mac. |
-| Developer ID certificate | Everything, and a build you can give to others. `./build.sh --notarize` also sends it to Apple's notary. |
+To build Hachibu from source or work on it, see
+[docs/BUILDING.md](docs/BUILDING.md).
 
 ## How it controls charging
 
@@ -140,23 +125,6 @@ Hachibu signed by the same Apple developer team as the helper itself.
 - Both ways rely on parts of macOS that Apple does not document, and a
   macOS update can break them. When a limit is not being held, Hachibu
   says so instead of showing the limit you asked for.
-
-## Development
-
-```bash
-swift test --scratch-path ~/Library/Developer/Hachibu/test-build
-```
-
-```bash
-tools/selftest.sh
-```
-
-- [`ARCHITECTURE.md`](ARCHITECTURE.md): who decides and who acts.
-- [`CLAUDE.md`](CLAUDE.md): the layout of the code, the checks, and the
-  design rules.
-- [`design/KIT.md`](design/KIT.md): the design kit.
-- [`docs/research/charge-control.md`](docs/research/charge-control.md):
-  what was measured about charging on macOS 27.
 
 ## Uninstall
 
