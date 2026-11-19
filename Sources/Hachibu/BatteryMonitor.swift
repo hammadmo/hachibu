@@ -75,7 +75,7 @@ final class BatteryMonitor {
     /// False in a one-shot command-line run: the copy in the menu bar runs
     /// Top Up and sailing, and two copies would pull against each other.
     /// `--try` is the one command-line run that exists to run a mode.
-    @ObservationIgnored var runsModes = !Launch.isOneShot || CommandLine.arguments.contains("--try")
+    @ObservationIgnored var runsModes = Launch.command?.runsModes ?? true
     /// The monitor of the running app, for the quit handler.
     @ObservationIgnored nonisolated(unsafe) static weak var current: BatteryMonitor?
     /// False until the first reading arrives.

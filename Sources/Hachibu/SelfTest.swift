@@ -7,7 +7,7 @@ import HachibuSystem
 /// 0 (all passed) or 1. Run it with tools/selftest.sh, which sets APP_STORE
 /// so nothing real is written and the charge limit cannot be changed.
 enum SelfTest {
-    static let requested = CommandLine.arguments.contains("--selftest")
+    static let requested = Launch.command == .selfTest
     private(set) static var exitCode: Int32 = 1
 
     static func run() {

@@ -1,16 +1,11 @@
 import AppKit
-import HachibuSystem
+import HachibuKit
 import SwiftUI
 
 // Hachibu: a menu bar app. No Dock icon and no main window.
-//   Hachibu                      the app
-//   Hachibu --selftest           check the real functions and quit with 0 or 1 (tools/selftest.sh)
-//   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none; 20 to 100 with the helper), print the result, quit
-//   Hachibu --try topup|sailing|calibration|heat <seconds>   run a real Top Up, sailing, calibration, or heat pause for that long, print what is measured, stop it, quit
-//   Hachibu --restore-charger    ask the helper to reconnect the charger, and print what the battery controller says
-//   Hachibu --probe-limit <n>    ask macOS for any limit the helper accepts (15 to 100), print what macOS reports, and put the limit from before back
-//   Hachibu --helper-reinstall   take the helper out of macOS and register it again (it does not touch the limit)
-//   Hachibu --helper-status      ask the helper for its state, print it, quit (read-only)
+// Command-line flags are listed in HachibuKit/LaunchCommand.swift and
+// carried out in Launch.swift. Three kinds of run are chosen by the
+// environment instead:
 //   APP_STORE=<file> Hachibu     a test run: no real preferences, login items, notifications, or limit changes
 //   APP_SNAPSHOT=<dir> Hachibu   save a PNG of the popover states, every Settings tab, and History, in light and dark, then quit
 //   APP_KIT_GALLERY=1 Hachibu    show every design kit part in every state (DesignKit/KitGallery.swift)
@@ -120,99 +115,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// What a special run does once the app is up: the self-test, the kit
-/// gallery, or snapshots. A normal launch does nothing here.
-enum Launch {
-    private static var done = false
-
-    /// True for a run that does one thing and quits. Such a copy leaves
-    /// recording, Top Up, and sailing to the copy in the menu bar.
-    nonisolated static let isOneShot: Bool = {
-        let flags: Set = ["--set-limit", "--probe-limit", "--try", "--helper-status", "--helper-reinstall", "--restore-charger", "--selftest"]
-        return CommandLine.arguments.contains { flags.contains($0) }
-    }()
-
-    /// Ends a command-line run. The limit is put back here, before the quit
-    /// starts: a quit begun from inside a task cannot wait for another task.
-    private static func quit(_ monitor: BatteryMonitor) async {
-        if !monitor.hasRestoredForQuit, monitor.isOverriding || monitor.mode != .normal {
-            print("putting the limit back before quitting: Hachibu had asked macOS for "
-                + "\(monitor.overrideLimit.map { "\($0)%" } ?? "nothing"), mode \(monitor.mode.rawValue), yours \(monitor.userLimit)%")
-        }
-        await monitor.restoreBeforeQuit()
-        NSApp.terminate(nil)
-    }
-
-    static func run(model: AppModel, monitor: BatteryMonitor, open: @escaping (String) -> Void) {
-        guard !done else { return }
-        done = true
-        let arguments = CommandLine.arguments
-        if let flag = arguments.firstIndex(of: "--set-limit") {
-            guard arguments.indices.contains(flag + 1), let value = Int(arguments[flag + 1]) else {
-                print("usage: Hachibu --set-limit <percent>")
-                NSApp.terminate(nil)
-                return
-            }
-            Task {
-                print(await monitor.setLimitFromCommandLine(value))
-                await quit(monitor)
-            }
-        } else if let flag = arguments.firstIndex(of: Relaunch.flag) {
-            // Started again by itself: go back to where the person was.
-            if arguments.indices.contains(flag + 1), let tab = SettingsTab(rawValue: arguments[flag + 1]) {
-                model.settingsTab = tab
-            }
-            open(SettingsView.windowID)
-            NSApp.activate()
-        } else if let flag = arguments.firstIndex(of: "--probe-limit"), arguments.indices.contains(flag + 1),
-                  let value = Int(arguments[flag + 1]) {
-            Task {
-                print(await monitor.probeLimit(value))
-                await quit(monitor)
-            }
-        } else if let flag = arguments.firstIndex(of: "--try"), arguments.indices.contains(flag + 2),
-                  let seconds = Int(arguments[flag + 2]) {
-            let what = arguments[flag + 1]
-            Task {
-                await monitor.tryMode(what, seconds: seconds)
-                await quit(monitor)
-            }
-        } else if arguments.contains("--restore-charger") {
-            Task {
-                var cut = false
-                let readable = hb_adapter_is_cut(&cut)
-                print("before: CHIE readable \(readable), cut \(cut)")
-                let reply = await HelperClient.send(.restoreAdapter)
-                print("helper: \(reply.problem ?? "ok"), reports cut \(reply.adapterCut)")
-                try? await Task.sleep(for: .seconds(3))
-                print("after: CHIE readable \(hb_adapter_is_cut(&cut)), cut \(cut), plugged \(SystemBattery.read()?.isPluggedIn ?? false)")
-                await quit(monitor)
-            }
-        } else if arguments.contains("--helper-reinstall") {
-            Task {
-                let removal = await monitor.helper.unregister()
-                print("removed: \(removal ?? "ok"), now \(monitor.helper.state)")
-                await monitor.helper.install()
-                print("installed: \(monitor.helper.installProblem ?? "ok"), now \(monitor.helper.state)")
-                await quit(monitor)
-            }
-        } else if arguments.contains("--helper-status") {
-            Task {
-                await monitor.helper.refresh()
-                print("helper: \(monitor.helper.state)")
-                await quit(monitor)
-            }
-        } else if SelfTest.requested {
-            SelfTest.run()
-        } else if KitGallery.enabled {
-            open(KitGallery.windowID)
-            NSApp.activate()
-        } else {
-            Snapshot.runIfRequested(model: model, open: open)
-        }
-    }
-}
-
 /// Shows Hachibu in the Dock while Settings or History is open, so the
 /// window can be found again, and takes it out when both are closed.
 /// Test runs leave the Dock alone.
@@ -244,14 +146,12 @@ enum DockIcon {
 /// Quits Hachibu and starts it again with Settings open on a tab. Never in
 /// test runs.
 enum Relaunch {
-    static let flag = "--show-settings"
-
     static func now(showing tab: SettingsTab) {
         guard !Store.isOverridden else { return }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         // -n: a new copy, started while this one is still quitting.
-        process.arguments = ["-n", Bundle.main.bundlePath, "--args", flag, tab.rawValue]
+        process.arguments = ["-n", Bundle.main.bundlePath, "--args", LaunchCommand.showSettingsFlag, tab.rawValue]
         guard (try? process.run()) != nil else { return }
         NSApp.terminate(nil)
     }
