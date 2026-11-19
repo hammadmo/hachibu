@@ -6,7 +6,7 @@ import SwiftUI
 //   Hachibu                      the app
 //   Hachibu --selftest           check the real functions and quit with 0 or 1 (tools/selftest.sh)
 //   Hachibu --set-limit <n>      set the charge limit (80, 85, 90, 95, or 100 for none; 20 to 100 with the helper), print the result, quit
-//   Hachibu --try topup|sailing|calibration <seconds>   run a real Top Up, sailing, or calibration for that long, print what is measured, stop it, quit
+//   Hachibu --try topup|sailing|calibration|heat <seconds>   run a real Top Up, sailing, calibration, or heat pause for that long, print what is measured, stop it, quit
 //   Hachibu --restore-charger    ask the helper to reconnect the charger, and print what the battery controller says
 //   Hachibu --probe-limit <n>    ask macOS for any limit the helper accepts (15 to 100), print what macOS reports, and put the limit from before back
 //   Hachibu --helper-reinstall   take the helper out of macOS and register it again (it does not touch the limit)

@@ -71,6 +71,8 @@ final class BatteryMonitor {
     private(set) var isPausedForHeat = false
     /// A limit the user asked for is waiting or under way.
     private(set) var userRequestPending = false
+    /// For `Hachibu --try heat`: a threshold used in place of the setting.
+    @ObservationIgnored var heatThresholdForTrial: Int?
     /// The limit was already put back for a quit; the quit need not wait.
     private(set) var hasRestoredForQuit = false
     /// A calibration finished; say so once the user's limit is really back.
@@ -190,6 +192,9 @@ final class BatteryMonitor {
         if !hasLoaded { return "Reading the limit…" }
         if !limitSupported { return "This version of macOS does not offer a charge limit." }
         _ = sliderValue // redraw the caption as soon as a drag starts
+        if isPausedForHeat, let heatThreshold {
+            return "Paused for heat. Charging resumes at \(heatThreshold - Int(ChargeEngine.heatMargin)) °C."
+        }
         if mode == .calibrating {
             return isWaitingForCharger ? "Calibrating. Connect the charger to go on."
                 : "Calibrating. Your limit returns when it is done."
@@ -501,12 +506,20 @@ final class BatteryMonitor {
         return Preferences.shared.sailingRange
     }
 
+    /// The temperature above which charging pauses. nil when heat protection is off.
+    var heatThreshold: Int? {
+        if let heatThresholdForTrial { return heatThresholdForTrial }
+        guard Capability.heatProtection, Preferences.shared.heatProtection else { return nil }
+        return Preferences.shared.heatThreshold
+    }
+
     /// What the engine looks at. nil until the battery and the limit are known.
     private func chargeInputs(now: Date = .now) -> ChargeInputs? {
         guard let reading, limitKnown else { return nil }
         return ChargeInputs(percent: reading.percent, chargerAttached: reading.isPluggedIn, limit: userLimit,
                             sailingRange: sailingRange(now: now), helperRunning: helper.isRunning,
-                            macOSFullCharge: reading.fullChargeOverride)
+                            macOSFullCharge: reading.fullChargeOverride, temperatureC: reading.temperatureC,
+                            heatThreshold: heatThreshold)
     }
 
     var canTopUp: Bool {
@@ -772,6 +785,7 @@ final class BatteryMonitor {
         var limitBeforeOverride: Int?
         var helper = HelperState.notInstalled
         var calibration: CalibrationStep?
+        var isPausedForHeat = false
         /// Battery level over the last 24 hours. Empty shows "Collecting data".
         var dayLevels: [Double] = []
     }
@@ -788,6 +802,8 @@ final class BatteryMonitor {
         mode = fixture.mode
         isSailing = fixture.isSailing
         calibrationStep = fixture.calibration
+        isPausedForHeat = fixture.isPausedForHeat
+        if isPausedForHeat { heatThresholdForTrial = ChargeEngine.heatDefault }
         if let asked = fixture.overrideLimit, let user = fixture.limitBeforeOverride {
             override = .holding(limit: asked, user: user)
         }

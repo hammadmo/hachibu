@@ -105,6 +105,12 @@ public struct ChargeEngine: Equatable, Sendable {
     /// so a brief spike should not start one.
     public static let heatSustain: TimeInterval = 180
 
+    /// The thresholds a person can choose, and the one Hachibu starts with.
+    /// Below 36 °C this kind of Mac would hardly ever charge; at 44 °C macOS
+    /// stops charging by itself (docs/research/charge-control.md).
+    public static let heatRange = 36...43
+    public static let heatDefault = 40
+
     /// Once paused for heat, charging resumes this many degrees below the threshold.
     public static let heatMargin = 2.0
 

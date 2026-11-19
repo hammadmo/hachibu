@@ -413,3 +413,24 @@ Marks: [V] the page was read through a fetch tool that summarises pages;
   itself takes one to three minutes, so brief spikes should not start
   one); resume 2 °C below. A decision for the user.
 
+## Heat protection, real run (2026-11-19)
+
+Raw readings: `heat-run.log`. `Hachibu --try heat 420` with the battery
+charging under a 90% limit and the threshold set to 37 °C, one degree
+under the battery's 38.2 °C.
+
+- 0 to 180 s: charging at 0.3 to 1.7 A, 80% rising to 82%. Nothing asked:
+  the three minutes above the threshold had not passed. [D]
+- 180 s: "Paused for heat"; Hachibu asked macOS for 83%, one above the
+  level. [D]
+- About 300 s: pmset enforced 83%, two minutes after it was asked. [D]
+- 345 s: the current read 0 mA, with the battery at 83%. It stayed at 83%
+  with no drain for the rest of the run. [D]
+- So from the pause to charging seen stopped: about 165 seconds, and the
+  battery gained one percent meanwhile. From first crossing the threshold:
+  about six minutes.
+- Afterwards the limit went back to 90% when the run ended, and to 80%.
+- The battery went on warming (39.0 to 40.2 °C) after charging stopped:
+  the Mac's own work heats it too. Pausing the charge removes only the
+  charging part of the heat.
+

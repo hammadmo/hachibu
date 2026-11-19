@@ -17,6 +17,34 @@ extension BatteryMonitor {
         line("before")
         switch name {
         case "topup": toggleTopUp()
+        case "heat":
+            // The battery cannot be heated on request. Instead the threshold
+            // is put one degree under what the battery is at now, so heat
+            // protection sees it as hot. The battery must be charging.
+            guard let temperature = reading?.temperatureC else { print("refused: no temperature"); return }
+            heatThresholdForTrial = Int(temperature.rounded(.down)) - 1
+            defer { heatThresholdForTrial = nil }
+            print("threshold for this run: \(heatThresholdForTrial ?? 0) °C, battery at \(String(format: "%.1f", temperature)) °C")
+            let begun = Date.now
+            var stoppedAfter: Int?
+            for second in 1...max(seconds, 1) {
+                try? await Task.sleep(for: .seconds(1))
+                let charging = reading?.isCharging ?? false
+                if isPausedForHeat, !charging, stoppedAfter == nil {
+                    stoppedAfter = Int(Date.now.timeIntervalSince(begun))
+                    line("t=\(second)s charging stopped")
+                }
+                if second % 20 == 0 || second == seconds {
+                    line("t=\(second)s \(String(format: "%.1f", reading?.temperatureC ?? 0)) °C, paused \(isPausedForHeat), asked macOS for \(overrideLimit.map(String.init) ?? "nothing")")
+                }
+            }
+            print("charging seen stopped after: \(stoppedAfter.map { "\($0)s" } ?? "not in this run")")
+            heatThresholdForTrial = nil
+            refresh()
+            try? await Task.sleep(for: .seconds(3))
+            for _ in 0..<400 where isBusy || isOverriding { try? await Task.sleep(for: .milliseconds(500)) }
+            line("after")
+            return
         case "calibration":
             if let refusal = startCalibration() { print("refused: \(refusal)"); return }
         case "sailing":

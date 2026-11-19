@@ -446,19 +446,21 @@ Acceptance:
 - [unit] A pause also holds during a Top Up, and the Top Up continues
   when the battery has cooled.
 - [unit] Heat protection never pauses a full charge by macOS; it cannot.
-Status: todo, blocked (2026-11-19). Needs a decision from the user.
-- Measured, as the first acceptance line asks: while the battery is
-  charging, macOS applies a new limit 60 to 120 seconds after accepting
-  it, and the current was seen to stop after 120 seconds, 160 seconds, and
-  about three minutes in three runs (`docs/research/charge-control.md`,
-  "How fast macOS stops charging when asked"). That is not under two
-  minutes, so by this story's own rule it is not built.
-- Asking for one percent under the level was no faster, and would drain.
-- The rules are written and unit-tested in `ChargeEngine`
-  (`protectFromHeat`), not switched on: nothing passes a threshold, and
-  the Settings rows stay disabled.
-- To decide: a pause that takes one to three minutes still protects a
-  long hot charge. Build it with that said on screen, or drop it.
+Status: done (2026-11-19). The user chose to build it although a pause
+takes longer than the two minutes first asked for; the Settings row says
+how long it takes.
+- Default 40 °C, range 36 to 43 °C, from the research in
+  `docs/research/charge-control.md`. The pause begins only after three
+  minutes above the threshold, and holds one percent above the battery's
+  level so macOS never drains it.
+- Real run (`docs/research/heat-run.log`, threshold lowered to one degree
+  under the battery's temperature while charging under a 90% limit): the
+  pause began at 180 seconds and asked for 83% with the battery at 82%;
+  macOS enforced it about two minutes later; charging was seen stopped at
+  345 seconds, with the battery at 83% and no drain. Turning it off put
+  the user's limit back.
+- Not seen: a pause caused by real heat, the resume 2 °C below, and a
+  pause during a Top Up or a calibration (unit tests only).
 
 ### S-041 Know when macOS is doing a full charge
 As the user, I am told when macOS charges past my limit on its own, and

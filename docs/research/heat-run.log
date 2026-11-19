@@ -1,0 +1,31 @@
+# Heat protection, real run with the threshold set one degree under the battery's temperature, 2026-11-19 02:15
+limit 90%, Set by Hachibu
+before: Charging, 80%, 938 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+threshold for this run: 37 °C, battery at 38.2 °C
+t=20s 38.3 °C, paused false, asked macOS for nothing: Charging, 80%, 938 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=40s 38.3 °C, paused false, asked macOS for nothing: Charging, 80%, 1622 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=60s 38.5 °C, paused false, asked macOS for nothing: Charging, 80%, 1622 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=80s 38.5 °C, paused false, asked macOS for nothing: Charging, 81%, 1679 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=100s 38.5 °C, paused false, asked macOS for nothing: Charging, 81%, 1679 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=120s 38.4 °C, paused false, asked macOS for nothing: Charging, 81%, 1679 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=140s 38.3 °C, paused false, asked macOS for nothing: Charging, 81%, 297 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=160s 38.6 °C, paused false, asked macOS for nothing: Charging, 81%, 297 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=180s 39.0 °C, paused true, asked macOS for 83: Paused for heat, 82%, 1684 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=200s 39.1 °C, paused true, asked macOS for 83: Paused for heat, 82%, 1684 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=220s 39.2 °C, paused true, asked macOS for 83: Paused for heat, 82%, 1684 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=240s 39.3 °C, paused true, asked macOS for 83: Paused for heat, 82%, 1124 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=260s 39.3 °C, paused true, asked macOS for 83: Paused for heat, 82%, 1124 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=280s 39.5 °C, paused true, asked macOS for 83: Paused for heat, 82%, 1124 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=300s 39.7 °C, paused true, asked macOS for 83: Paused for heat, 83%, 1072 mA, plugged true, macOS limit 83%, yours 90%, mode normal
+t=320s 39.8 °C, paused true, asked macOS for 83: Paused for heat, 83%, 1072 mA, plugged true, macOS limit 83%, yours 90%, mode normal
+t=340s 39.9 °C, paused true, asked macOS for 83: Paused for heat, 83%, 1072 mA, plugged true, macOS limit 83%, yours 90%, mode normal
+t=345s charging stopped: Paused for heat, 83%, 0 mA, plugged true, macOS limit 83%, yours 90%, mode normal
+t=360s 40.0 °C, paused true, asked macOS for 83: Paused for heat, 83%, 0 mA, plugged true, macOS limit 83%, yours 90%, mode normal
+t=380s 40.2 °C, paused true, asked macOS for 83: Paused for heat, 83%, 0 mA, plugged true, macOS limit 83%, yours 90%, mode normal
+t=400s 40.2 °C, paused true, asked macOS for 83: Paused for heat, 83%, 0 mA, plugged true, macOS limit 83%, yours 90%, mode normal
+t=420s 40.2 °C, paused true, asked macOS for 83: Paused for heat, 83%, 0 mA, plugged true, macOS limit 83%, yours 90%, mode normal
+charging seen stopped after: 356s
+after: Not charging, 83%, 0 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+--- restore
+limit 80%, Set by Hachibu
+end: 83%; AC attached pmset=chargeSocLimitSoc = 80

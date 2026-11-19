@@ -1,4 +1,5 @@
 import Foundation
+import HachibuKit
 import Observation
 import ServiceManagement
 
@@ -91,7 +92,8 @@ final class Preferences {
         modeAsk = store.object(forKey: Key.modeAsk) as? Int
         modeUser = store.object(forKey: Key.modeUser) as? Int
         heatProtection = bool(Key.heatProtection, false)
-        heatThreshold = int(Key.heatThreshold, 40)
+        heatThreshold = min(max(int(Key.heatThreshold, ChargeEngine.heatDefault), ChargeEngine.heatRange.lowerBound),
+                            ChargeEngine.heatRange.upperBound)
         opensAtLogin = !Store.isOverridden && SMAppService.mainApp.status == .enabled
     }
 
@@ -127,7 +129,7 @@ nonisolated enum Capability {
     /// Sailing between two levels (story S-022).
     static let sailing = true
     /// Pausing charging when the battery is hot (story S-040).
-    static let heatProtection = false
+    static let heatProtection = true
     /// Recording battery samples for the History window (story S-031).
     static let history = true
 }

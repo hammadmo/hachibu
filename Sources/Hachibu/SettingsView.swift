@@ -155,11 +155,6 @@ struct ChargingSettings: View {
                 }
                 .disabled(!monitor.canChangeLimit)
             }
-            if !Capability.heatProtection {
-                Text("Heat protection is not part of this build yet.")
-                    .kitType(.body).foregroundStyle(Ink.textSoft)
-                    .padding(.leading, Space.lg)
-            }
             SettingsSection(title: "Sailing") {
                 SettingsRow(title: "Sailing range",
                             detail: monitor.helper.isRunning
@@ -189,16 +184,21 @@ struct ChargingSettings: View {
                 }
             }
             SettingsSection(title: "Heat protection") {
-                SettingsRow(title: "Pause charging when hot", detail: "Charging resumes when the battery cools by 2 °C.") {
+                SettingsRow(title: "Pause charging when hot",
+                            detail: monitor.helper.isRunning
+                                ? "Starts once the battery has been hot for three minutes; macOS then takes one to three minutes to stop charging. Charging resumes when the battery cools by 2 °C."
+                                : "Heat protection needs the helper.") {
                     Toggle("Pause charging when hot", isOn: $preferences.heatProtection).toggleStyle(.kit)
                 }
-                SettingsRow(title: "Pause above") {
-                    valueSlider($preferences.heatThreshold, stops: Array(30...45), scale: 30...45,
-                                label: "Pause above", unit: "degrees Celsius", text: "\(preferences.heatThreshold) °C")
+                SettingsRow(title: "Pause above",
+                            detail: monitor.reading?.temperatureC.map { String(format: "The battery is at %.1f °C now.", $0) }) {
+                    valueSlider($preferences.heatThreshold, stops: Array(ChargeEngine.heatRange),
+                                scale: ChargeEngine.heatRange, label: "Pause above", unit: "degrees Celsius",
+                                text: "\(preferences.heatThreshold) °C")
                 }
                 .disabled(!preferences.heatProtection)
             }
-            .disabled(!Capability.heatProtection)
+            .disabled(!Capability.heatProtection || !monitor.helper.isRunning)
         }
     }
 
