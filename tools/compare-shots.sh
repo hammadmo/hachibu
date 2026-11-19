@@ -17,8 +17,8 @@ for old in $before/*.png; do
   # The window's close, minimize, and zoom buttons are painted over: they
   # are lit or grey depending on which window macOS thinks is active.
   # Then: pixels that differ by more than 1%, since capture is not bit-exact.
-  magick $old -fill black -draw "rectangle 0,0 120,64" $work/a.png
-  magick $now/$name -fill black -draw "rectangle 0,0 120,64" $work/b.png
+  magick $old -fill black -draw "rectangle 0,0 160,64" $work/a.png
+  magick $now/$name -fill black -draw "rectangle 0,0 160,64" $work/b.png
   out=$(magick compare -metric AE -fuzz 1% $work/a.png $work/b.png null: 2>&1)
   code=$?
   # 0 is the same, 1 is different, 2 is an error such as two sizes. Only a

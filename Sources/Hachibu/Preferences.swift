@@ -65,6 +65,21 @@ final class Preferences {
     /// Degrees Celsius.
     var heatThreshold: Int { didSet { defaults.set(heatThreshold, forKey: Key.heatThreshold) } }
 
+    /// What a mode last asked macOS for, as one value. Kept in the three
+    /// settings above, so a note written by an earlier build still reads.
+    var modeRecord: ModeRecord? {
+        get {
+            if let modeAsk, let modeUser { return ModeRecord(asked: modeAsk, user: modeUser, isSailingHold: false) }
+            if let sailingHold { return ModeRecord(asked: sailingHold, user: savedLimit ?? sailingHold, isSailingHold: true) }
+            return nil
+        }
+        set {
+            modeAsk = newValue.flatMap { $0.isSailingHold ? nil : $0.asked }
+            modeUser = newValue.flatMap { $0.isSailingHold ? nil : $0.user }
+            sailingHold = newValue.flatMap { $0.isSailingHold ? $0.asked : nil }
+        }
+    }
+
     /// Whether macOS opens Hachibu at login. macOS owns this; we only ask.
     private(set) var opensAtLogin = false
     /// Why the last change to "Open at login" failed, in words for the user.

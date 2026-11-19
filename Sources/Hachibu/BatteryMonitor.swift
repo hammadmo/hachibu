@@ -50,45 +50,37 @@ final class BatteryMonitor {
     /// True while a limit set through the helper waits to be enforced.
     var isWaitingForMacOS: Bool { setter.isWaitingForMacOS }
     private(set) var isWarning = false
-    /// Top Up, while one runs.
-    private(set) var mode = ChargeMode.normal
+    /// Everything about Top Up, sailing, calibration, and heat protection:
+    /// what they ask macOS for, and how the user's limit comes back. It
+    /// decides; this monitor carries out what it returns (`carryOut`).
+    private(set) var modes = ModeCoordinator()
+    /// Top Up or calibration, while one runs.
+    var mode: ChargeMode { modes.mode }
     /// Plugged in and drifting down inside the sailing range.
-    private(set) var isSailing = false
-    /// Why a Top Up could not start or was cut short.
-    private(set) var modeProblem: String?
+    var isSailing: Bool { modes.isSailing }
+    /// Why a mode could not start or was cut short.
+    var modeProblem: String? { modes.problem }
     /// A Top Up has reached 100% and keeps it there until unplugged.
-    private(set) var isToppedUp = false
+    var isToppedUp: Bool { modes.isToppedUp }
     /// The step a calibration is on. nil when none runs.
-    private(set) var calibrationStep: CalibrationStep?
+    var calibrationStep: CalibrationStep? { modes.calibrationStep }
     /// A calibration is waiting for the charger to come back.
-    private(set) var isWaitingForCharger = false
-
-    /// What stands between the user's limit and what macOS was asked for.
-    private(set) var override = LimitOverride.none {
-        didSet { if override != oldValue { recordOverride() } }
-    }
+    var isWaitingForCharger: Bool { modes.isWaitingForCharger }
     /// Hot, so macOS is asked to hold the level instead of charging.
-    private(set) var isPausedForHeat = false
+    var isPausedForHeat: Bool { modes.isPausedForHeat }
+    /// What stands between the user's limit and what macOS was asked for.
+    var override: LimitOverride { modes.override }
+    /// The limit a mode has asked macOS for. nil when none.
+    var overrideLimit: Int? { modes.override.asked }
+    var isOverriding: Bool { modes.isOverriding }
+
     /// A limit the user asked for is waiting or under way.
     private(set) var userRequestPending = false
     /// For `Hachibu --try heat`: a threshold used in place of the setting.
     @ObservationIgnored var heatThresholdForTrial: Int?
     /// The limit was already put back for a quit; the quit need not wait.
     private(set) var hasRestoredForQuit = false
-    /// A calibration finished; say so once the user's limit is really back.
-    @ObservationIgnored private var owesFinishedNotice = false
-    /// The caption is the notice from a launch that found a leftover limit.
-    @ObservationIgnored private var showsLaunchNotice = false
-    /// The limit a mode has asked macOS for. nil when none.
-    var overrideLimit: Int? { override.asked }
-    var isOverriding: Bool { override != .none }
-
-    @ObservationIgnored private var engine = ChargeEngine()
-    @ObservationIgnored private var adoptedSailing = false
-    /// After a hold failed to take, sailing waits until this time.
-    @ObservationIgnored private var sailingPausedUntil: Date?
-    /// When to ask for the user's limit again after macOS did not take it back.
-    @ObservationIgnored private var restoreRetryAt: Date?
+    @ObservationIgnored private var hasLaunchedModes = false
     /// False in a one-shot command-line run: the copy in the menu bar runs
     /// Top Up and sailing, and two copies would pull against each other.
     /// `--try` is the one command-line run that exists to run a mode.
@@ -143,7 +135,7 @@ final class BatteryMonitor {
     }
 
     /// The limit the user chose: what a mode goes back to. 100 means none.
-    var userLimit: Int { override.userLimit(system: limit.effective) }
+    var userLimit: Int { modes.userLimit(system: limit.effective) }
 
     /// The limit to draw on the gauge. nil means none.
     var shownLimit: Int? { userLimit >= 100 ? nil : userLimit }
@@ -323,7 +315,7 @@ final class BatteryMonitor {
                 limitKnown = true
                 Preferences.shared.reloadSavedLimit()
                 limit = LimitState(system: state.limit, saved: Preferences.shared.savedLimit)
-                adoptSailing()
+                launchModes()
                 noticeOutsideChange()
                 if !isBusy { setSlider(userLimit) }
             } else if !state.supported {
@@ -407,7 +399,7 @@ final class BatteryMonitor {
     private func settle(_ value: Int, _ outcome: LimitSetter.Outcome, remember: Bool) {
         guard outcome != .superseded else { return }
         guard remember else {
-            settleModeRequest(outcome)
+            carryOut(modes.modeRequestSettled(outcome, now: .now))
             Task { await reloadNow() }
             return
         }
@@ -417,9 +409,6 @@ final class BatteryMonitor {
         case .held:
             // Saved only once macOS holds it, so "Set by Hachibu" is always true.
             Preferences.shared.savedLimit = value
-            // Only now is whatever a mode left behind really gone.
-            override = .none
-            restoreRetryAt = nil
         case .notAccepted(let viaHelper):
             problem = viaHelper ? "The helper did not set this limit. Try again."
                 : "macOS did not accept this limit. Try again."
@@ -432,60 +421,11 @@ final class BatteryMonitor {
         case .superseded:
             return
         }
-        // The new limit did not take while a mode's limit was still in
-        // place: go back to the limit from before the mode, and keep asking.
-        if problem != nil, case .restoring = override { restoreRetryAt = Date.now.addingTimeInterval(60) }
+        // Held: whatever a mode left behind is gone. Not held while a
+        // mode's limit was still in place: the limit from before returns.
+        carryOut(modes.userRequestSettled(held: outcome == .held, now: .now))
         applyProblem = problem
         Task { await reloadNow() }
-    }
-
-    /// The outcome of a limit a mode asked for: a hold, a Top Up's "no
-    /// limit", or the user's limit being put back.
-    private func settleModeRequest(_ outcome: LimitSetter.Outcome, now: Date = .now) {
-        if outcome == .held {
-            if case .restoring = override { applyProblem = nil }
-            override.confirmed()
-            if override == .none { overrideEnded() }
-            return
-        }
-        let reason: String
-        switch outcome {
-        case .notAccepted(viaHelper: true):
-            reason = "the helper did not answer"
-            Task { await helper.refresh() }
-        case .notAccepted: reason = "macOS refused the limit"
-        case .notConfirmed: reason = "macOS did not report the new limit"
-        default: reason = "macOS accepted the limit but has not enforced it"
-        }
-        switch override {
-        case .restoring:
-            // Never give up on the user's limit: ask again in a minute.
-            restoreRetryAt = now.addingTimeInterval(60)
-            applyProblem = "Your limit is not back yet: \(reason). Hachibu will ask again."
-        case .holding(_, let user):
-            // What the mode asked for did not take. Stop the mode, say why,
-            // and put the user's limit back; the Mac may be in between.
-            if mode == .toppingUp {
-                modeProblem = "The Top Up was stopped: \(reason)."
-            } else if mode == .calibrating {
-                modeProblem = "The calibration was stopped: \(reason)."
-                calibrationStep = nil
-            } else {
-                sailingPausedUntil = now.addingTimeInterval(600)
-                modeProblem = "Sailing is paused for ten minutes: \(reason)."
-            }
-            engine.stop()
-            engine.resetSailing()
-            mode = .normal
-            isSailing = false
-            isToppedUp = false
-            isPausedForHeat = false
-            // What was asked stays written down until the user's limit is back.
-            override = .restoring(user: user)
-            restoreRetryAt = now
-        case .none:
-            break
-        }
     }
 
     /// Reads the battery and the limit now, without waiting for the timer.
@@ -496,15 +436,7 @@ final class BatteryMonitor {
         update(reading: reading, state: startedAt == setter.generation && !isApplying ? state : nil)
     }
 
-    // MARK: Top Up and sailing
-
-    /// Sailing only steers a limit that is Hachibu's own, and waits after a
-    /// hold that did not take.
-    private func sailingRange(now: Date) -> Int {
-        guard Capability.sailing, isOverriding || limit.source == .hachibu else { return 0 }
-        if let until = sailingPausedUntil, now < until { return 0 }
-        return Preferences.shared.sailingRange
-    }
+    // MARK: Modes: Top Up, sailing, calibration, heat protection
 
     /// The temperature above which charging pauses. nil when heat protection is off.
     var heatThreshold: Int? {
@@ -513,33 +445,36 @@ final class BatteryMonitor {
         return Preferences.shared.heatThreshold
     }
 
-    /// What the engine looks at. nil until the battery and the limit are known.
-    private func chargeInputs(now: Date = .now) -> ChargeInputs? {
+    /// The reading as the modes see it. nil until the battery and the limit
+    /// are known. The coordinator fills in the user's limit itself.
+    private var modeReading: ChargeInputs? {
         guard let reading, limitKnown else { return nil }
         return ChargeInputs(percent: reading.percent, chargerAttached: reading.isPluggedIn, limit: userLimit,
-                            sailingRange: sailingRange(now: now), helperRunning: helper.isRunning,
-                            macOSFullCharge: reading.fullChargeOverride, temperatureC: reading.temperatureC,
-                            heatThreshold: heatThreshold)
+                            sailingRange: Capability.sailing ? Preferences.shared.sailingRange : 0,
+                            helperRunning: helper.isRunning, macOSFullCharge: reading.fullChargeOverride,
+                            temperatureC: reading.temperatureC, heatThreshold: heatThreshold)
     }
 
+    /// Sailing only steers a limit that is Hachibu's own.
+    private var limitIsOwn: Bool { limit.source == .hachibu }
+
     var canTopUp: Bool {
-        guard let inputs = chargeInputs(), canChangeLimit, mode == .normal else { return false }
-        return inputs.limit < 100 && inputs.chargerAttached && inputs.percent < 100
+        guard let reading = modeReading, canChangeLimit, mode == .normal else { return false }
+        return userLimit < 100 && reading.chargerAttached && reading.percent < 100
     }
 
     /// The Top Up button: starts one, or stops the one that runs.
     func toggleTopUp() {
-        guard !isPreview, let inputs = chargeInputs() else { return }
-        if mode == .toppingUp { engine.stop() } else { modeProblem = engine.startTopUp(inputs) }
+        guard !isPreview, let reading = modeReading else { return }
+        modes.toggleTopUp(reading, system: limit.effective, limitIsOwn: limitIsOwn)
         runModes()
     }
 
     /// Why a calibration cannot start now, in words for the user. nil when it can.
     var calibrationRefusal: String? {
-        guard let inputs = chargeInputs(), canChangeLimit else { return "The battery or the limit cannot be read right now." }
+        guard let reading = modeReading, canChangeLimit else { return "The battery or the limit cannot be read right now." }
         guard !isBusy else { return "A limit change is under way. Try again in a moment." }
-        var trial = engine
-        return trial.startCalibration(inputs)
+        return modes.calibrationRefusal(reading, system: limit.effective, limitIsOwn: limitIsOwn)
     }
 
     /// Starts a calibration. Returns why not, or nil.
@@ -547,8 +482,8 @@ final class BatteryMonitor {
     func startCalibration() -> String? {
         guard !isPreview else { return nil }
         if let refusal = calibrationRefusal { return refusal }
-        guard let inputs = chargeInputs() else { return "The battery cannot be read right now." }
-        let refusal = engine.startCalibration(inputs)
+        guard let reading = modeReading else { return "The battery cannot be read right now." }
+        let refusal = modes.startCalibration(reading, system: limit.effective, limitIsOwn: limitIsOwn)
         if refusal == nil { runModes() }
         return refusal
     }
@@ -556,172 +491,69 @@ final class BatteryMonitor {
     /// Ends a calibration early; the user's limit is asked for again.
     func stopCalibration() {
         guard !isPreview, mode == .calibrating else { return }
-        engine.stop()
+        modes.stop()
         runModes()
     }
 
-    /// At launch: a limit that is exactly the level Hachibu was holding when
-    /// it last ran is taken up again as sailing. Any other limit below the
-    /// saved one was set outside Hachibu and is left alone.
-    private func adoptSailing() {
-        guard !adoptedSailing else { return }
-        adoptedSailing = true
+    /// Once, with the first reading of the limit: what Hachibu wrote down
+    /// when it last ran decides whether a limit it left behind is undone
+    /// (a Top Up, a calibration, a heat pause) or taken up again (sailing).
+    private func launchModes() {
+        guard !hasLaunchedModes else { return }
+        hasLaunchedModes = true
         guard runsModes, !isPreview else { return }
-        // A Top Up or a calibration whose limit Hachibu did not get to take
-        // back (a crash, a forced quit, a restore that failed): what it asked
-        // for and the user's limit were both written down. If macOS still
-        // holds exactly what was asked, it is Hachibu's own leftover, and the
-        // user's limit is put back.
-        if let asked = Preferences.shared.modeAsk, let user = Preferences.shared.modeUser {
-            if limit.effective == asked, user != asked {
-                override = .restoring(user: user)
-                restoreRetryAt = .now
-                modeProblem = "Hachibu stopped during a Top Up or a calibration. Your limit is being put back."
-                showsLaunchNotice = true
-                return
-            }
-            Preferences.shared.modeAsk = nil
-            Preferences.shared.modeUser = nil
-        }
-        guard let hold = Preferences.shared.sailingHold else { return }
-        guard Capability.sailing, Preferences.shared.sailingRange > 0, override == .none,
-              let saved = limit.saved, limit.system == hold, hold < saved else {
-            Preferences.shared.sailingHold = nil
-            return
-        }
-        isSailing = true
-        override = .holding(limit: hold, user: saved)
-        engine.adopt(hold: hold)
+        carryOut(modes.launched(record: Preferences.shared.modeRecord, system: limit.effective, saved: limit.saved,
+                                sailingRange: Capability.sailing ? Preferences.shared.sailingRange : 0, now: .now))
     }
 
-    /// With a fresh reading of the limit and nothing under way: if macOS
-    /// holds something other than what a mode asked for, someone changed it
-    /// outside Hachibu. The mode ends and that limit is left as it is.
+    /// With a fresh reading of the limit and nothing under way: a limit
+    /// changed outside Hachibu during a mode ends the mode and is left alone.
     private func noticeOutsideChange() {
-        // During macOS's own full charge the reported limit is not to be
-        // trusted as a change someone made.
-        guard !isPreview, !isBusy, reading?.fullChargeOverride != true else { return }
-        let before = override
-        let changedOutside = override.observe(system: limit.effective)
-        if override == .none, before != .none, !changedOutside { overrideEnded() }
-        guard changedOutside else { return }
-        engine.stop()
-        engine.resetSailing()
-        mode = .normal
-        isSailing = false
-        isToppedUp = false
-        isPausedForHeat = false
-        calibrationStep = nil
-        owesFinishedNotice = false
-        modeProblem = nil
-        restoreRetryAt = nil
-        modeLog.notice("the limit was changed outside Hachibu during a mode; the mode ended")
-    }
-
-    /// The user's limit is confirmed back after a mode.
-    private func overrideEnded() {
-        if showsLaunchNotice {
-            showsLaunchNotice = false
-            modeProblem = nil
-        }
-        if owesFinishedNotice {
-            owesFinishedNotice = false
-            Notifier.calibrationFinished(limit: userLimit)
+        guard !isPreview, !isBusy else { return }
+        let was = modes.isOverriding
+        carryOut(modes.observed(system: limit.effective, isMacOSFullCharge: reading?.fullChargeOverride == true))
+        if was, !modes.isOverriding, limit.source == .outside {
+            modeLog.notice("the limit was changed outside Hachibu during a mode; the mode ended")
         }
     }
 
-    /// Writes down what a mode has asked macOS for, and the user's limit it
-    /// stands in for, so that a launch after a crash can tell Hachibu's own
-    /// leftover from a limit set elsewhere. It stays written while the
-    /// user's limit is being put back, and is erased only once that is
-    /// confirmed (or the user sets a limit and macOS holds it).
-    private func recordOverride() {
-        guard !isPreview else { return }
-        let preferences = Preferences.shared
-        switch override {
-        case .none:
-            preferences.modeAsk = nil
-            preferences.modeUser = nil
-            preferences.sailingHold = nil
-        case .holding(let limit, let user):
-            if isSailing {
-                preferences.sailingHold = limit
-                preferences.modeAsk = nil
-                preferences.modeUser = nil
-            } else {
-                preferences.modeAsk = limit
-                preferences.modeUser = user
-                preferences.sailingHold = nil
-            }
-        case .restoring:
-            break
-        }
-    }
-
-    /// A limit the user asks for ends every mode first. While a mode's
-    /// limit is still in place the override stays as "putting the old limit
-    /// back": if the user's new limit does not take, the old one returns
-    /// instead of the mode's limit staying.
+    /// A limit the user asks for ends every mode first.
     private func endModesForUserRequest() {
-        engine.stop()
-        mode = .normal
-        isToppedUp = false
-        isPausedForHeat = false
-        calibrationStep = nil
-        isWaitingForCharger = false
-        owesFinishedNotice = false
-        showsLaunchNotice = false
-        modeProblem = nil
-        restoreRetryAt = nil
-        if override != .none { override = .restoring(user: userLimit) }
+        carryOut(modes.userAsked(system: limit.effective))
     }
 
-    /// Asks the engine what should be true now and carries it out. A limit
-    /// is asked for only when the plan changes, and never while another
-    /// request is under way.
+    /// Hands the reading to the coordinator and carries out what it wants.
     private func runModes(now: Date = .now) {
-        guard !isPreview, runsModes, let inputs = chargeInputs(now: now) else { return }
-        let plan = engine.step(inputs)
-        mode = plan.mode
-        isSailing = plan.isSailing
-        isToppedUp = plan.isToppedUp
-        isPausedForHeat = plan.isPausedForHeat
-        let wasCalibrating = calibrationStep != nil
-        calibrationStep = plan.calibration
-        isWaitingForCharger = plan.isWaitingForCharger
-        if wasCalibrating, plan.calibration == nil {
-            // Said only once the user's limit is really back.
-            if engine.lastEnd == .finished { owesFinishedNotice = true }
-            if engine.lastEnd == .timedOut {
-                modeProblem = "The calibration was stopped: a step took more than twelve hours."
+        guard !isPreview, runsModes, let reading = modeReading else { return }
+        carryOut(modes.reading(reading, system: limit.effective, limitIsOwn: limitIsOwn,
+                               canAsk: !isBusy && canChangeLimit, now: now))
+    }
+
+    /// Does what the coordinator decided.
+    private func carryOut(_ effects: [ModeEffect]) {
+        for effect in effects {
+            switch effect {
+            case .ask(let limit):
+                modeLog.notice("asked macOS for \(limit, privacy: .public)%: \(self.mode.rawValue, privacy: .public)\(self.isSailing ? ", sailing" : "", privacy: .public)")
+                enqueueApply(limit, after: nil, remember: false)
+            case .write(let record):
+                Preferences.shared.modeRecord = record
+            case .notify(.calibrationFinished(let limit)):
+                Notifier.calibrationFinished(limit: limit)
+            case .refreshHelper:
+                Task { await helper.refresh() }
+            case .limitProblem(let text):
+                applyProblem = text
             }
         }
-        // A mode that is running again has nothing left to explain.
-        if plan.mode != .normal || plan.isSailing { modeProblem = nil }
-        guard !isBusy, canChangeLimit else { return }
-        let wanted: Int? = plan.limit == inputs.limit ? nil : plan.limit
-        let retryDue = restoreRetryAt.map { now >= $0 } ?? false
-        if let limit = override.follow(wanted: wanted, userLimit: inputs.limit, retryDue: retryDue) {
-            restoreRetryAt = nil
-            ask(limit, plan)
-        }
-        if override == .none, owesFinishedNotice { overrideEnded() }
-    }
-
-    private func ask(_ limit: Int, _ plan: ChargePlan) {
-        modeLog.notice("asked macOS for \(limit, privacy: .public)%: \(plan.mode.rawValue, privacy: .public)\(plan.isSailing ? ", sailing" : "", privacy: .public)")
-        enqueueApply(limit, after: nil, remember: false)
     }
 
     /// Before Hachibu quits: put the user's limit back, without waiting for
     /// macOS to report it. Returns once the request is made.
     func restoreBeforeQuit() async {
         guard !isPreview, !Store.isOverridden, !hasRestoredForQuit, isOverriding || mode != .normal else { return }
-        let target = userLimit
-        engine.stop()
-        mode = .normal
         hasRestoredForQuit = true
-        guard isOverriding else { return }
+        guard let target = modes.quitting(system: limit.effective) else { return }
         // What the mode asked for stays written down: this write is not
         // confirmed, and if it fails the next launch puts the limit back.
         // Let a request that is mid-call finish first, briefly, so it cannot
@@ -748,10 +580,9 @@ final class BatteryMonitor {
         await setter.cancelPending()
         // The limit that must hold afterwards is the user's own, not
         // whatever a mode has macOS holding right now.
-        let user = userLimit
-        endModesForUserRequest()
-        engine.resetSailing()
-        isSailing = false
+        let removal = modes.removingHelper(system: limit.effective)
+        carryOut(removal.effects)
+        let user = removal.user
         // Asked even of a helper that seems broken: asking starts it.
         _ = await HelperClient.send(.restoreAdapter)
         let now = await Task.detached { ChargeLimit.read() }.value
@@ -799,14 +630,13 @@ final class BatteryMonitor {
         limit = fixture.limit
         limitKnown = fixture.limitKnown
         isWarning = fixture.isWarning
-        mode = fixture.mode
-        isSailing = fixture.isSailing
-        calibrationStep = fixture.calibration
-        isPausedForHeat = fixture.isPausedForHeat
-        if isPausedForHeat { heatThresholdForTrial = ChargeEngine.heatDefault }
+        var override = LimitOverride.none
         if let asked = fixture.overrideLimit, let user = fixture.limitBeforeOverride {
             override = .holding(limit: asked, user: user)
         }
+        modes = ModeCoordinator(fixedMode: fixture.mode, isSailing: fixture.isSailing, calibration: fixture.calibration,
+                                isPausedForHeat: fixture.isPausedForHeat, override: override)
+        if fixture.isPausedForHeat { heatThresholdForTrial = ChargeEngine.heatDefault }
         if fixture.reading != nil { systemHealth = 82 }
         setSlider(userLimit)
     }

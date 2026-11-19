@@ -29,3 +29,22 @@ after: Not charging, 83%, 0 mA, plugged true, macOS limit 90%, yours 90%, mode n
 --- restore
 limit 80%, Set by Hachibu
 end: 83%; AC attached pmset=chargeSocLimitSoc = 80
+
+# The same run again after the mode coordinator refactor, 2026-11-19 02:43
+limit 90%, Set by Hachibu
+before: Not charging, 80%, 0 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+threshold for this run: 40 °C, battery at 41.2 °C
+t=180s 41.8 °C, paused true, asked macOS for 81: Paused for heat, 80%, 1143 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=200s 41.8 °C, paused true, asked macOS for 81: Paused for heat, 80%, 1143 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=300s 42.0 °C, paused true, asked macOS for 81: Paused for heat, 80%, 613 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=320s 42.2 °C, paused true, asked macOS for 81: Paused for heat, 80%, 1199 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=340s 42.3 °C, paused true, asked macOS for 81: Paused for heat, 80%, 1199 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=360s 42.4 °C, paused true, asked macOS for 81: Paused for heat, 80%, 1199 mA, plugged true, macOS limit 90%, yours 90%, mode normal
+t=380s 42.4 °C, paused true, asked macOS for 81: Paused for heat, 81%, 1523 mA, plugged true, macOS limit 81%, yours 90%, mode normal
+t=400s 42.3 °C, paused true, asked macOS for 81: Paused for heat, 81%, 1523 mA, plugged true, macOS limit 81%, yours 90%, mode normal
+charging seen stopped after: not in this run
+after: Paused for heat, 81%, 0 mA, plugged true, macOS limit 81%, yours 90%, mode normal
+putting the limit back before quitting: Hachibu had asked macOS for 81%, mode normal, yours 90%
+--- restore
+limit 80%, Set by Hachibu
+end: 81%; AC attached pmset=chargeSocLimitSoc = 80

@@ -19,16 +19,25 @@ Neither of those depends on anything else in the project. Rules go in
 ## Who decides, who acts
 
 - `ChargeEngine` (Kit) decides which limit macOS should hold: the user's,
-  none during a Top Up, or the current level while sailing. It changes
-  nothing.
+  none during a Top Up, 15% and then none during a calibration, or a level
+  to hold while sailing or while the battery is hot. It composes three
+  rules, each with its own state (`ChargeRules.swift`): `SailingRule`,
+  `CalibrationRule`, `HeatRule`. It changes nothing.
 - `LimitOverride` (Kit) remembers the user's limit while a mode has
   macOS holding another one, until macOS confirms it is back.
+- `ModeCoordinator` (Kit) is everything between the two above and one
+  request to macOS: when to ask, what a failed request means, when the
+  user's limit counts as back, what to write down for the next launch
+  (`ModeRecord`), what a launch does with a leftover, and what a change
+  made outside Hachibu ends. It takes events and returns effects
+  (`ModeEffect`); it does none of them itself.
 - `LimitSetter` (Kit) carries out limit requests one at a time. Only the
   newest request counts, and a request is "held" only once macOS reports
   it (and, for a helper limit, once pmset enforces it).
-- `BatteryMonitor` (app, main actor) reads the battery on a timer, asks
-  the engine, hands requests to the setter, and decides what is saved as
-  the user's limit and what the popover says. Views read only from it.
+- `BatteryMonitor` (app, main actor) reads the battery on a timer, feeds
+  the coordinator, carries out its effects (`carryOut`), handles the
+  limits the user sets, and decides what the popover says. Views read
+  only from it.
 - `HistoryStore` (Kit) keeps samples in two append-only files;
   `HistorySeries` turns them into what a chart draws. `HistoryCenter`
   (app) records one sample a minute from the monitor's readings and loads
@@ -57,7 +66,9 @@ Neither of those depends on anything else in the project. Rules go in
   `NSApp.terminate`, not from inside the quit.
 - Hachibu never cuts the charger (`docs/research/charge-control.md`).
 - A mode writes down what it asked macOS for and the user's limit it
-  stood in for (`BatteryMonitor.recordOverride`: `sailingHold`, or
-  `modeAsk` with `modeUser`). The record is erased only when macOS
-  confirms the user's limit. At launch a leftover is recognised only by
-  an exact match with what macOS holds, never by guessing.
+  stood in for (`ModeRecord`, kept by `Preferences.modeRecord`). The
+  record is erased only when macOS confirms the user's limit. At launch a
+  leftover is recognised only by an exact match with what macOS holds,
+  never by guessing.
+- A rule about modes goes in `ModeCoordinator` with a scenario test
+  (`ModeCoordinatorTests`), never in the monitor.
