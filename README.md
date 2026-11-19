@@ -141,4 +141,4 @@ without what batt documented.
 
 ## License
 
-Not chosen yet. Until a license file is added, all rights are reserved.
+MIT. See `LICENSE`.

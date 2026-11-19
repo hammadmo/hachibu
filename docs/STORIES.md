@@ -584,10 +584,12 @@ Acceptance:
 - [manual] A license file exists.
 - [manual] The repo has no personal names, emails, or team IDs in
   tracked files.
-Status: in progress. `README.md` is written (2026-11-19). Tracked files
-were searched for names, emails, home paths, and the team ID: none
-found. Open, both the user's call: the license, and the commit history,
-whose author line carries a name and an email address.
+Status: done (2026-11-19). `README.md` is written, the license is MIT
+(the user's choice; the copyright line names "The Hachibu authors", not
+a person), and tracked files were searched for names, emails, home
+paths, and the team ID: none found. Before the repository is made
+public, one thing is still the user's call: every commit's author line
+carries a name and an email address.
 
 ## Later
 
