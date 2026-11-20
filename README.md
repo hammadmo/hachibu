@@ -90,8 +90,6 @@ The pictures show sample data, not a real battery.
 ## Requirements
 
 - An Apple silicon MacBook running **macOS 27**.
-- Developed and tested on one Mac, a MacBook Air (M1). Other models
-  should behave the same way but have not been tried.
 - Intel Macs and earlier versions of macOS are not supported. The way
   charging is controlled changed in macOS 27, and Hachibu only knows the
   new way.
