@@ -15,6 +15,7 @@ and release steps.
 - `Sources/HachibuSystem/` C and Objective-C: the battery controller (SMC) and the private PowerUI framework. Read `docs/research/charge-control.md` before touching it.
 - `Sources/HachibuHelper/` the root helper, and `Sources/Hachibu/HelperManager.swift`, the app's side of it. The requests they share are in `Sources/HachibuKit/Helper.swift`. The helper accepts three requests and nothing else (set limit, restore adapter, read status); keep that list closed. It cannot cut the charger.
 - `Sources/Hachibu/Updates.swift` checks for a newer version and installs it, with Sparkle. It is the only code that uses the network; test runs and command-line runs never check.
+- `StatusItemAccess` in `Sources/Hachibu/MenuBar.swift` opens the popover's content in a window when the menu bar item is pressed through accessibility; macOS 27 does not open the popover for that press.
 - `Sources/Hachibu/TopUpShortcut.swift` the one keyboard shortcut that works in any app. Off until switched on in Settings.
 - `Sources/HachibuKit/` rules with no SwiftUI: status, limit source, the "Limit not holding" watch, formatting. Tests in `Tests/HachibuKitTests/`.
 - `Sources/Hachibu/DesignKit/` the design kit. `design/KIT.md` is its spec.

@@ -214,3 +214,22 @@ anything. It also puts the app together in a folder of its own and moves
 it into place only when every signature has worked.
 Rule: "nothing personal in the build" is a check the build runs on the
 finished file with `grep -a`, not something looked at once by hand.
+
+## 2026-11-20 The menu bar item said only "Hachibu", and a press through accessibility opened nothing
+
+Symptom: assistive apps were told the menu bar item is called "Hachibu",
+with no level and no status. Pressing it through accessibility (what
+VoiceOver, Voice Control, and scripts do) reported success and opened
+nothing.
+Cause: on macOS 27 the system draws menu bar items itself. It passes on
+the item's label and drops a separate accessibility value. A real click
+reaches SwiftUI another way; a press through accessibility goes to the
+item's button, which has no action.
+Fix: the label now carries the level and the status ("Hachibu, Battery 80
+percent, Holding at limit"). `StatusItemAccess` in `MenuBar.swift` gives
+the item's button a press that opens a window with what the popover
+shows. A real click still opens the popover.
+Rule: check a control with the accessibility API from outside the app
+(role, label, value, and what a press does), not by reading the
+modifiers in the code. A modifier that is set is not a value that
+arrives.

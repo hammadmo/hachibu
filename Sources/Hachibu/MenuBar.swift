@@ -18,10 +18,12 @@ struct MenuBarLabel: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Hachibu")
-        .accessibilityValue(accessibilityText(mark))
+        // macOS shows only the label for a menu bar item; a separate value
+        // never reaches VoiceOver. So the level and the status go in it.
+        .accessibilityLabel("Hachibu, \(accessibilityText(mark))")
         .task {
             monitor.start()
+            StatusItemAccess.install { openWindow(id: $0) }
             Launch.run(model: model, monitor: monitor) { openWindow(id: $0) }
         }
     }
@@ -29,6 +31,58 @@ struct MenuBarLabel: View {
     private func accessibilityText(_ mark: MenuBarMark) -> String {
         guard let percent = mark.percent else { return "No battery reading" }
         return "Battery \(percent) percent, \(monitor.statusTitle)"
+    }
+}
+
+/// Makes the menu bar item answer a press that comes through accessibility
+/// (VoiceOver, Voice Control, Switch Control, scripts).
+///
+/// On macOS 27 the menu bar item is drawn by the system and a real click
+/// reaches SwiftUI another way; a press through accessibility arrives at
+/// the item's button, which has nothing to do with it, so nothing opened.
+/// Here that press opens a window with what the popover shows.
+enum StatusItemAccess {
+    static let windowID = "panel"
+    static let windowTitle = "Hachibu"
+    private static var open: ((String) -> Void)?
+    private static var installed = false
+
+    static func install(open: @escaping (String) -> Void) {
+        self.open = open
+        Task {
+            // The item's button appears a moment after launch.
+            for _ in 0..<20 where !installed {
+                installed = adopt()
+                if !installed { try? await Task.sleep(for: .seconds(0.5)) }
+            }
+        }
+    }
+
+    /// Gives the item's button a subclass whose press opens the window.
+    private static func adopt() -> Bool {
+        guard let button = NSApp.windows.lazy.compactMap({ $0.contentView.flatMap(find) }).first else { return false }
+        let name = "HachibuStatusBarButton"
+        if let made = NSClassFromString(name) {
+            object_setClass(button, made)
+            return true
+        }
+        guard let made: AnyClass = objc_allocateClassPair(type(of: button), name, 0) else { return false }
+        let press: @convention(block) (AnyObject) -> Bool = { _ in
+            MainActor.assumeIsolated {
+                open?(windowID)
+                NSApp.activate()
+            }
+            return true
+        }
+        class_addMethod(made, #selector(NSAccessibilityButton.accessibilityPerformPress), imp_implementationWithBlock(press), "B@:")
+        objc_registerClassPair(made)
+        object_setClass(button, made)
+        return true
+    }
+
+    private static func find(_ view: NSView) -> NSStatusBarButton? {
+        if let button = view as? NSStatusBarButton { return button }
+        return view.subviews.lazy.compactMap(find).first
     }
 }
 

@@ -54,6 +54,21 @@ struct HachibuApp: App {
         .defaultLaunchBehavior(.suppressed)
         .keyboardShortcut("y")
 
+        // What the popover shows, in a window of its own. It opens when the
+        // menu bar item is pressed through accessibility (StatusItemAccess).
+        Window(StatusItemAccess.windowTitle, id: StatusItemAccess.windowID) {
+            PopoverView()
+                .environment(model)
+                .environment(monitor)
+                .padding(.top, Space.xxl)
+                .background(Ink.surface)
+                .ignoresSafeArea()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.suppressed)
+
         // The two windows below open only in snapshot and gallery runs.
         Window(PopoverPreview.windowTitle, id: PopoverPreview.windowID) {
             PopoverPreviewView()
@@ -121,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 /// window can be found again, and takes it out when both are closed.
 /// Test runs leave the Dock alone.
 enum DockIcon {
-    private static let titles: Set<String> = ["Hachibu Settings", HistoryView.windowTitle]
+    private static let titles: Set<String> = ["Hachibu Settings", HistoryView.windowTitle, StatusItemAccess.windowTitle]
 
     static func watch() {
         guard !Store.isOverridden else { return }
