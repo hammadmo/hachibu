@@ -493,3 +493,27 @@ minutes.
 - Not seen in this run: the "Calibration finished" notification (nobody
   was at the Mac), and what a calibration does when the charger is
   pulled out in the middle.
+
+## A 70% limit, held (2026-11-20)
+
+The limit was set to 70% from 80% with the battery at 80% and the
+charger connected, and left for an hour and twenty minutes with the Mac
+awake. The log is `limit-70-run.log`, one line every five minutes.
+
+- Power management showed 70% within seconds, "Set by Hachibu".
+- macOS drained the battery to the limit on the charger: 80% at 17:22,
+  70% at 18:01. That is 10% in about 40 minutes, a quarter of a percent
+  a minute, and it slowed near the end (2% in five minutes at first, 1%
+  in five minutes for the last few).
+- At 70% the drain stopped and the level stayed at 70% for the 40
+  minutes that followed, "not charging" on the charger.
+- During the first ten minutes Hachibu was quit and reopened several
+  times and the helper was removed and installed again, for other
+  trials. The limit stayed in power management through all of it: once
+  written, it does not need Hachibu or the helper to be running.
+- Sailing was set to 5% and never started: the level did not drop below
+  the limit.
+- Putting the limit back to 80% took effect at once.
+
+Not seen: a limit below 80% held through a night of sleep, or for days.
+The Mac did not sleep during this run.

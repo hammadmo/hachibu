@@ -1,0 +1,20 @@
+# An hour and twenty minutes on a 70% limit, charger connected, Mac awake. One line every five minutes.
+# time | level and state | limit power management enforces | the limit saved as the user's | sailing's hold
+# Sailing range 5%, heat protection on at 40 °C. Temperature is in Hachibu's own history.
+11-20 17:21:48 | 80%; AC attached | chargeSocLimitSoc = 80 | saved 80 | sailing hold none
+11-20 17:26:48 | 79%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 17:31:49 | 78%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 17:36:49 | 76%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 17:41:49 | 74%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 17:46:49 | 73%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 17:51:49 | 72%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 17:56:49 | 71%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 18:01:49 | 70%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 18:06:49 | 70%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 18:11:49 | 70%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 18:16:49 | 70%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 18:21:49 | 70%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 18:26:49 | 70%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 18:31:49 | 70%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 18:36:49 | 70%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
+11-20 18:41:49 | 70%; AC attached | chargeSocLimitSoc = 70 | saved 70 | sailing hold none
