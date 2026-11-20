@@ -63,7 +63,7 @@ Pro features in AlDente; in Hachibu they are part of the app.
 | **Top Up** | Charge to 100% once, for a day away from the charger. Your limit returns when you unplug or press Stop. An optional keyboard shortcut starts one from any app. |
 | **Sailing** | Let the battery drift a few percent below the limit before it charges again, instead of topping up all day. |
 | **Heat protection** | Pause charging when the battery is hot (40 °C by default) and resume when it has cooled. |
-| **Calibration** | A guided cycle meant to correct the percentage and health readings: drain to 15%, charge to 100%, rest for two hours. Whether it changes the readings has not been measured yet. |
+| **Calibration** | A guided cycle meant to correct the percentage and health readings: drain to 15%, charge to 100%, rest for two hours. It takes about six hours. On a battery whose readings are already right it changes nothing. |
 | **Power flow** | Watts from the charger, to the Mac, and into or out of the battery, with what the connected charger can supply at most, about how long charging will take, and a note when the charger cannot keep up with the Mac. |
 | **History** | Level, temperature, power, and health over a day, a week, or a month, with the battery's capacity now and when new. Everything recorded can be exported as a CSV file. |
 | **Notifications** | When the limit is not holding, when macOS starts a full charge of its own, and when a Top Up or a calibration finishes. Each can be switched off. |

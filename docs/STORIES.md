@@ -525,13 +525,15 @@ Acceptance:
 - [manual] A notification is sent when calibration finishes.
 - [manual] One full run on this Mac, with the time of each step and the
   health figure before and after written into the research file.
-Status: done (2026-11-19), except the full run. macOS took and enforced
-15% at once. A real 20-second run showed "Calibrating" with a 15% limit
-and gave 80% back on Stop. It is started from Settings > Charging;
-the popover shows the step and a Stop button. If Hachibu stops during a
-calibration or a Top Up, the next launch puts the user's limit back.
-Still to do by hand: one whole calibration, with the time of each step
-and the health figure before and after.
+Status: done. macOS took and enforced 15% at once. A real 20-second run
+showed "Calibrating" with a 15% limit and gave 80% back on Stop. It is
+started from Settings > Charging; the popover shows the step and a Stop
+button. If Hachibu stops during a calibration or a Top Up, the next
+launch puts the limit back. A whole run was done on 2026-11-20: 1 h 23
+min to drain, 2 h 20 min to charge, two hours of rest, then 80% back.
+The times and the health figure before and after (82% both) are in
+`docs/research/charge-control.md`. The notification at the end was not
+seen: nobody was at the Mac.
 
 ## M6 System and polish
 

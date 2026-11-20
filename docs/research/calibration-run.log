@@ -1,0 +1,145 @@
+# A whole calibration, started by hand from Settings > Charging. One line every two minutes.
+# time | level and state | limit power management enforces | the limit saved as the user's
+# Temperature is in Hachibu's own history for the same hours.
+11-20 02:21:36 | 80%; AC attached; not charging | chargeSocLimitSoc = 80 | saved 80
+11-20 02:23:36 | 80%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:25:36 | 80%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:27:36 | 79%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:29:36 | 78%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:31:36 | 76%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:33:36 | 74%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:35:36 | 72%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:37:36 | 69%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:39:36 | 66%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:41:36 | 63%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:43:36 | 62%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:45:37 | 60%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:47:37 | 59%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:49:37 | 57%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:51:37 | 56%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:53:37 | 54%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:55:37 | 53%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:57:37 | 51%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 02:59:37 | 50%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:01:37 | 49%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:03:37 | 48%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:05:37 | 47%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:07:37 | 45%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:09:37 | 44%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:11:37 | 43%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:13:37 | 42%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:15:38 | 40%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:17:38 | 39%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:19:38 | 37%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:21:38 | 35%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:23:38 | 33%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:25:38 | 31%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:27:38 | 29%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:29:38 | 28%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:31:38 | 26%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:33:38 | 25%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:35:38 | 23%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:37:38 | 22%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:39:38 | 20%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:41:38 | 19%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:43:39 | 17%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:45:39 | 16%; AC attached; not charging | chargeSocLimitSoc = 15 | saved 80
+11-20 03:47:39 | 17%; charging; (no estimate) | No battery level limits set | saved 80
+11-20 04:11:07 | 17%; AC attached; not charging | No battery level limits set | saved 80
+11-20 04:25:34 | 32%; charging; (no estimate) | No battery level limits set | saved 80
+11-20 04:32:06 | 38%; charging; (no estimate) | No battery level limits set | saved 80
+11-20 04:34:06 | 40%; charging; 2:15 remaining | No battery level limits set | saved 80
+11-20 04:36:06 | 42%; charging; 2:10 remaining | No battery level limits set | saved 80
+11-20 04:38:06 | 43%; charging; 2:08 remaining | No battery level limits set | saved 80
+11-20 04:40:06 | 45%; charging; 2:07 remaining | No battery level limits set | saved 80
+11-20 04:42:06 | 47%; charging; 2:07 remaining | No battery level limits set | saved 80
+11-20 04:44:06 | 48%; charging; 2:04 remaining | No battery level limits set | saved 80
+11-20 04:46:06 | 50%; charging; 2:04 remaining | No battery level limits set | saved 80
+11-20 04:48:06 | 52%; charging; 2:01 remaining | No battery level limits set | saved 80
+11-20 04:50:07 | 53%; AC attached; not charging | No battery level limits set | saved 80
+11-20 04:52:07 | 55%; charging; 1:48 remaining | No battery level limits set | saved 80
+11-20 04:54:07 | 57%; charging; 1:44 remaining | No battery level limits set | saved 80
+11-20 04:56:07 | 59%; charging; 1:41 remaining | No battery level limits set | saved 80
+11-20 04:58:07 | 61%; charging; 1:42 remaining | No battery level limits set | saved 80
+11-20 05:00:07 | 63%; charging; 1:36 remaining | No battery level limits set | saved 80
+11-20 05:02:07 | 64%; charging; 1:35 remaining | No battery level limits set | saved 80
+11-20 05:04:07 | 66%; charging; 1:35 remaining | No battery level limits set | saved 80
+11-20 05:06:07 | 67%; charging; 1:29 remaining | No battery level limits set | saved 80
+11-20 05:08:07 | 69%; charging; 1:28 remaining | No battery level limits set | saved 80
+11-20 05:10:07 | 70%; charging; 1:28 remaining | No battery level limits set | saved 80
+11-20 05:12:07 | 72%; charging; 1:28 remaining | No battery level limits set | saved 80
+11-20 05:14:07 | 73%; charging; 1:26 remaining | No battery level limits set | saved 80
+11-20 05:16:07 | 74%; charging; 1:24 remaining | No battery level limits set | saved 80
+11-20 05:18:07 | 75%; charging; 1:21 remaining | No battery level limits set | saved 80
+11-20 05:20:07 | 76%; charging; 1:18 remaining | No battery level limits set | saved 80
+11-20 05:22:07 | 78%; charging; 1:13 remaining | No battery level limits set | saved 80
+11-20 05:24:08 | 79%; charging; 1:10 remaining | No battery level limits set | saved 80
+11-20 05:26:08 | 80%; charging; 1:07 remaining | No battery level limits set | saved 80
+11-20 05:28:08 | 81%; charging; 1:04 remaining | No battery level limits set | saved 80
+11-20 05:30:08 | 82%; charging; 0:59 remaining | No battery level limits set | saved 80
+11-20 05:32:08 | 83%; charging; 0:55 remaining | No battery level limits set | saved 80
+11-20 05:34:08 | 85%; charging; 0:51 remaining | No battery level limits set | saved 80
+11-20 05:36:08 | 86%; charging; 0:48 remaining | No battery level limits set | saved 80
+11-20 05:38:08 | 87%; charging; 0:44 remaining | No battery level limits set | saved 80
+11-20 05:40:08 | 88%; charging; 0:41 remaining | No battery level limits set | saved 80
+11-20 05:42:08 | 89%; charging; 0:40 remaining | No battery level limits set | saved 80
+11-20 05:44:08 | 90%; charging; 0:36 remaining | No battery level limits set | saved 80
+11-20 05:46:08 | 91%; charging; 0:35 remaining | No battery level limits set | saved 80
+11-20 05:48:08 | 92%; charging; 0:33 remaining | No battery level limits set | saved 80
+11-20 05:50:08 | 93%; charging; 0:31 remaining | No battery level limits set | saved 80
+11-20 05:52:08 | 94%; charging; 0:27 remaining | No battery level limits set | saved 80
+11-20 05:54:09 | 95%; charging; 0:25 remaining | No battery level limits set | saved 80
+11-20 05:56:09 | 95%; charging; 0:24 remaining | No battery level limits set | saved 80
+11-20 05:58:09 | 96%; charging; 0:22 remaining | No battery level limits set | saved 80
+11-20 06:00:09 | 97%; charging; 0:20 remaining | No battery level limits set | saved 80
+11-20 06:02:09 | 97%; charging; 0:16 remaining | No battery level limits set | saved 80
+11-20 06:04:09 | 98%; charging; 0:15 remaining | No battery level limits set | saved 80
+11-20 06:06:09 | 98%; charging; 0:12 remaining | No battery level limits set | saved 80
+11-20 06:08:09 | 100%; finishing charge; 0:10 remaining | No battery level limits set | saved 80
+11-20 06:10:09 | 100%; finishing charge; 0:07 remaining | No battery level limits set | saved 80
+11-20 06:12:09 | 100%; finishing charge; 0:05 remaining | No battery level limits set | saved 80
+11-20 06:14:09 | 100%; finishing charge; 0:02 remaining | No battery level limits set | saved 80
+11-20 06:16:09 | 100%; finishing charge; 0:00 remaining | No battery level limits set | saved 80
+11-20 06:18:09 | 100%; finishing charge; 0:00 remaining | No battery level limits set | saved 80
+11-20 06:20:09 | 100%; finishing charge; 0:00 remaining | No battery level limits set | saved 80
+11-20 06:23:03 | 100%; finishing charge; (no estimate) | No battery level limits set | saved 80
+11-20 06:34:08 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 06:52:08 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 06:54:08 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 06:56:08 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 06:58:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:00:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:02:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:04:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:06:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:08:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:10:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:12:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:14:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:16:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:18:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:20:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:22:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:24:09 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:26:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:28:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:30:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:32:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:34:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:36:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:38:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:40:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:42:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:44:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:46:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:48:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:50:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:52:10 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:54:11 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:56:11 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 07:58:11 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 08:00:11 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 08:02:11 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 08:04:11 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 08:06:11 | 100%; charged; 0:00 remaining | No battery level limits set | saved 80
+11-20 08:08:11 | 100%; charged; 0:00 remaining | chargeSocLimitSoc = 80 | saved 80

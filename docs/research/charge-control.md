@@ -450,3 +450,40 @@ Measured on this Mac (MacBook Air M1, macOS 27), battery at 45%.
 - So on battery there is no enforcement signal to wait for, and a limit
   set there is taken up when the charger returns. Not measured: charging
   stopping at such a limit.
+
+## A whole calibration (2026-11-20)
+
+One run from start to finish on this Mac (MacBook Air M1, macOS 27),
+started by hand from Settings > Charging with a limit of 80% and the
+battery at 80%. The log is `calibration-run.log`, one line every two
+minutes.
+
+| Step | From | To | Took |
+| --- | --- | --- | --- |
+| Drain to 15%, on the charger | 02:23 | 03:46 | 1 h 23 min |
+| Charge to 100% | 03:47 | 06:07 | 2 h 20 min |
+| Rest at 100% | 06:07 | 08:07 | 2 h |
+| Limit back | 08:08 | | at the next reading |
+
+- Power management showed 15% as the enforced limit at the first look
+  after the calibration was started, and the battery began to drop
+  within four minutes. The drain ran at 0.6 to 0.9% a minute, faster
+  while the Mac was busy.
+- The step changed at 15% exactly (seen on screen; the log, which looks
+  every two minutes, shows 16% on either side). Hachibu then asked for
+  no limit, pmset said "No battery level limits set", and charging began
+  within a minute.
+- The Mac slept twice during the run: about 45 minutes early in the
+  charge and about half an hour early in the rest. Charging went on
+  while it slept, and the sleep counted toward the two hours of rest:
+  the rest ended two hours after it began by the clock.
+- At the end power management showed 80% again, the note Hachibu keeps
+  of a mode's limit was gone, and the saved limit was still 80.
+- What it changed: nothing that can be seen. macOS reported a maximum
+  capacity of 82% before and after, with 276 cycles. The battery's own
+  figure was 3,405 mAh during the charge and 3,395 mAh after. This
+  battery's readings were not off to begin with, so this says the run is
+  harmless on a healthy gauge, not that it repairs a bad one.
+- Not seen in this run: the "Calibration finished" notification (nobody
+  was at the Mac), macOS draining from 100% back to 80% afterwards, and
+  what a calibration does when the charger is pulled out in the middle.
