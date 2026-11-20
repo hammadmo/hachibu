@@ -41,6 +41,8 @@ nonisolated enum SystemBattery {
         // none at all, leaves this out.
         let adapter = properties["AdapterDetails"] as? [String: Any] ?? [:]
         let rating = int("Watts", in: adapter).flatMap { $0 > 0 ? $0 : nil }
+        // 65535 is the battery's way of saying it has no estimate.
+        let toFull = int("AvgTimeToFull", in: properties).flatMap { (1..<6_000).contains($0) ? $0 : nil }
         return BatteryReading(
             percent: percent,
             isPluggedIn: pluggedIn,
@@ -53,7 +55,9 @@ nonisolated enum SystemBattery {
             chargerWatts: pluggedIn ? chargerWatts : 0,
             systemWatts: systemWatts,
             fullChargeOverride: fullChargeOverride,
-            chargerRatingWatts: pluggedIn ? rating : nil)
+            chargerRatingWatts: pluggedIn ? rating : nil,
+            minutesToFull: pluggedIn ? toFull : nil,
+            designCycles: int("DesignCycleCount9C", in: properties).flatMap { $0 > 0 ? $0 : nil })
     }
 
     /// Battery health as macOS itself reports it (System Settings > Battery).

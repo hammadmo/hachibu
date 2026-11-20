@@ -348,3 +348,21 @@ public struct PowerFlow: Equatable, Sendable {
         batteryFeedsMac = (battery ?? 0) < 0
     }
 }
+
+/// What was recorded, as a table other programs can open.
+public enum HistoryCSV {
+    public static let header = "time,level_percent,charger_connected,charging,temperature_c,charger_watts,mac_watts,limit_percent"
+
+    /// One line per sample, oldest first. Times are ISO 8601 in UTC; a value
+    /// that was not recorded is left empty; a limit of 100 means none.
+    public static func text(_ samples: [HistorySample]) -> String {
+        let time = ISO8601DateFormatter()
+        func number(_ value: Double?) -> String { value.map { String(format: "%.1f", $0) } ?? "" }
+        let lines = samples.sorted { $0.time < $1.time }.map { sample in
+            [time.string(from: sample.time), String(sample.percent), sample.isPluggedIn ? "yes" : "no",
+             sample.isCharging ? "yes" : "no", number(sample.temperatureC), number(sample.chargerWatts),
+             number(sample.macWatts), String(sample.limit)].joined(separator: ",")
+        }
+        return ([header] + lines).joined(separator: "\n") + "\n"
+    }
+}

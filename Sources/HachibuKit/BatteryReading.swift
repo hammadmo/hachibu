@@ -18,6 +18,11 @@ public struct BatteryReading: Equatable, Sendable {
     /// The most the connected charger can supply, as it reports itself to
     /// the Mac. nil off the charger, or when the charger does not say.
     public var chargerRatingWatts: Int?
+    /// The number of cycles the battery is built for, as it reports itself.
+    public var designCycles: Int?
+    /// Minutes until the battery is full, as macOS estimates it while
+    /// charging. nil when it has no estimate.
+    public var minutesToFull: Int?
     /// Watts the Mac is using.
     public var systemWatts: Double?
     /// macOS is charging to 100% on its own to keep its estimates accurate.
@@ -26,7 +31,8 @@ public struct BatteryReading: Equatable, Sendable {
     public init(percent: Int, isPluggedIn: Bool, currentMA: Int, voltageMV: Int? = nil,
                 temperatureC: Double? = nil, cycleCount: Int? = nil, rawMaxCapacityMAh: Int? = nil,
                 designCapacityMAh: Int? = nil, chargerWatts: Double? = nil, systemWatts: Double? = nil,
-                fullChargeOverride: Bool = false, chargerRatingWatts: Int? = nil) {
+                fullChargeOverride: Bool = false, chargerRatingWatts: Int? = nil, minutesToFull: Int? = nil,
+                designCycles: Int? = nil) {
         self.percent = min(max(percent, 0), 100)
         self.isPluggedIn = isPluggedIn
         self.currentMA = currentMA
@@ -37,6 +43,8 @@ public struct BatteryReading: Equatable, Sendable {
         self.designCapacityMAh = designCapacityMAh
         self.chargerWatts = chargerWatts
         self.chargerRatingWatts = chargerRatingWatts
+        self.minutesToFull = minutesToFull
+        self.designCycles = designCycles
         self.systemWatts = systemWatts
         self.fullChargeOverride = fullChargeOverride
     }
@@ -55,6 +63,39 @@ public struct BatteryReading: Equatable, Sendable {
     public var healthPercent: Int? {
         guard let raw = rawMaxCapacityMAh, let design = designCapacityMAh, design > 0, raw > 0 else { return nil }
         return min(Int((Double(raw) / Double(design) * 100).rounded()), 100)
+    }
+
+    /// Minutes of charging left until `target` percent. To 100% it is
+    /// macOS's own estimate, which knows how charging slows near the top.
+    /// To a limit below that it is worked out from the measured current,
+    /// which holds steady that far down. nil when not charging, when the
+    /// target is reached, or when a value is missing.
+    public func minutesToReach(_ target: Int) -> Int? {
+        guard isCharging, percent < target else { return nil }
+        if target >= 100 { return minutesToFull }
+        guard let capacity = rawMaxCapacityMAh else { return nil }
+        let missing = Double(target - percent) / 100 * Double(capacity)
+        return max(Int((missing / Double(currentMA) * 60).rounded()), 1)
+    }
+
+    /// The charger is giving all it can and the battery is still being
+    /// used: the Mac needs more than this charger supplies.
+    public var chargerCannotKeepUp: Bool {
+        guard isPluggedIn, let rating = chargerRatingWatts, let from = chargerWatts else { return false }
+        return currentMA < -Self.chargingThresholdMA && from >= Double(rating) * 0.85
+    }
+
+    /// The battery's capacity and wear in its own numbers, as label and
+    /// value pairs. A number the battery does not report is left out.
+    public var capacityDetails: [(label: String, value: String)] {
+        var details: [(label: String, value: String)] = []
+        let number: (Int) -> String = { $0.formatted(.number.grouping(.automatic).locale(Locale(identifier: "en_US"))) }
+        if let now = rawMaxCapacityMAh { details.append(("Capacity now", "\(number(now)) mAh")) }
+        if let new = designCapacityMAh { details.append(("When new", "\(number(new)) mAh")) }
+        if let cycles = cycleCount {
+            details.append(("Cycles", designCycles.map { "\(number(cycles)) of \(number($0))" } ?? number(cycles)))
+        }
+        return details
     }
 
     /// Watts into the battery. Negative while it discharges.
@@ -117,13 +158,19 @@ public enum BatteryStatus: Equatable, Sendable {
     }
 
     /// The measured power, next to the status. A missing value is a dash, never a false 0.
-    public func detail(for reading: BatteryReading) -> String {
+    /// `target` is the level the battery is charging toward: the limit
+    /// macOS holds, or 100 with no limit.
+    public func detail(for reading: BatteryReading, target: Int? = nil) -> String {
         switch self {
         case .onBattery:
             let out = reading.systemWatts ?? reading.batteryWatts.map(abs)
             return "\(Watts.text(out)) out"
         case .usingBattery:
-            return "\(Watts.text(reading.batteryWatts.map(abs))) from battery, charger connected"
+            let fromBattery = Watts.text(reading.batteryWatts.map(abs))
+            if reading.chargerCannotKeepUp, let rating = reading.chargerRatingWatts {
+                return "\(rating) W charger at its limit, \(fromBattery) from battery"
+            }
+            return "\(fromBattery) from battery, charger connected"
         case .fullChargeByMacOS:
             return "macOS is charging past your limit to keep its estimates accurate"
         case .calibrating(let step):
@@ -134,7 +181,12 @@ public enum BatteryStatus: Equatable, Sendable {
             }
         case .pausedForHeat:
             return "The battery is \(reading.temperatureC.map { String(format: "%.1f °C", $0) } ?? "hot"). Charging waits until it cools"
-        case .charging, .holdingAtLimit, .fullyCharged, .notCharging, .toppingUp, .sailing:
+        case .charging, .toppingUp:
+            let watts = "\(Watts.text(reading.chargerWatts)) from charger"
+            let goal = self == .toppingUp ? 100 : min(target ?? 100, 100)
+            guard let minutes = reading.minutesToReach(goal) else { return watts }
+            return "\(watts), about \(TimeText.text(minutes: minutes)) to \(goal)%"
+        case .holdingAtLimit, .fullyCharged, .notCharging, .sailing:
             return "\(Watts.text(reading.chargerWatts)) from charger"
         }
     }

@@ -11,3 +11,13 @@ public enum Watts {
         return "\(Int(abs(value).rounded())) W"
     }
 }
+
+/// A length of time in words: "35 min", "1 h 28 min", "2 h".
+public enum TimeText {
+    public static func text(minutes: Int) -> String {
+        let minutes = max(minutes, 1)
+        if minutes < 60 { return "\(minutes) min" }
+        let rest = minutes % 60
+        return rest == 0 ? "\(minutes / 60) h" : "\(minutes / 60) h \(rest) min"
+    }
+}

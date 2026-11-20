@@ -138,7 +138,8 @@ final class BatteryMonitor {
 
     var statusDetail: String? {
         if isWaitingForCharger { return "Waiting for the charger" }
-        if let reading, let status { return status.detail(for: reading) }
+        // Charging heads for the limit macOS holds now, which a mode may have changed.
+        if let reading, let status { return status.detail(for: reading, target: limit.system ?? 100) }
         return hasLoaded ? "This Mac may not have a battery." : nil
     }
 

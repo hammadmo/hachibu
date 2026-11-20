@@ -183,3 +183,40 @@ func fullChargeStatus() {
     #expect(!watch.isWarning)
 }
 
+
+@Test("Charging says about how long to the limit, and to 100% it uses macOS's own estimate")
+func timeToLimit() {
+    var charging = reading(69, current: 1_482, charger: 24)
+    charging.rawMaxCapacityMAh = 3_405
+    charging.minutesToFull = 88
+    // 11% of 3405 mAh at 1482 mA is a quarter of an hour.
+    #expect(charging.minutesToReach(80) == 15)
+    #expect(charging.minutesToReach(100) == 88)
+    #expect(BatteryStatus.charging.detail(for: charging, target: 80) == "24 W from charger, about 15 min to 80%")
+    #expect(BatteryStatus.charging.detail(for: charging, target: 100) == "24 W from charger, about 1 h 28 min to 100%")
+    // A Top Up always heads for 100, whatever limit is written down.
+    #expect(BatteryStatus.toppingUp.detail(for: charging, target: 80).hasSuffix("to 100%"))
+    // Nothing is promised without the numbers: at the limit, not charging, or no estimate.
+    #expect(charging.minutesToReach(69) == nil)
+    #expect(reading(60).minutesToReach(80) == nil)
+    charging.minutesToFull = nil
+    #expect(BatteryStatus.charging.detail(for: charging, target: 100) == "24 W from charger")
+    #expect(BatteryStatus.holdingAtLimit.detail(for: reading(80), target: 80) == "9.2 W from charger")
+    #expect(TimeText.text(minutes: 120) == "2 h" && TimeText.text(minutes: 0) == "1 min")
+}
+
+@Test("A charger that gives all it can while the battery drains is named as the reason")
+func weakCharger() {
+    var busy = reading(60, current: -900, charger: 29.1, system: 41)
+    busy.chargerRatingWatts = 30
+    #expect(busy.chargerCannotKeepUp)
+    #expect(BatteryStatus.usingBattery.detail(for: busy) == "30 W charger at its limit, 11 W from battery")
+    // macOS draining toward a limit: the charger is barely used, so it is not blamed.
+    var draining = reading(85, current: -600, charger: 1.2)
+    draining.chargerRatingWatts = 65
+    #expect(!draining.chargerCannotKeepUp)
+    #expect(BatteryStatus.usingBattery.detail(for: draining) == "7.2 W from battery, charger connected")
+    // A charger that does not say what it can supply is not blamed either.
+    busy.chargerRatingWatts = nil
+    #expect(!busy.chargerCannotKeepUp)
+}

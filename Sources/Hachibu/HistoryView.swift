@@ -1,3 +1,4 @@
+import AppKit
 import HachibuKit
 import SwiftUI
 
@@ -22,8 +23,9 @@ struct HistoryView: View {
                 .padding(.top, Metric.titleBarInset)
                 .padding(.bottom, Space.sm)
             KitDivider()
-            Group {
+            VStack(spacing: Space.lg) {
                 if data.isEmpty { emptyState } else { charts(data, range) }
+                details(hasData: !data.isEmpty)
             }
             .padding(Space.xxl)
         }
@@ -32,6 +34,38 @@ struct HistoryView: View {
         .task(id: "\(range.rawValue) \(history.revision) \(model.historyLoad)") {
             guard model.historyPreview == .recorded else { return }
             recorded = await history.data(for: range)
+        }
+    }
+
+    /// The battery's own numbers, and a way to take the record elsewhere.
+    private func details(hasData: Bool) -> some View {
+        // A sample page shows made-up numbers, like its charts.
+        let reading = model.historyPreview == .sample
+            ? BatteryReading(percent: 80, isPluggedIn: true, currentMA: 0, cycleCount: 274, rawMaxCapacityMAh: 3_556,
+                             designCapacityMAh: 4_382, designCycles: 1_000)
+            : BatteryMonitor.current?.reading
+        return HStack(spacing: Space.lg) {
+            StatRow(stats: (reading?.capacityDetails ?? []).map { .init(label: $0.label, value: $0.value) })
+            Spacer(minLength: Space.lg)
+            Button("Export…") { exportCSV() }
+                .buttonStyle(.kit(.ghost)).fixedSize()
+                .disabled(!hasData)
+                .help(hasData ? "Save everything recorded as a CSV file" : "Nothing is recorded yet")
+        }
+        .padding(.horizontal, Space.sm)
+    }
+
+    /// Writes every recorded sample to a file the person chooses.
+    private func exportCSV() {
+        guard !Store.isOverridden else { return }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "Hachibu history.csv"
+        panel.allowedContentTypes = [.commaSeparatedText]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let store = history.store
+        Task.detached {
+            let text = HistoryCSV.text(store.samples())
+            try? text.write(to: url, atomically: true, encoding: .utf8)
         }
     }
 

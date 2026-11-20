@@ -256,3 +256,28 @@ func chargerRating() {
     #expect(PowerFlow(reading).chargerRating == nil && PowerFlow(reading).chargerLabel == "Charger")
     #expect(PowerFlow(nil).chargerLabel == "Charger")
 }
+
+@Test("The record exports as a table: oldest first, UTC times, and an empty cell for what was not recorded")
+func historyCSV() {
+    let first = Date(timeIntervalSince1970: 1_800_000_000)
+    let samples = [HistorySample(time: first.addingTimeInterval(60), percent: 61, isPluggedIn: false, isCharging: false,
+                                 temperatureC: nil, chargerWatts: 0, macWatts: 7.25, limit: 100),
+                   HistorySample(time: first, percent: 60, isPluggedIn: true, isCharging: true, temperatureC: 31.46,
+                                 chargerWatts: 28.4, macWatts: 7, limit: 80)]
+    let lines = HistoryCSV.text(samples).split(separator: "\n").map(String.init)
+    #expect(lines.count == 3)
+    #expect(lines[0] == HistoryCSV.header)
+    #expect(lines[1] == "2027-01-15T08:00:00Z,60,yes,yes,31.5,28.4,7.0,80")
+    #expect(lines[2] == "2027-01-15T08:01:00Z,61,no,no,,0.0,7.2,100")
+    #expect(HistoryCSV.text([]) == HistoryCSV.header + "\n")
+}
+
+@Test("The battery's own numbers are listed, and one it does not report is left out")
+func capacityDetails() {
+    let full = BatteryReading(percent: 80, isPluggedIn: true, currentMA: 0, cycleCount: 276, rawMaxCapacityMAh: 3_405,
+                              designCapacityMAh: 4_382, designCycles: 1_000)
+    #expect(full.capacityDetails.map(\.label) == ["Capacity now", "When new", "Cycles"])
+    #expect(full.capacityDetails.map(\.value) == ["3,405 mAh", "4,382 mAh", "276 of 1,000"])
+    let bare = BatteryReading(percent: 80, isPluggedIn: true, currentMA: 0, cycleCount: 12)
+    #expect(bare.capacityDetails.map(\.value) == ["12"])
+}
