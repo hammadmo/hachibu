@@ -484,6 +484,12 @@ minutes.
   figure was 3,405 mAh during the charge and 3,395 mAh after. This
   battery's readings were not off to begin with, so this says the run is
   harmless on a healthy gauge, not that it repairs a bad one.
+- Afterwards macOS drained the battery from 100% back to the 80% limit
+  by itself, on the charger, and stopped there: 87% at 10:34, 86% at
+  11:34, 80% at 11:50, "not charging" throughout. The Mac was asleep
+  from about 10:35 to 11:22 and the level moved 1% in that hour; awake,
+  the last 6% took 16 minutes. So the drain all but stops in sleep, as
+  seen before.
 - Not seen in this run: the "Calibration finished" notification (nobody
-  was at the Mac), macOS draining from 100% back to 80% afterwards, and
-  what a calibration does when the charger is pulled out in the middle.
+  was at the Mac), and what a calibration does when the charger is
+  pulled out in the middle.
