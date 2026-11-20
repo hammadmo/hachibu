@@ -109,6 +109,12 @@ The pictures show sample data, not a real battery.
    install the helper from Settings > Helper and allow it once in
    System Settings > General > Login Items.
 
+Or install it with [Homebrew](https://brew.sh), in place of steps 1 and 2:
+
+```bash
+brew install --cask hammadmo/tap/hachibu
+```
+
 The download is signed with a Developer ID and notarized by Apple.
 
 To build Hachibu from source or work on it, see
