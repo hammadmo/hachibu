@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/hammadmo/hachibu/releases/latest"><img src="https://img.shields.io/badge/download-0.2-b8934a" alt="Download 0.2"></a>
+  <a href="https://github.com/hammadmo/hachibu/releases/latest"><img src="https://img.shields.io/badge/download-0.3-b8934a" alt="Download 0.3"></a>
   <img src="https://img.shields.io/badge/macOS-27-1d1a17" alt="macOS 27">
   <img src="https://img.shields.io/badge/Apple%20silicon-only-1d1a17" alt="Apple silicon only">
   <img src="https://img.shields.io/badge/Swift-6-b8934a" alt="Swift 6">
@@ -100,14 +100,15 @@ The pictures show sample data, not a real battery.
 
 ## Install
 
-1. Download `Hachibu-0.2.zip` from the
+1. Download `Hachibu-0.3.zip` from the
    [latest release](https://github.com/hammadmo/hachibu/releases/latest)
    and unzip it.
 2. Move `Hachibu.app` to your Applications folder and open it. It lives
    in the menu bar; there is no Dock icon.
 3. For limits below 80%, sailing, heat protection, and calibration,
-   install the helper from Settings > Helper and allow it once in
-   System Settings > General > Login Items.
+   install the helper. Hachibu offers it the first time it opens; later
+   it is in Settings > Helper. Allow it once in System Settings >
+   General > Login Items.
 
 Or install it with [Homebrew](https://brew.sh), in place of steps 1 and 2:
 
@@ -152,7 +153,7 @@ The release notes give the zip's SHA-256. To check it, and to see who
 signed the app and that Apple notarized it:
 
 ```bash
-shasum -a 256 ~/Downloads/Hachibu-0.2.zip
+shasum -a 256 ~/Downloads/Hachibu-0.3.zip
 ```
 
 ```bash
