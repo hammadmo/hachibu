@@ -612,9 +612,13 @@ UX:
 Status: done (2026-11-20). Seen for real: with the helper removed, a
 plain launch opened Settings on the Helper tab with the dialog; Install
 Helper… installed it and the tab said Running; the next launch opened
-no window. Not seen: Not Now, and the Login Items steps after the
-dialog (macOS did not ask again on a Mac that had allowed the helper
-before).
+no window. Not Now closed the dialog, left Settings on the Helper tab
+with Install Helper…, and the next launch opened no window. Every
+control in Settings and in its dialogs reports its label to assistive
+apps (read through the accessibility API), and a dialog hides the
+controls behind it. Not seen: the Login Items steps after the dialog
+(macOS did not ask again on a Mac that had allowed the helper before),
+and VoiceOver speaking the labels aloud.
 
 ## Later
 
