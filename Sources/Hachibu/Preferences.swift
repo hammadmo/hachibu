@@ -18,6 +18,7 @@ final class Preferences {
         static let notifyTopUpFinished = "notify.topUpFinished"
         static let notifyCalibrationFinished = "notify.calibrationFinished"
         static let checksForUpdates = "updates.automatic"
+        static let topUpShortcut = "shortcut.topUp"
         static let sailingRange = "charging.sailingRange"
         static let sailingHold = "charging.sailingHold"
         static let modeAsk = "charging.modeAsk"
@@ -39,6 +40,19 @@ final class Preferences {
     var notifyFullCharge: Bool { didSet { defaults.set(notifyFullCharge, forKey: Key.notifyFullCharge) } }
     var notifyTopUpFinished: Bool { didSet { defaults.set(notifyTopUpFinished, forKey: Key.notifyTopUpFinished) } }
     var notifyCalibrationFinished: Bool { didSet { defaults.set(notifyCalibrationFinished, forKey: Key.notifyCalibrationFinished) } }
+    /// Control-Option-Command-T starts or stops a Top Up from any app.
+    var topUpShortcut: Bool {
+        didSet {
+            // Another app may hold the keys: then the switch goes back off and says so.
+            let taken = !TopUpShortcut.set(enabled: topUpShortcut) && topUpShortcut
+            shortcutProblem = taken ? "Another app already uses \(TopUpShortcut.keys)." : nil
+            if taken { topUpShortcut = false }
+            // Saved last, so what is saved is what holds.
+            defaults.set(topUpShortcut, forKey: Key.topUpShortcut)
+        }
+    }
+    /// Why the shortcut could not be switched on, in words for the user.
+    private(set) var shortcutProblem: String?
     /// Hachibu asks once a day whether there is a newer version.
     var checksForUpdates: Bool {
         didSet {
@@ -121,6 +135,7 @@ final class Preferences {
         notifyTopUpFinished = bool(Key.notifyTopUpFinished, true)
         notifyCalibrationFinished = bool(Key.notifyCalibrationFinished, true)
         checksForUpdates = bool(Key.checksForUpdates, true)
+        topUpShortcut = bool(Key.topUpShortcut, false)
         sailingRange = int(Key.sailingRange, 0)
         sailingHold = store.object(forKey: Key.sailingHold) as? Int
         modeAsk = store.object(forKey: Key.modeAsk) as? Int

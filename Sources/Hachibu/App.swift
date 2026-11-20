@@ -92,6 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Notifier.requestPermission()
         DockIcon.watch()
         Updates.shared.start()
+        if Preferences.shared.topUpShortcut { TopUpShortcut.set(enabled: true) }
     }
 
     /// Closing Settings or History must not quit the menu bar app.

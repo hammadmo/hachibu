@@ -145,6 +145,11 @@ struct GeneralSettings: View {
                 SettingsRow(title: "Show percentage", detail: "The battery level next to the menu bar icon.") {
                     Toggle("Show percentage", isOn: $preferences.showPercentage).toggleStyle(.kit)
                 }
+                SettingsRow(title: "Top Up shortcut",
+                            detail: preferences.shortcutProblem
+                                ?? "Press \(TopUpShortcut.keys) in any app to start a Top Up, or to stop one.") {
+                    Toggle("Top Up shortcut", isOn: $preferences.topUpShortcut).toggleStyle(.kit)
+                }
             }
             SettingsSection(title: "Updates") {
                 SettingsRow(title: "Check automatically",
