@@ -39,7 +39,7 @@ did. All of it is free.
 There are good tools that do this already. How they compare, going by
 each project's own page in November 2026:
 
-| | Price | Source | Limits | Runs on |
+| App | Price | Source | Limits | Runs on |
 | --- | --- | --- | --- | --- |
 | macOS itself | Free | Closed | 80 to 100% | macOS 26.4 and later |
 | [batt](https://github.com/charlie0129/batt) | Free | Open, GPL-2.0 | 10 to 99% on macOS 27 | Many macOS versions; app and command line |
