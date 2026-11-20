@@ -37,6 +37,10 @@ nonisolated enum SystemBattery {
         // AppleSmartBattery reports temperature in hundredths of a degree Celsius.
         let temperature = smcTemperature ?? int("Temperature", in: properties).map { Double($0) / 100 }
         let pluggedIn = (properties["ExternalConnected"] as? Bool) ?? false
+        // The charger says what it can supply; a charger that does not, or
+        // none at all, leaves this out.
+        let adapter = properties["AdapterDetails"] as? [String: Any] ?? [:]
+        let rating = int("Watts", in: adapter).flatMap { $0 > 0 ? $0 : nil }
         return BatteryReading(
             percent: percent,
             isPluggedIn: pluggedIn,
@@ -48,7 +52,8 @@ nonisolated enum SystemBattery {
             designCapacityMAh: design.flatMap { $0 > 0 ? $0 : nil },
             chargerWatts: pluggedIn ? chargerWatts : 0,
             systemWatts: systemWatts,
-            fullChargeOverride: fullChargeOverride)
+            fullChargeOverride: fullChargeOverride,
+            chargerRatingWatts: pluggedIn ? rating : nil)
     }
 
     /// Battery health as macOS itself reports it (System Settings > Battery).

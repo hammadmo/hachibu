@@ -46,12 +46,20 @@ enum SelfTest {
             "CurrentCapacity": 80, "MaxCapacity": 100, "ExternalConnected": true, "Amperage": 0,
             "Voltage": 12_094, "CycleCount": 274, "Temperature": 3_040,
             "BatteryData": ["AppleRawMaxCapacity": 3_556, "DesignCapacity": 4_382],
+            "AdapterDetails": ["Watts": 30, "Description": "pd charger"],
         ]
         let built = SystemBattery.reading(from: saved, chargerWatts: 9.2, systemWatts: 7.2,
                                           smcTemperature: nil, fullChargeOverride: false)
         check("a saved battery dictionary builds the expected reading",
               built?.percent == 80 && built?.healthPercent == 81 && built?.cycleCount == 274
                   && built?.temperatureC == 30.4 && built?.isPluggedIn == true)
+        check("the charger's rating is read from what the charger reports", built?.chargerRatingWatts == 30)
+        if reading?.isPluggedIn == false {
+            check("no charger rating is shown off the charger", reading?.chargerRatingWatts == nil)
+        } else {
+            // Not a check: a charger is free not to say what it can supply.
+            print("INFO the connected charger reports \(reading?.chargerRatingWatts.map { "\($0) W" } ?? "no rating")")
+        }
         let draining = SystemBattery.reading(from: ["CurrentCapacity": 50, "ExternalConnected": false,
                                                     "Amperage": NSNumber(value: UInt64(bitPattern: -850))],
                                              chargerWatts: 12, systemWatts: 7, smcTemperature: 31,

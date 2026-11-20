@@ -64,6 +64,7 @@ Pro features in AlDente; in Hachibu they are part of the app.
 | **Sailing** | Let the battery drift a few percent below the limit before it charges again, instead of topping up all day. |
 | **Heat protection** | Pause charging when the battery is hot (40 °C by default) and resume when it has cooled. |
 | **Calibration** | A guided cycle meant to correct the percentage and health readings: drain to 15%, charge to 100%, rest for two hours. Whether it changes the readings has not been measured yet. |
+| **Power flow** | Watts from the charger, to the Mac, and into or out of the battery, with what the connected charger can supply at most. |
 | **History** | Level, temperature, power, and health over a day, a week, or a month. |
 | **Notifications** | When the limit is not holding, when macOS starts a full charge of its own, and when a Top Up or a calibration finishes. Each can be switched off. |
 | **Updates** | Hachibu checks for a newer version once a day and installs it when you agree. Every update is verified against Hachibu's signing key first. The check can be switched off. |

@@ -241,3 +241,18 @@ func healthLine() {
     #expect(line[0...2].allSatisfy { $0.isNaN } && Array(line[3...4]) == [82, 82])
     #expect(HistorySeries.healthLine([], start: start, end: end, points: 5).isEmpty)
 }
+
+@Test("The charger's rating is shown only for a charger that is connected and says what it can supply")
+func chargerRating() {
+    var reading = BatteryReading(percent: 60, isPluggedIn: true, currentMA: 1_200, chargerWatts: 24, chargerRatingWatts: 30)
+    #expect(PowerFlow(reading).chargerRating == 30)
+    #expect(PowerFlow(reading).chargerLabel == "30 W charger")
+    // A charger that does not report one.
+    reading.chargerRatingWatts = nil
+    #expect(PowerFlow(reading).chargerLabel == "Charger")
+    // A rating left over in a reading taken off the charger is not shown.
+    reading.chargerRatingWatts = 30
+    reading.isPluggedIn = false
+    #expect(PowerFlow(reading).chargerRating == nil && PowerFlow(reading).chargerLabel == "Charger")
+    #expect(PowerFlow(nil).chargerLabel == "Charger")
+}

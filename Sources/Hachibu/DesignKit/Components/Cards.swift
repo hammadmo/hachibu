@@ -19,22 +19,25 @@ struct PowerFlowCard: View {
     var mac: Double?
     /// Positive while the battery charges, negative while it discharges.
     var battery: Double?
+    /// "Charger", or the charger's rating: "30 W charger".
+    var chargerLabel = "Charger"
 
     /// From a reading: off the charger it reads 0 W, and the arrow beside
     /// the battery points to the Mac while the battery feeds it.
     init(flow: PowerFlow) {
-        self.init(charger: flow.charger, mac: flow.mac, battery: flow.battery)
+        self.init(charger: flow.charger, mac: flow.mac, battery: flow.battery, chargerLabel: flow.chargerLabel)
     }
 
-    init(charger: Double?, mac: Double?, battery: Double?) {
+    init(charger: Double?, mac: Double?, battery: Double?, chargerLabel: String = "Charger") {
         self.charger = charger
         self.mac = mac
         self.battery = battery
+        self.chargerLabel = chargerLabel
     }
 
     var body: some View {
         HStack(spacing: Space.xs) {
-            column("Charger", charger, emphasized: (charger ?? 0) >= 0.05)
+            column(chargerLabel, charger, emphasized: (charger ?? 0) >= 0.05)
             KitIconView(icon: .flow).foregroundStyle(Ink.textSoft)
             column("Mac", mac)
             KitIconView(icon: .flow).foregroundStyle(Ink.textSoft)
@@ -48,6 +51,7 @@ struct PowerFlowCard: View {
     private func column(_ label: String, _ value: Double?, emphasized: Bool = false) -> some View {
         VStack(spacing: Space.xs) {
             Text(label).kitType(.meta).foregroundStyle(Ink.textSoft)
+                .lineLimit(1).minimumScaleFactor(0.8)
             Text(Watts.text(value)).kitType(.numeral)
                 .foregroundStyle(emphasized ? Ink.accentText : Ink.text)
         }

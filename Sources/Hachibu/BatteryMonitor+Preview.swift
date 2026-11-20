@@ -28,7 +28,8 @@ extension BatteryMonitor {
     static func preview(_ preview: PopoverPreview, helper: HelperState? = nil) -> BatteryMonitor {
         let holding = BatteryReading(percent: 80, isPluggedIn: true, currentMA: 0, voltageMV: 12_094,
                                      temperatureC: 34.7, cycleCount: 274, rawMaxCapacityMAh: 3556,
-                                     designCapacityMAh: 4382, chargerWatts: 9.2, systemWatts: 7.2)
+                                     designCapacityMAh: 4382, chargerWatts: 9.2, systemWatts: 7.2,
+                                     chargerRatingWatts: 30)
         var fixture = Fixture(reading: holding, limit: LimitState(system: 80, saved: 80))
         fixture.dayLevels = [58, 61, 66, 72, 78, 80, 80, 80, 80, 77, 74, 72, 75, 79, 80, 80, 80, 80, 80, 80]
         switch preview {
@@ -36,8 +37,8 @@ extension BatteryMonitor {
             break
         case .charging:
             fixture.reading?.percent = 46
-            fixture.reading?.currentMA = 1_950
-            fixture.reading?.chargerWatts = 30.6
+            fixture.reading?.currentMA = 1_750
+            fixture.reading?.chargerWatts = 28.4
             // A first hour: nothing to chart yet.
             fixture.dayLevels = []
         case .warning:

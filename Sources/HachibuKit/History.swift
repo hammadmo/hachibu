@@ -324,15 +324,25 @@ public final class HistoryStore: @unchecked Sendable {
 /// Watts along the power flow card.
 public struct PowerFlow: Equatable, Sendable {
     public var charger: Double?
+    /// What the connected charger can supply at most. nil off the charger.
+    public var chargerRating: Int?
     public var mac: Double?
     /// Positive into the battery, negative out of it.
     public var battery: Double?
     /// The arrow between the Mac and the battery points to the Mac.
     public var batteryFeedsMac: Bool
 
+    /// The words above the charger's watts: "Charger", or "30 W charger"
+    /// when the charger says what it can supply.
+    public var chargerLabel: String {
+        chargerRating.map { "\($0) W charger" } ?? "Charger"
+    }
+
     public init(_ reading: BatteryReading?) {
         // Off the charger nothing comes from it, whatever a stale reading says.
         charger = reading.map { $0.isPluggedIn ? $0.chargerWatts : 0 } ?? nil
+        // A rating is shown only for a charger that is connected now.
+        chargerRating = reading.flatMap { $0.isPluggedIn ? $0.chargerRatingWatts : nil }
         mac = reading?.systemWatts
         battery = reading?.batteryWatts
         batteryFeedsMac = (battery ?? 0) < 0

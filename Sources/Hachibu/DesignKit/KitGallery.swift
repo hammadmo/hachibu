@@ -100,7 +100,7 @@ struct KitGallery: View {
         HStack(alignment: .top, spacing: Space.lg) {
             VStack(alignment: .leading, spacing: Space.sm) {
                 heading("Power flow: charging, on battery, no reading")
-                PowerFlowCard(charger: 28.4, mac: 7.2, battery: 21.2)
+                PowerFlowCard(charger: 28.4, mac: 7.2, battery: 21.2, chargerLabel: "30 W charger")
                 PowerFlowCard(charger: 0, mac: 6.8, battery: -6.8)
                 PowerFlowCard(charger: nil, mac: nil, battery: nil)
             }

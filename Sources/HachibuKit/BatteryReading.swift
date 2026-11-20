@@ -15,6 +15,9 @@ public struct BatteryReading: Equatable, Sendable {
     public var designCapacityMAh: Int?
     /// Watts coming in from the charger.
     public var chargerWatts: Double?
+    /// The most the connected charger can supply, as it reports itself to
+    /// the Mac. nil off the charger, or when the charger does not say.
+    public var chargerRatingWatts: Int?
     /// Watts the Mac is using.
     public var systemWatts: Double?
     /// macOS is charging to 100% on its own to keep its estimates accurate.
@@ -23,7 +26,7 @@ public struct BatteryReading: Equatable, Sendable {
     public init(percent: Int, isPluggedIn: Bool, currentMA: Int, voltageMV: Int? = nil,
                 temperatureC: Double? = nil, cycleCount: Int? = nil, rawMaxCapacityMAh: Int? = nil,
                 designCapacityMAh: Int? = nil, chargerWatts: Double? = nil, systemWatts: Double? = nil,
-                fullChargeOverride: Bool = false) {
+                fullChargeOverride: Bool = false, chargerRatingWatts: Int? = nil) {
         self.percent = min(max(percent, 0), 100)
         self.isPluggedIn = isPluggedIn
         self.currentMA = currentMA
@@ -33,6 +36,7 @@ public struct BatteryReading: Equatable, Sendable {
         self.rawMaxCapacityMAh = rawMaxCapacityMAh
         self.designCapacityMAh = designCapacityMAh
         self.chargerWatts = chargerWatts
+        self.chargerRatingWatts = chargerRatingWatts
         self.systemWatts = systemWatts
         self.fullChargeOverride = fullChargeOverride
     }
