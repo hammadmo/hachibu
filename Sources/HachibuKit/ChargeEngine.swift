@@ -5,7 +5,7 @@ public enum ChargeMode: String, Equatable, Sendable {
     case normal
     /// Charging to 100% once; the limit returns afterwards.
     case toppingUp
-    /// A guided cycle that corrects the battery's reading: drain to 15%,
+    /// A guided cycle meant to correct the battery's reading: drain to 15%,
     /// charge to 100%, rest there, then back to the limit.
     case calibrating
 }

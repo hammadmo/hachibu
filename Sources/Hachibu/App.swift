@@ -91,6 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         Notifier.requestPermission()
         DockIcon.watch()
+        Updates.shared.start()
     }
 
     /// Closing Settings or History must not quit the menu bar app.

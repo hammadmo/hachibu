@@ -67,6 +67,7 @@ enum SelfTest {
               !limit.available.isEmpty && LimitStops.normalized(limit.available).last == 100)
         check("a test run refuses to change the real limit", ChargeLimit.set(85) != nil)
         check("the real limit is unchanged after the refusal", ChargeLimit.read().limit == limit.limit)
+        check("a test run never checks for updates", !Updates.canUpdate)
 
         // S-005: the chosen limit is saved and read back.
         Preferences.shared.savedLimit = 85

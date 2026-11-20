@@ -109,7 +109,22 @@ struct PopoverView: View {
         ]
     }
 
+    /// A newer version waiting to be installed. A snapshot page shows a made-up one.
+    private var updateVersion: String? {
+        Snapshot.isRunning ? (model.popoverPreview == .update ? "0.2" : nil) : Updates.shared.availableVersion
+    }
+
     private var footer: some View {
+        VStack(spacing: Space.sm) {
+            if let version = updateVersion {
+                Button("Update to Hachibu \(version)…") { Updates.shared.check() }
+                    .buttonStyle(.kit(.secondary))
+            }
+            footerButtons
+        }
+    }
+
+    private var footerButtons: some View {
         HStack(spacing: Space.xs) {
             Button("History…") { open(HistoryView.windowID) }
                 .buttonStyle(.kit(.ghost))

@@ -13,6 +13,8 @@ enum PopoverPreview: String, CaseIterable {
     case calibrating
     /// Hot while charging: macOS is asked to hold the level.
     case heat
+    /// A newer version of Hachibu is waiting to be installed.
+    case update
 
     static let windowID = "popover-preview"
     static let windowTitle = "Hachibu Popover"
@@ -30,7 +32,7 @@ extension BatteryMonitor {
         var fixture = Fixture(reading: holding, limit: LimitState(system: 80, saved: 80))
         fixture.dayLevels = [58, 61, 66, 72, 78, 80, 80, 80, 80, 77, 74, 72, 75, 79, 80, 80, 80, 80, 80, 80]
         switch preview {
-        case .holding:
+        case .holding, .update:
             break
         case .charging:
             fixture.reading?.percent = 46

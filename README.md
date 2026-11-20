@@ -25,8 +25,10 @@ The name comes from *hara hachi bu*: eat until you are eight parts full.
 A battery kept below full lasts longer, so Hachibu stops charging before
 it gets there.
 
-Hachibu runs on your Mac only. It has no account and no server, and it
-sends nothing anywhere. It is free and open source.
+Hachibu runs on your Mac only, with no account and no server. The one
+thing it does on the network is ask GitHub, once a day, whether there is
+a newer version. Nothing about you or your Mac is sent, and you can
+switch the check off in Settings. It is free and open source.
 
 ## Why Hachibu
 
@@ -64,6 +66,7 @@ Pro features in AlDente; in Hachibu they are part of the app.
 | **Calibration** | A guided cycle meant to correct the percentage and health readings: drain to 15%, charge to 100%, rest for two hours. Whether it changes the readings has not been measured yet. |
 | **History** | Level, temperature, power, and health over a day, a week, or a month. |
 | **Notifications** | When the limit is not holding, when macOS starts a full charge of its own, and when a Top Up or a calibration finishes. Each can be switched off. |
+| **Updates** | Hachibu checks for a newer version once a day and installs it when you agree. Every update is verified against Hachibu's signing key first. The check can be switched off. |
 
 Limits below 80%, sailing, heat protection, and calibration need the
 [helper](#how-it-controls-charging). Without it, Hachibu sets macOS's own

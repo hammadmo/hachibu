@@ -4,6 +4,10 @@ import PackageDescription
 let package = Package(
     name: "Hachibu",
     platforms: [.macOS("27.0")],
+    dependencies: [
+        // Checks for a new version, verifies it, and installs it.
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
+    ],
     targets: [
         // Rules and data logic with no SwiftUI, so tests run without the app.
         .target(name: "HachibuKit"),
@@ -15,7 +19,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "Hachibu",
-            dependencies: ["HachibuKit", "HachibuSystem"],
+            dependencies: ["HachibuKit", "HachibuSystem", .product(name: "Sparkle", package: "Sparkle")],
             // App code runs on the main thread unless you say otherwise.
             swiftSettings: [.defaultIsolation(MainActor.self)]
         ),

@@ -17,6 +17,7 @@ final class Preferences {
         static let notifyFullCharge = "notify.fullCharge"
         static let notifyTopUpFinished = "notify.topUpFinished"
         static let notifyCalibrationFinished = "notify.calibrationFinished"
+        static let checksForUpdates = "updates.automatic"
         static let sailingRange = "charging.sailingRange"
         static let sailingHold = "charging.sailingHold"
         static let modeAsk = "charging.modeAsk"
@@ -38,6 +39,13 @@ final class Preferences {
     var notifyFullCharge: Bool { didSet { defaults.set(notifyFullCharge, forKey: Key.notifyFullCharge) } }
     var notifyTopUpFinished: Bool { didSet { defaults.set(notifyTopUpFinished, forKey: Key.notifyTopUpFinished) } }
     var notifyCalibrationFinished: Bool { didSet { defaults.set(notifyCalibrationFinished, forKey: Key.notifyCalibrationFinished) } }
+    /// Hachibu asks once a day whether there is a newer version.
+    var checksForUpdates: Bool {
+        didSet {
+            defaults.set(checksForUpdates, forKey: Key.checksForUpdates)
+            Updates.shared.setAutomatic(checksForUpdates)
+        }
+    }
     /// Percent the battery drifts below the limit before it charges again. 0 is off.
     var sailingRange: Int { didSet { defaults.set(sailingRange, forKey: Key.sailingRange) } }
     /// The level sailing last asked macOS to hold. nil when none. Kept so
@@ -112,6 +120,7 @@ final class Preferences {
         notifyFullCharge = bool(Key.notifyFullCharge, true)
         notifyTopUpFinished = bool(Key.notifyTopUpFinished, true)
         notifyCalibrationFinished = bool(Key.notifyCalibrationFinished, true)
+        checksForUpdates = bool(Key.checksForUpdates, true)
         sailingRange = int(Key.sailingRange, 0)
         sailingHold = store.object(forKey: Key.sailingHold) as? Int
         modeAsk = store.object(forKey: Key.modeAsk) as? Int

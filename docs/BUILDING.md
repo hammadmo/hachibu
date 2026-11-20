@@ -22,6 +22,11 @@ and opens it. Other options:
 | `--open` | Quits the running copy and opens the new one. |
 | `--notarize` | Also sends the app to Apple's notary and staples the ticket. |
 
+Set `APP_DIR=<folder>` to put the app somewhere other than
+`~/Applications`, for looking at a build without replacing the copy that
+is running. `tools/snap.sh` and `tools/selftest.sh` take `APP_BINARY=<path>`
+to use it.
+
 Build products go to `~/Library/Developer/Hachibu`, outside the
 repository.
 
@@ -76,6 +81,29 @@ ditto -c -k --keepParent ~/Applications/Hachibu.app ~/Library/Developer/Hachibu/
 
 4. Create the release on GitHub with that zip, and put its `shasum -a 256`
    in the notes.
+5. Tell installed copies about it. Hachibu updates itself with
+   [Sparkle](https://sparkle-project.org), which reads `appcast.xml` at
+   the top of this repository. Sparkle's `generate_appcast` writes that
+   file from the folder of zips and signs each entry with the update
+   key in your keychain:
+
+```bash
+~/Library/Developer/Hachibu/build/artifacts/sparkle/Sparkle/bin/generate_appcast --account hachibu --download-url-prefix https://github.com/hammadmo/hachibu/releases/download/v<version>/ -o appcast.xml ~/Library/Developer/Hachibu/dist
+```
+
+   Commit and push `appcast.xml`. Copies of Hachibu find the new version
+   within a day.
+
+The update key was made once with Sparkle's `generate_keys --account hachibu`.
+Its private half lives only in the maintainer's login keychain; its
+public half is `SUPublicEDKey` in `Info.plist.in`. A build signed by
+anyone else is refused by every installed copy. Keep a backup of the key
+(`generate_keys --account hachibu -x <file>`): without it no update can
+reach the copies already installed.
+
+Set `CFBundleShortVersionString` in `Info.plist.in` to the new version
+before building. Sparkle compares build numbers, which `build.sh` makes
+from the date and time, so a later build is always newer.
 
 ## Where to read next
 

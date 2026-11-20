@@ -34,13 +34,26 @@ log=$(swift build -c $config --package-path "$here" --scratch-path "$scratch" 2>
 print -r -- "$log" | grep -E "error|warning|Build complete" | grep -v "^\[" || true
 bin="$scratch/$config/$name"
 helper="$scratch/$config/HachibuHelper"
-[[ $built -eq 1 && -x "$bin" && -x "$helper" ]] || { echo "build failed: nothing was installed"; exit 1; }
+sparkle="$scratch/$config/Sparkle.framework"
+[[ $built -eq 1 && -x "$bin" && -x "$helper" && -d "$sparkle" ]] || { echo "build failed: nothing was installed"; exit 1; }
 
-app="$HOME/Applications/$name.app"
-mkdir -p "$HOME/Applications"
+# APP_DIR puts the app somewhere else, to look at a build without replacing
+# the copy that is running.
+dest="${APP_DIR:-$HOME/Applications}"
+app="$dest/$name.app"
+mkdir -p "$dest"
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin" "$app/Contents/MacOS/$name"
+# Sparkle (updates) goes inside the app, and the program looks for it there.
+# The build also leaves a folder of this Mac in the program's search paths:
+# take every such path out, so no build carries where it was made.
+mkdir -p "$app/Contents/Frameworks"
+ditto "$sparkle" "$app/Contents/Frameworks/Sparkle.framework"
+for rpath in $(otool -l "$app/Contents/MacOS/$name" | awk '/LC_RPATH/ { getline; getline; print $2 }'); do
+  [[ "$rpath" == /* ]] && install_name_tool -delete_rpath "$rpath" "$app/Contents/MacOS/$name" 2>/dev/null
+done
+install_name_tool -add_rpath @executable_path/../Frameworks "$app/Contents/MacOS/$name" 2>/dev/null
 # The helper and the file that tells macOS how to start it.
 mkdir -p "$app/Contents/Library/LaunchDaemons"
 cp "$helper" "$app/Contents/MacOS/HachibuHelper"
@@ -61,6 +74,15 @@ if [[ "$identity" != - ]]; then
   sign+=(--options runtime)
   [[ "$identity" == "Developer ID"* ]] && sign+=(--timestamp)
 fi
+# Sparkle's own programs, each signed before the framework around them.
+sp="$app/Contents/Frameworks/Sparkle.framework/Versions/B"
+{
+  "${sign[@]}" "$sp/XPCServices/Installer.xpc"
+  "${sign[@]}" --preserve-metadata=entitlements "$sp/XPCServices/Downloader.xpc"
+  "${sign[@]}" "$sp/Autoupdate"
+  "${sign[@]}" "$sp/Updater.app"
+  "${sign[@]}" "$app/Contents/Frameworks/Sparkle.framework"
+} 2>&1 | grep -v "replacing existing signature" || true
 "${sign[@]}" --identifier app.hachibu.mac.helper "$app/Contents/MacOS/HachibuHelper" 2>&1 | grep -v "replacing existing signature" || true
 "${sign[@]}" "$app" 2>&1 | grep -v "replacing existing signature" || true
 codesign --verify --deep --strict "$app"

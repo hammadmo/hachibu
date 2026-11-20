@@ -4,7 +4,8 @@
 # Usage: tools/snap.sh            everything
 #        APP_SNAPSHOT_PAGES=popover,settings,history tools/snap.sh
 set -u
-app=~/Applications/Hachibu.app/Contents/MacOS/Hachibu
+# APP_BINARY takes pictures of another build, such as one made with APP_DIR.
+app=${APP_BINARY:-~/Applications/Hachibu.app/Contents/MacOS/Hachibu}
 store=/tmp/Hachibu-test.store
 shots=/tmp/Hachibu-shots
 # A crashed run leaves saved window state, and the next launch would wait on a "reopen windows?" alert.

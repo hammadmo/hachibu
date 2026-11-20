@@ -15,4 +15,7 @@
 <key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSPrincipalClass</key><string>NSApplication</string>
+<key>SUFeedURL</key><string>https://raw.githubusercontent.com/hammadmo/hachibu/main/appcast.xml</string>
+<key>SUPublicEDKey</key><string>Rv/t9+gXvPtvKMmCN6Ntb0wlgEf2qkmGQfO6Ic/pQnE=</string>
+<key>SUEnableAutomaticChecks</key><true/>
 </dict></plist>

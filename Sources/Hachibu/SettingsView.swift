@@ -86,7 +86,7 @@ struct CalibrationDialog: View {
                       })
         } else {
             KitDialog(title: "Calibrate the battery",
-                      message: "Corrects the percentage and the health reading. It does not improve the battery, and it uses one full charge cycle.",
+                      message: "Meant to correct the percentage and the health reading. It does not improve the battery, and it uses one full charge cycle.",
                       steps: Self.steps,
                       note: refusal ?? "Takes several hours. Keep the charger connected. Quitting Hachibu ends it. The drain waits while the Mac sleeps; Hachibu does not keep the Mac awake.",
                       primaryTitle: "Calibrate", primary: { refusal = monitor.startCalibration() },
@@ -146,6 +146,21 @@ struct GeneralSettings: View {
                     Toggle("Show percentage", isOn: $preferences.showPercentage).toggleStyle(.kit)
                 }
             }
+            SettingsSection(title: "Updates") {
+                SettingsRow(title: "Check automatically",
+                            detail: "Once a day Hachibu asks GitHub whether there is a newer version. Nothing about your Mac is sent.") {
+                    Toggle("Check for updates automatically", isOn: $preferences.checksForUpdates).toggleStyle(.kit)
+                }
+                // A snapshot shows the row as it looks in the real app.
+                let canUpdate = Updates.canUpdate || Snapshot.isRunning
+                SettingsRow(title: "Version \(Updates.installedVersion)",
+                            detail: canUpdate ? "Updates are checked against Hachibu's signing key before they are installed."
+                                : "This copy of Hachibu cannot update itself.") {
+                    Button("Check for Updates…") { Updates.shared.check() }
+                        .buttonStyle(.kit(.secondary)).fixedSize()
+                        .disabled(!canUpdate)
+                }
+            }
             SettingsSection(title: "Notifications") {
                 SettingsRow(title: "Limit not holding", detail: "The battery is charging above your limit.") {
                     Toggle("Limit not holding", isOn: $preferences.notifyLimitNotHolding).toggleStyle(.kit)
@@ -201,7 +216,7 @@ struct ChargingSettings: View {
                 } else {
                     SettingsRow(title: "Calibrate the battery",
                                 detail: monitor.helper.isRunning
-                                    ? "Corrects the battery reading when the percentage or health looks wrong."
+                                    ? "Meant to correct the battery reading when the percentage or health looks wrong."
                                     : "Calibration needs the helper.") {
                         Button("Calibrate…") { model.showingCalibration = true }
                             .buttonStyle(.kit(.secondary)).fixedSize()
