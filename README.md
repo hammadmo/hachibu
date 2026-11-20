@@ -26,7 +26,34 @@ A battery kept below full lasts longer, so Hachibu stops charging before
 it gets there.
 
 Hachibu runs on your Mac only. It has no account and no server, and it
-sends nothing anywhere.
+sends nothing anywhere. It is free and open source.
+
+## Why Hachibu
+
+macOS can already stop charging at 80%, and for many people that is
+enough. Hachibu is for when you want more than that: a limit below 80%,
+a quick charge to full before a day out, less topping up while plugged
+in, a pause when the battery is hot, and a record of what the battery
+did. All of it is free.
+
+There are good tools that do this already. How they compare, going by
+each project's own page in November 2026:
+
+| | Price | Source | Limits | Runs on |
+| --- | --- | --- | --- | --- |
+| macOS itself | Free | Closed | 80 to 100% | macOS 26.4 and later |
+| [batt](https://github.com/charlie0129/batt) | Free | Open, GPL-2.0 | 10 to 99% on macOS 27 | Many macOS versions; app and command line |
+| [BatFi](https://micropixels.software/batfi/) | $15, once | Closed (older versions were open) | Any, below 80% included | macOS 14.8 and later |
+| [AlDente](https://apphousekitchen.com/) | Free, with a paid Pro | Closed (an old version was open) | Below 80% included | macOS 12 and later |
+| **Hachibu** | Free | Open, MIT | 20 to 100% | macOS 27 only |
+
+Pick one of the others if you are on an older macOS or an Intel Mac, if
+you want a command line or control of the MagSafe light (batt), limits
+that change by time and place (BatFi), or a long-established app with
+support (AlDente). Sailing, heat protection, Top Up, and calibration are
+Pro features in AlDente; in Hachibu they are part of the app.
+
+Hachibu is new. It has been developed and tested on one Mac.
 
 ## Features
 
@@ -69,7 +96,7 @@ The pictures show sample data, not a real battery.
   should behave the same way but have not been tried.
 - Intel Macs and earlier versions of macOS are not supported. The way
   charging is controlled changed in macOS 27, and Hachibu only knows the
-  new way. The app opens on macOS 26, where it has never been tried.
+  new way.
 
 ## Install
 
@@ -98,13 +125,40 @@ framework (PowerUI) that System Settings uses. They take effect at once.
 
 **2. Any limit from 20%, with the helper.** For limits macOS does not
 offer, a small helper that runs as root writes the limit into macOS's
-charging settings, and macOS enforces it within a few minutes (26 to 90
-seconds when measured here). You install the helper from Settings >
+charging settings, and macOS enforces it, usually within two minutes
+(26 to 90 seconds when measured here). You install the helper from Settings >
 Helper and approve it once in System Settings > General > Login Items.
 
 The helper accepts three requests and nothing else: set a limit,
-reconnect the charger, report its status. It listens only to a copy of
-Hachibu signed by the same Apple developer team as the helper itself.
+reconnect the charger (to undo a cut left by another tool; Hachibu never
+makes one), and report its status. It listens only to a copy of Hachibu
+signed by the same Apple developer team as the helper itself, and it
+quits by itself ten seconds after the app lets go.
+
+The whole helper is one short file,
+[`Sources/HachibuHelper/main.swift`](Sources/HachibuHelper/main.swift),
+about 150 lines. If you are deciding whether to let it run as root, read
+it: it takes a few minutes.
+
+### Check your download
+
+The release notes give the zip's SHA-256. To check it, and to see who
+signed the app and that Apple notarized it:
+
+```bash
+shasum -a 256 ~/Downloads/Hachibu-0.1.zip
+```
+
+```bash
+spctl -a -vv /Applications/Hachibu.app
+```
+
+```bash
+codesign -dv --verbose=2 /Applications/Hachibu.app
+```
+
+`spctl` should say `accepted` and `source=Notarized Developer ID`, and
+`codesign` should list `Authority=Developer ID Application: Mohamed Hammad`.
 
 ### Good to know
 
@@ -133,7 +187,7 @@ Hachibu signed by the same Apple developer team as the helper itself.
    (60% becomes 80%, 82% becomes 85%), so nothing is left that only the
    helper set.
 2. In Settings > General, switch off **Open at login**.
-3. Quit Hachibu and delete `~/Applications/Hachibu.app`.
+3. Quit Hachibu and delete `Hachibu.app` from your Applications folder.
 4. To also remove your choices and history, delete
    `~/Library/Application Support/Hachibu` and run:
 

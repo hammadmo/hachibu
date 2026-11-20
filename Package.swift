@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "Hachibu",
-    platforms: [.macOS(.v26)],
+    platforms: [.macOS("27.0")],
     targets: [
         // Rules and data logic with no SwiftUI, so tests run without the app.
         .target(name: "HachibuKit"),
