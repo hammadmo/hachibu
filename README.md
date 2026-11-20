@@ -53,8 +53,6 @@ that change by time and place (BatFi), or a long-established app with
 support (AlDente). Sailing, heat protection, Top Up, and calibration are
 Pro features in AlDente; in Hachibu they are part of the app.
 
-Hachibu is new. It has been developed and tested on one Mac.
-
 ## Features
 
 | Feature | What it does |
