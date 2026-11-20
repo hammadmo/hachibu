@@ -178,7 +178,7 @@ codesign -dv --verbose=2 /Applications/Hachibu.app
 
 ## Uninstall
 
-1. In Hachibu, open Settings > Helper and click **Remove Helper…**. A
+1. In Hachibu, open Settings > Helper and click **Remove Helper…** and confirm. A
    limit macOS does not offer by itself moves up to the next one it does
    (60% becomes 80%, 82% becomes 85%), so nothing is left that only the
    helper set.
