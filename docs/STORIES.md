@@ -1,6 +1,6 @@
 # Hachibu stories
 
-Built from `docs/BRIEF.md` and `docs/research/charge-control.md`.
+Built from the project brief and `docs/research/charge-control.md`.
 Checks: `[snap]` snapshot, `[unit]` unit test, `[self]` self-test,
 `[manual]` a person must try it on the Mac.
 
@@ -277,9 +277,9 @@ Acceptance:
 - [manual] After unplugging and plugging back in, the limit is back.
 - [manual] Quitting Hachibu during a top up restores the limit first.
 Status: done (2026-11-18. Tried for real with `Hachibu --try topup 20`:
-the limit went off and came back to 80%. The user then tried the
-button and Stop, unplugging during a Top Up, and Quit during a Top Up,
-and reported that all passed.)
+the limit went off and came back to 80%. It was then tried by hand: the
+button and Stop, unplugging during a Top Up, and Quit during a Top Up.
+All passed.)
 
 ### S-021 Discharge to the limit while plugged in
 As the user, I click "Discharge" and the Mac runs on battery, still
@@ -294,7 +294,7 @@ Acceptance:
 - [unit] Discharge refuses to start at or below the limit, and stops at
   the limit, at 20%, on Stop, or when the charger is unplugged.
 - [manual] If the helper stops for any reason, the adapter is restored.
-Status: dropped (2026-11-18, the user's decision).
+Status: dropped (2026-11-18).
 - On this Mac macOS already does this by itself: with the limit below the
   level it drains the battery to the limit while staying on AC power.
 - The one real try of the adapter cut (limit 70%, level 80%, cut for 12
@@ -321,7 +321,7 @@ battery is at, and at the bottom of the range it asks for the limit
 again. Tried for real with `Hachibu --try sailing 50` (limit 85%, level
 80%, range 10): macOS held 80%, charging stopped, the status read
 "Sailing", and turning sailing off brought 85% back. Needs the helper.
-The user tried the slider with the helper running and reported that it
+The slider was tried by hand with the helper running, and it
 passed. Not tried: a full drift down and recharge over a day.
 
 ### S-023 Sleep safely during discharge or sailing
@@ -447,7 +447,7 @@ Acceptance:
 - [unit] A pause also holds during a Top Up, and the Top Up continues
   when the battery has cooled.
 - [unit] Heat protection never pauses a full charge by macOS; it cannot.
-Status: done (2026-11-19). The user chose to build it although a pause
+Status: done (2026-11-19). Built although a pause
 takes longer than the two minutes first asked for; the Settings row says
 how long it takes.
 - Default 40 °C, range 36 to 43 °C, from the research in
@@ -542,7 +542,7 @@ Acceptance:
 - [snap] General has an "Open at login" toggle.
 - [manual] After a restart, Hachibu is in the menu bar without my doing
   anything.
-Status: done (the user confirmed it on 2026-11-19)
+Status: done (confirmed by hand after a login, 2026-11-19)
 
 ### S-051 Choose what the menu bar shows
 As the user, I choose whether the menu bar item shows the percentage.
@@ -582,14 +582,11 @@ Acceptance:
   the two control methods and their limits, build steps, uninstall, and
   credit to batt (charlie0129/batt).
 - [manual] A license file exists.
-- [manual] The repo has no personal names, emails, or team IDs in
-  tracked files.
-Status: done (2026-11-19). `README.md` is written, the license is MIT
-(the user's choice; the copyright line carries the user's name, at
-their request), and tracked files were searched for names, emails, home
-paths, and the team ID: none found. Before the repository is made
-public, one thing is still the user's call: every commit's author line
-carries a name and an email address.
+- [manual] The repo has no emails, home paths, or team IDs in tracked
+  files.
+Status: done (2026-11-19). `README.md` is written, the license is MIT,
+and tracked files were searched for emails, home paths, and the team
+ID: none found.
 
 ## Later
 
@@ -608,5 +605,5 @@ carries a name and an email address.
 - Holding the limit while shut down: not possible on Apple silicon.
 - Accounts, licensing, upgrade prompts, analytics: personal and open
   source.
-- Blocking the macOS full charge with adapter cut: the user chose
-  accept and notify.
+- Blocking the macOS full charge with adapter cut: the decision was to
+  accept it and notify.

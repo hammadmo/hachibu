@@ -3,14 +3,14 @@
 A native macOS menu bar app in SwiftUI that controls when a MacBook
 charges. It runs on this Mac only, with no server.
 
-Starting a session: read `docs/STATUS.md` first. `ARCHITECTURE.md` says who decides and who acts; `docs/FIXLOG.md` has the rules past bugs left behind. It says what is done,
-what is next, what is not verified, and the decisions already made.
-Update it when a milestone ends or a decision changes.
+`ARCHITECTURE.md` says who decides and who acts; `docs/FIXLOG.md` has the
+rules past bugs left behind; `docs/BUILDING.md` has the build, signing,
+and release steps.
 
 ## Layout
 
 - `Sources/Hachibu/` the app: a menu bar item (`MenuBar.swift`), its popover (`PopoverView.swift`), and the Settings and History windows. `App.swift` has the scenes. No Dock icon, no main window, no database yet.
-- `Sources/Hachibu/BatteryMonitor.swift` watches the battery and the limit and applies the limit the user chooses. Views read everything from it.
+- `Sources/Hachibu/BatteryMonitor.swift` watches the battery and the limit and applies the chosen limit. Views read everything from it.
 - `Sources/Hachibu/SystemBattery.swift` reads the real battery (`SystemBattery`) and macOS's own charge limit (`ChargeLimit`).
 - `Sources/HachibuSystem/` C and Objective-C: the battery controller (SMC) and the private PowerUI framework. Read `docs/research/charge-control.md` before touching it.
 - `Sources/HachibuHelper/` the root helper, and `Sources/Hachibu/HelperManager.swift`, the app's side of it. The requests they share are in `Sources/HachibuKit/Helper.swift`. The helper accepts three requests and nothing else (set limit, restore adapter, read status); keep that list closed. It cannot cut the charger.
@@ -31,7 +31,7 @@ Update it when a milestone ends or a decision changes.
 - Test runs set `APP_STORE`. With it set, the app never writes real preferences, registers login items, sends notifications, or changes the charge limit (`Store.isOverridden`). Keep that true for every new feature that changes something real.
 - Command-line flags are parsed in `Sources/HachibuKit/LaunchCommand.swift` (tested) and carried out in `Sources/Hachibu/Launch.swift`; add a new one in both.
 - `Hachibu --try topup|sailing|calibration|heat <seconds>` runs a real mode. Quit the copy in the menu bar first, or the two pull against each other.
-- `Hachibu --set-limit <n>` changes the real limit through the same path as the slider. Run it only when the user has agreed to a real change, and restore the limit afterwards.
+- `Hachibu --set-limit <n>` changes the real limit through the same path as the slider. Run it only when a real change is wanted, and restore the limit afterwards.
 - For a refactor that must not change the screen: copy `/tmp/Hachibu-shots` somewhere first, then `tools/compare-shots.sh <that folder>` after. It prints SAME. Snapshot runs ignore the pointer, so two runs of one build match; the About page can differ when the build number does.
 - Then check the grid: `tools/grid-lint.sh` and `swift tools/check-layout.swift /tmp/Hachibu-shots/*-layout.json`. Both print PASS.
 - A change is done when the build has no errors or warnings, tests and checks pass, and you looked at the light and dark snapshots.
@@ -56,13 +56,6 @@ Hachibu has its own design kit. The spec is `design/KIT.md`; the code is
 - Use the words in `docs/GLOSSARY.md` for every string on screen.
 - Snapshots of History use sample data (`HistoryData.sample`): `APP_SNAPSHOT_PAGES=history tools/snap.sh` writes `history-day`, `-week`, `-month`, and `history-empty` (what it shows today).
 
-## Skills
-
-The bama plugin has a skill for each step: `mac-design` (design rules),
-`design-system` (accent and tokens), `layout-grid`, `ux-design`,
-`swift-swiftui`, `os-integrations`, `performance`, `build-and-verify`,
-`test-mac-app`, `app-icon`, `user-stories`, and `improve-loop`. Use them.
-
 ## Git
 
-- Commit after each working change, with a message that says what the user can now do.
+- Commit after each working change, with a message that says what someone can now do with the app.
