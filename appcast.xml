@@ -3,6 +3,14 @@
     <channel>
         <title>Hachibu</title>
         <item>
+            <title>0.3.1</title>
+            <pubDate>Fri, 20 Nov 2026 18:40:36 +0200</pubDate>
+            <sparkle:version>202611201839</sparkle:version>
+            <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.3.1/Hachibu-0.3.1.zip" length="4111714" type="application/octet-stream" sparkle:edSignature="gT/cvCdwmT+KUuDK3AP0Z08DwJo9e3SaEg8nFFurSV4oEujCXi8B9D/woqZFwvfZfLlVSF5PWtwlTxopX7MtBg=="/>
+        </item>
+        <item>
             <title>0.3</title>
             <pubDate>Fri, 20 Nov 2026 17:17:34 +0200</pubDate>
             <sparkle:version>202611201716</sparkle:version>
