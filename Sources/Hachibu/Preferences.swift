@@ -19,6 +19,7 @@ final class Preferences {
         static let notifyCalibrationFinished = "notify.calibrationFinished"
         static let checksForUpdates = "updates.automatic"
         static let topUpShortcut = "shortcut.topUp"
+        static let helperOffered = "helper.offered"
         static let sailingRange = "charging.sailingRange"
         static let sailingHold = "charging.sailingHold"
         static let modeAsk = "charging.modeAsk"
@@ -62,6 +63,8 @@ final class Preferences {
             Updates.shared.setAutomatic(checksForUpdates)
         }
     }
+    /// The offer to install the helper is made once. True after that.
+    var helperOffered: Bool { didSet { defaults.set(helperOffered, forKey: Key.helperOffered) } }
     /// Percent the battery drifts below the limit before it charges again. 0 is off.
     var sailingRange: Int { didSet { defaults.set(sailingRange, forKey: Key.sailingRange) } }
     /// The level sailing last asked macOS to hold. nil when none. Kept so
@@ -138,6 +141,7 @@ final class Preferences {
         notifyCalibrationFinished = bool(Key.notifyCalibrationFinished, true)
         checksForUpdates = bool(Key.checksForUpdates, true)
         topUpShortcut = bool(Key.topUpShortcut, false)
+        helperOffered = bool(Key.helperOffered, false)
         sailingRange = int(Key.sailingRange, 0)
         sailingHold = store.object(forKey: Key.sailingHold) as? Int
         modeAsk = store.object(forKey: Key.modeAsk) as? Int

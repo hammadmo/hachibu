@@ -101,6 +101,25 @@ public enum HelperState: Equatable, Sendable {
     }
 }
 
+/// The offer to install the helper, made once, the first time Hachibu
+/// opens on a Mac that does not have it.
+public enum HelperOffer {
+    /// True when the offer should be shown now.
+    public static func shouldShow(offered: Bool, state: HelperState) -> Bool {
+        !offered && state == .notInstalled
+    }
+
+    /// True once there is nothing left to offer: it was shown, or the
+    /// helper is already there. A copy that cannot install a helper, or
+    /// has not heard from macOS yet, leaves the question open.
+    public static func isSettled(offered: Bool, state: HelperState) -> Bool {
+        switch state {
+        case .notInstalled, .needsApproval, .running, .failed: true
+        case .checking, .unavailable: offered
+        }
+    }
+}
+
 public enum HelperNeed {
     /// The lowest limit macOS holds without the helper.
     public static let lowestWithoutHelper = 80

@@ -55,6 +55,7 @@ struct SettingsView: View {
         }
         .kitWindow(width: Metric.settingsWidth)
         .overlay {
+            if model.showingHelperOffer { HelperOfferDialog() }
             if model.showingHelperApproval { HelperApprovalDialog() }
             if model.showingCalibration { CalibrationDialog() }
         }
@@ -92,6 +93,29 @@ struct CalibrationDialog: View {
                       primaryTitle: "Calibrate", primary: { refusal = monitor.startCalibration() },
                       secondaryTitle: "Not Now", secondary: { model.showingCalibration = false })
         }
+    }
+}
+
+/// Shown once, the first time Hachibu opens on a Mac without the helper:
+/// what the helper adds, and a button that installs it.
+struct HelperOfferDialog: View {
+    @Environment(AppModel.self) private var model
+    @Environment(BatteryMonitor.self) private var monitor
+
+    var body: some View {
+        let helper = monitor.helper
+        KitDialog(title: "Welcome to Hachibu",
+                  message: "Hachibu is in the menu bar and can already set the limits macOS offers, 80 to 100%. Install the helper for limits below 80%, sailing, heat protection, and calibration.",
+                  note: "The helper runs with administrator rights, only while Hachibu needs it, and macOS asks for your approval once. You can install it later in Settings > Helper.",
+                  progress: helper.isWorking ? "Installing the helper…" : nil,
+                  primaryTitle: "Install Helper…", primary: {
+                      Task {
+                          await helper.install()
+                          model.showingHelperOffer = false
+                          model.showingHelperApproval = helper.state == .needsApproval
+                      }
+                  },
+                  secondaryTitle: "Not Now", secondary: { model.showingHelperOffer = false })
     }
 }
 
@@ -323,7 +347,7 @@ struct HelperSettings: View {
             EmptyView()
         case .notInstalled, .unavailable:
             SettingsRow(title: "Install the helper",
-                        detail: helper.state == .notInstalled ? problem ?? "macOS will ask you to allow it in Login Items." : nil) {
+                        detail: helper.state == .notInstalled ? problem ?? helper.installProblem ?? "macOS will ask you to allow it in Login Items." : nil) {
                 Button("Install Helper…") {
                     Task {
                         await helper.install()

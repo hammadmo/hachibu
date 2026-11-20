@@ -26,6 +26,24 @@ enum Launch {
         NSApp.terminate(nil)
     }
 
+    /// The first time Hachibu opens on a Mac without the helper, Settings
+    /// opens on the Helper tab and offers it. Once, and never in test runs.
+    private static func offerHelper(model: AppModel, monitor: BatteryMonitor, open: @escaping (String) -> Void) {
+        let preferences = Preferences.shared
+        guard !Store.isOverridden, !preferences.helperOffered else { return }
+        Task {
+            await monitor.helper.refresh()
+            let state = monitor.helper.state
+            let show = HelperOffer.shouldShow(offered: preferences.helperOffered, state: state)
+            if HelperOffer.isSettled(offered: preferences.helperOffered, state: state) { preferences.helperOffered = true }
+            guard show else { return }
+            model.settingsTab = .helper
+            model.showingHelperOffer = true
+            open(SettingsView.windowID)
+            NSApp.activate()
+        }
+    }
+
     static func run(model: AppModel, monitor: BatteryMonitor, open: @escaping (String) -> Void) {
         guard !done else { return }
         done = true
@@ -35,6 +53,7 @@ enum Launch {
                 NSApp.activate()
             } else {
                 Snapshot.runIfRequested(model: model, open: open)
+                offerHelper(model: model, monitor: monitor, open: open)
             }
             return
         }

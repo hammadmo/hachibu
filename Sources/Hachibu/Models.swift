@@ -21,6 +21,8 @@ final class AppModel {
     /// Snapshot runs set this to draw Settings as on a smaller screen:
     /// the height of the screen's usable area, in points.
     var settingsScreenHeight: CGFloat?
+    /// The dialog that offers the helper the first time Hachibu opens.
+    var showingHelperOffer = false
     /// The dialog that says how to allow the helper in Login Items.
     var showingHelperApproval = false
     /// The dialog that explains a calibration before it starts, or shows

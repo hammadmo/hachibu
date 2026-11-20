@@ -84,3 +84,18 @@ func signingRequirementFloor() {
     #expect(CodeIdentity.requirement(identifier: "app.hachibu.mac", team: "ABCDE12345", oldestBuild: "1\" or true") == nil)
     #expect(CodeIdentity.requirement(identifier: "app.hachibu.mac", team: "ABCDE12345", oldestBuild: "") == nil)
 }
+
+@Test("The helper is offered once, on a Mac that does not have it")
+func helperOffer() {
+    #expect(HelperOffer.shouldShow(offered: false, state: .notInstalled))
+    #expect(!HelperOffer.shouldShow(offered: true, state: .notInstalled))
+    for state in [HelperState.checking, .needsApproval, .running, .failed("x"), .unavailable("x")] {
+        #expect(!HelperOffer.shouldShow(offered: false, state: state))
+    }
+    // Someone who already has the helper is never asked, even after removing it.
+    #expect(HelperOffer.isSettled(offered: false, state: .running))
+    #expect(HelperOffer.isSettled(offered: false, state: .notInstalled))
+    // No answer from macOS yet, or a copy that cannot install: ask on a later launch.
+    #expect(!HelperOffer.isSettled(offered: false, state: .checking))
+    #expect(!HelperOffer.isSettled(offered: false, state: .unavailable("x")))
+}

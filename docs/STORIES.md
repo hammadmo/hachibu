@@ -590,6 +590,28 @@ Status: done (2026-11-19). `README.md` is written, the license is MIT,
 and tracked files were searched for emails, home paths, and the team
 ID: none found.
 
+### S-055 Offer the helper the first time Hachibu opens
+As a new user, I am told about the helper when I first open Hachibu, so
+I do not have to find it in Settings.
+Screens: `settings-helper-offer`
+Acceptance:
+- [unit] The offer shows once, and only when the helper is not installed.
+- [unit] A Mac that already has the helper is never asked, even after
+  the helper is removed.
+- [selftest] The rule holds in the built app; test runs never show it.
+- [snapshot] The dialog in light and dark.
+- [manual] On a Mac without the helper, the first launch opens Settings
+  on the Helper tab with the dialog; Install Helper… leads to the Login
+  Items steps; Not Now closes it and it does not come back.
+UX:
+- Flow: first launch -> Settings opens on Helper with the dialog -> Install Helper… installs and shows "Allow the helper", or Not Now closes it -> never shown again; Settings > Helper stays the way in
+- Surface: the Settings dialog (the person must act outside Hachibu, in Login Items)
+- States: installing shows "Installing the helper…"; a failed install shows its reason on the Install the helper row
+- Words: "Welcome to Hachibu", "Install Helper…", "Not Now"
+- Access: the dialog's two buttons are real buttons; the title is a header
+Status: built (2026-11-20). Unit tests, self-test, and snapshots pass.
+Not seen for real: a first launch on a Mac without the helper.
+
 ## Later
 
 - Shortcuts actions: Set Limit, Get State, Top Up.

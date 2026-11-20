@@ -76,6 +76,10 @@ enum SelfTest {
         check("a test run refuses to change the real limit", ChargeLimit.set(85) != nil)
         check("the real limit is unchanged after the refusal", ChargeLimit.read().limit == limit.limit)
         check("a test run never checks for updates", !Updates.canUpdate)
+        check("the helper is offered once, and only where it is missing",
+              HelperOffer.shouldShow(offered: false, state: .notInstalled)
+                  && !HelperOffer.shouldShow(offered: true, state: .notInstalled)
+                  && !HelperOffer.shouldShow(offered: false, state: .running))
         check("a test run never takes a keyboard shortcut", !TopUpShortcut.canRegister)
 
         // S-005: the chosen limit is saved and read back.

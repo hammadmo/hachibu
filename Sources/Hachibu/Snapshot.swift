@@ -71,6 +71,7 @@ enum Snapshot {
                     model.settingsPreview = BatteryMonitor.preview(fixture.battery, helper: fixture.helper)
                     model.confirmingHelperRemoval = fixture.confirmingRemoval
                     model.showingHelperApproval = fixture.showingApproval
+                    model.showingHelperOffer = fixture.showingOffer
                     model.showingCalibration = fixture.showingCalibration
                     model.settingsScreenHeight = fixture.screenHeight
                 }
@@ -142,7 +143,7 @@ enum Snapshot {
 struct SettingsFixture {
     /// The pages beyond one per tab.
     static let pages = ["settings-charging-helper", "settings-helper-approval", "settings-helper-running",
-                        "settings-helper-failed", "settings-helper-unavailable", "settings-helper-remove", "settings-helper-allow",
+                        "settings-helper-failed", "settings-helper-unavailable", "settings-helper-remove", "settings-helper-allow", "settings-helper-offer",
                         "settings-charging-calibrate", "settings-charging-calibrating",
                         "settings-charging-small", "settings-general-small"]
 
@@ -151,6 +152,7 @@ struct SettingsFixture {
     var helper: HelperState = .notInstalled
     var confirmingRemoval = false
     var showingApproval = false
+    var showingOffer = false
     var showingCalibration = false
     /// The usable height of a small screen, to show the tab scrolling. nil is the real screen.
     var screenHeight: CGFloat?
@@ -163,6 +165,7 @@ struct SettingsFixture {
         case "remove": (battery, helper, confirmingRemoval) = (.lowLimit, .running, true)
         case "approval": helper = .needsApproval
         case "allow": (helper, showingApproval) = (.needsApproval, true)
+        case "offer": showingOffer = true
         case "calibrate": (battery, helper, showingCalibration) = (.lowLimit, .running, true)
         case "calibrating": (battery, helper, showingCalibration) = (.calibrating, .running, true)
         // A 13-inch display set to "Larger Text": 1024 by 640 points,
