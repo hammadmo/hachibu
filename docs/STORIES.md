@@ -609,8 +609,12 @@ UX:
 - States: installing shows "Installing the helper…"; a failed install shows its reason on the Install the helper row
 - Words: "Welcome to Hachibu", "Install Helper…", "Not Now"
 - Access: the dialog's two buttons are real buttons; the title is a header
-Status: built (2026-11-20). Unit tests, self-test, and snapshots pass.
-Not seen for real: a first launch on a Mac without the helper.
+Status: done (2026-11-20). Seen for real: with the helper removed, a
+plain launch opened Settings on the Helper tab with the dialog; Install
+Helper… installed it and the tab said Running; the next launch opened
+no window. Not seen: Not Now, and the Login Items steps after the
+dialog (macOS did not ask again on a Mac that had allowed the helper
+before).
 
 ## Later
 
