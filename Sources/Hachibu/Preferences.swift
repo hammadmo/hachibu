@@ -41,18 +41,20 @@ final class Preferences {
     var notifyTopUpFinished: Bool { didSet { defaults.set(notifyTopUpFinished, forKey: Key.notifyTopUpFinished) } }
     var notifyCalibrationFinished: Bool { didSet { defaults.set(notifyCalibrationFinished, forKey: Key.notifyCalibrationFinished) } }
     /// Control-Option-Command-T starts or stops a Top Up from any app.
-    var topUpShortcut: Bool {
-        didSet {
-            // Another app may hold the keys: then the switch goes back off and says so.
-            let taken = !TopUpShortcut.set(enabled: topUpShortcut) && topUpShortcut
-            shortcutProblem = taken ? "Another app already uses \(TopUpShortcut.keys)." : nil
-            if taken { topUpShortcut = false }
-            // Saved last, so what is saved is what holds.
-            defaults.set(topUpShortcut, forKey: Key.topUpShortcut)
-        }
-    }
+    /// Change it with `setTopUpShortcut`, which asks macOS for the keys.
+    private(set) var topUpShortcut: Bool { didSet { defaults.set(topUpShortcut, forKey: Key.topUpShortcut) } }
     /// Why the shortcut could not be switched on, in words for the user.
     private(set) var shortcutProblem: String?
+
+    /// Switches the shortcut on or off. When macOS will not give Hachibu
+    /// the keys, the switch stays off and the row says why, so it never
+    /// looks on while doing nothing. Also called at launch for a shortcut
+    /// that was on.
+    func setTopUpShortcut(_ isOn: Bool) {
+        let registered = TopUpShortcut.set(enabled: isOn)
+        shortcutProblem = isOn && !registered ? "macOS did not give Hachibu \(TopUpShortcut.keys). Another app may be using it." : nil
+        topUpShortcut = isOn && registered
+    }
     /// Hachibu asks once a day whether there is a newer version.
     var checksForUpdates: Bool {
         didSet {

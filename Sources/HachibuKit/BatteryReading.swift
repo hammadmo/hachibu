@@ -56,6 +56,9 @@ public struct BatteryReading: Equatable, Sendable {
     /// Below this, current into the battery is treated as noise, not charging.
     public static let chargingThresholdMA = 50
 
+    /// Below this, charging is too slow to say how long it will take.
+    public static let estimateThresholdMA = 200
+
     /// Current is really flowing into the battery.
     public var isCharging: Bool { isPluggedIn && currentMA > Self.chargingThresholdMA }
 
@@ -73,7 +76,9 @@ public struct BatteryReading: Equatable, Sendable {
     public func minutesToReach(_ target: Int) -> Int? {
         guard isCharging, percent < target else { return nil }
         if target >= 100 { return minutesToFull }
-        guard let capacity = rawMaxCapacityMAh else { return nil }
+        // A trickle gives a time that is hours long and jumps with every
+        // reading: say nothing until the current is worth dividing by.
+        guard let capacity = rawMaxCapacityMAh, currentMA >= Self.estimateThresholdMA else { return nil }
         let missing = Double(target - percent) / 100 * Double(capacity)
         return max(Int((missing / Double(currentMA) * 60).rounded()), 1)
     }

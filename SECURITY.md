@@ -19,8 +19,9 @@ version, and the steps that show the problem.
   15% and 100%, reconnect the charger, and report its status. Anything
   else is refused ([`Sources/HachibuKit/Helper.swift`](Sources/HachibuKit/Helper.swift)).
 - It listens only to an app with Hachibu's identifier, signed by the same
-  Apple developer team as the helper, from a build with the hardened
-  runtime. macOS checks this before a request reaches the helper.
+  Apple developer team as the helper, and no older than the first build
+  made with the hardened runtime. macOS checks this before a request
+  reaches the helper.
 - It is started by macOS when the app asks for it and quits ten seconds
   after the app lets go.
 - It cannot cut the charger, run a command, or read or write a file of
@@ -29,6 +30,8 @@ version, and the steps that show the problem.
 ## Updates
 
 Updates are downloaded over HTTPS and checked against Hachibu's update
-key before they are installed. An update signed by anyone else is
-refused. Releases are also signed with a Developer ID and notarized by
+key before they are unpacked or installed. The list of versions the app
+reads (`appcast.xml` in this repository) is not signed itself: someone
+who could change it could point at a download, but a download without a
+valid signature is refused. Releases are also signed with a Developer ID and notarized by
 Apple; the README shows how to check a download.

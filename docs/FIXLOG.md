@@ -199,3 +199,18 @@ itself. Unplugging during the wait ends it the same way.
 Rule: before waiting for a signal, ask in which states of the Mac that
 signal exists at all (charger connected, awake, helper running), and do
 not wait in the others.
+
+## 2026-11-20 A built app carried the name of the Mac's user
+
+Symptom: found by an independent review. Both programs in the built app,
+and the zip published as release 0.1, contained the folder they were
+built in, which is inside the builder's home folder.
+Cause: the linker leaves a note for debuggers saying where each object
+file is. An earlier check with `strings` had reported the app clean; it
+did not look where those notes are.
+Fix: `build.sh` strips those notes from both programs (`strip -S`) and
+then refuses to install a build in which `grep -a "$HOME"` still finds
+anything. It also puts the app together in a folder of its own and moves
+it into place only when every signature has worked.
+Rule: "nothing personal in the build" is a check the build runs on the
+finished file with `grep -a`, not something looked at once by hand.

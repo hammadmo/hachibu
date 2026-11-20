@@ -51,8 +51,9 @@ final class Updates: NSObject {
 extension Updates: SPUStandardUserDriverDelegate {
     nonisolated var supportsGentleScheduledUpdateReminders: Bool { true }
 
-    /// Sparkle shows what a background check found only when Hachibu is the
-    /// app in front. Otherwise the popover says so and waits to be asked.
+    /// Sparkle shows what a background check found by itself only right
+    /// after launch or when the Mac has been idle. Otherwise the popover
+    /// offers it and waits to be asked.
     nonisolated func standardUserDriverShouldHandleShowingScheduledUpdate(_ update: SUAppcastItem,
                                                                           andInImmediateFocus immediateFocus: Bool) -> Bool {
         immediateFocus
@@ -65,9 +66,9 @@ extension Updates: SPUStandardUserDriverDelegate {
         Task { @MainActor in self.availableVersion = version }
     }
 
-    nonisolated func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
-        Task { @MainActor in self.availableVersion = nil }
-    }
+    // The popover keeps offering the update until it is installed or
+    // turned down: Hachibu has no Dock icon, so an update window that went
+    // behind another app could not be found again otherwise.
 
     nonisolated func standardUserDriverWillFinishUpdateSession() {
         Task { @MainActor in self.availableVersion = nil }

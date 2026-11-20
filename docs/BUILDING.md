@@ -88,10 +88,11 @@ ditto -c -k --keepParent ~/Applications/Hachibu.app ~/Library/Developer/Hachibu/
    key in your keychain:
 
 ```bash
-~/Library/Developer/Hachibu/build/artifacts/sparkle/Sparkle/bin/generate_appcast --account hachibu --download-url-prefix https://github.com/hammadmo/hachibu/releases/download/v<version>/ -o appcast.xml ~/Library/Developer/Hachibu/dist
+~/Library/Developer/Hachibu/build/artifacts/sparkle/Sparkle/bin/generate_appcast --account hachibu --maximum-deltas 0 --download-url-prefix https://github.com/hammadmo/hachibu/releases/download/v<version>/ -o appcast.xml ~/Library/Developer/Hachibu/dist
 ```
 
-   Commit and push `appcast.xml`. Copies of Hachibu find the new version
+   Keep only the newest zip in that folder when you run it: the address
+   prefix is used for every zip it finds. Commit and push `appcast.xml`. Copies of Hachibu find the new version
    within a day.
 
 The update key was made once with Sparkle's `generate_keys --account hachibu`.

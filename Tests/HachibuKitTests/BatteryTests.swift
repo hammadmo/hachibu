@@ -198,6 +198,13 @@ func timeToLimit() {
     #expect(BatteryStatus.toppingUp.detail(for: charging, target: 80).hasSuffix("to 100%"))
     // Nothing is promised without the numbers: at the limit, not charging, or no estimate.
     #expect(charging.minutesToReach(69) == nil)
+    // A trickle is charging, but too slow to put a time on.
+    var trickle = charging
+    trickle.currentMA = 60
+    #expect(trickle.isCharging && trickle.minutesToReach(80) == nil)
+    #expect(BatteryStatus.charging.detail(for: trickle, target: 80) == "24 W from charger")
+    trickle.currentMA = BatteryReading.estimateThresholdMA
+    #expect(trickle.minutesToReach(80) != nil)
     #expect(reading(60).minutesToReach(80) == nil)
     charging.minutesToFull = nil
     #expect(BatteryStatus.charging.detail(for: charging, target: 100) == "24 W from charger")

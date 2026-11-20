@@ -65,7 +65,18 @@ struct HistoryView: View {
         let store = history.store
         Task.detached {
             let text = HistoryCSV.text(store.samples())
-            try? text.write(to: url, atomically: true, encoding: .utf8)
+            do {
+                try text.write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                // A file that was not written must not look saved.
+                let reason = error.localizedDescription
+                await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "The history could not be saved"
+                    alert.informativeText = reason
+                    alert.runModal()
+                }
+            }
         }
     }
 

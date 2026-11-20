@@ -148,12 +148,14 @@ struct GeneralSettings: View {
                 SettingsRow(title: "Top Up shortcut",
                             detail: preferences.shortcutProblem
                                 ?? "Press \(TopUpShortcut.keys) in any app to start a Top Up, or to stop one.") {
-                    Toggle("Top Up shortcut", isOn: $preferences.topUpShortcut).toggleStyle(.kit)
+                    Toggle("Top Up shortcut", isOn: Binding(get: { preferences.topUpShortcut },
+                                                           set: { preferences.setTopUpShortcut($0) }))
+                        .toggleStyle(.kit)
                 }
             }
             SettingsSection(title: "Updates") {
                 SettingsRow(title: "Check automatically",
-                            detail: "Once a day Hachibu asks GitHub whether there is a newer version. Nothing about your Mac is sent.") {
+                            detail: "Once a day Hachibu asks GitHub whether there is a newer version. The request says which version you have, nothing else.") {
                     Toggle("Check for updates automatically", isOn: $preferences.checksForUpdates).toggleStyle(.kit)
                 }
                 // A snapshot shows the row as it looks in the real app.

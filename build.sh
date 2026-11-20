@@ -40,14 +40,16 @@ sparkle="$scratch/$config/Sparkle.framework"
 # APP_DIR puts the app somewhere else, to look at a build without replacing
 # the copy that is running.
 dest="${APP_DIR:-$HOME/Applications}"
-app="$dest/$name.app"
-mkdir -p "$dest"
-rm -rf "$app"
+final="$dest/$name.app"
+# The app is put together and signed in a folder of its own, and takes the
+# place of the installed copy only when every step has worked.
+stage=$(mktemp -d)
+trap 'rm -rf "$stage"' EXIT
+app="$stage/$name.app"
+fail() { echo "$1: nothing was installed"; exit 1; }
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin" "$app/Contents/MacOS/$name"
 # Sparkle (updates) goes inside the app, and the program looks for it there.
-# The build also leaves a folder of this Mac in the program's search paths:
-# take every such path out, so no build carries where it was made.
 mkdir -p "$app/Contents/Frameworks"
 ditto "$sparkle" "$app/Contents/Frameworks/Sparkle.framework"
 for rpath in $(otool -l "$app/Contents/MacOS/$name" | awk '/LC_RPATH/ { getline; getline; print $2 }'); do
@@ -58,6 +60,13 @@ install_name_tool -add_rpath @executable_path/../Frameworks "$app/Contents/MacOS
 mkdir -p "$app/Contents/Library/LaunchDaemons"
 cp "$helper" "$app/Contents/MacOS/HachibuHelper"
 cp "$here/app.hachibu.mac.helper.plist" "$app/Contents/Library/LaunchDaemons/"
+# The build leaves the folder it was made in inside both programs, in the
+# notes a debugger uses. Take those out, then make sure: no build may carry
+# the name of the Mac's user.
+for program in "$app/Contents/MacOS/$name" "$app/Contents/MacOS/HachibuHelper"; do
+  strip -S "$program" 2>/dev/null || fail "the build's own paths could not be taken out of ${program:t}"
+  ! grep -a -q "$HOME" "$program" || fail "${program:t} still contains $HOME"
+done
 sed -e "s/__BUILD__/$(date +%Y%m%d%H%M)/" "$here/Info.plist.in" > "$app/Contents/Info.plist"
 # The icon: Icon/AppIcon.icon -> Resources/Assets.car + AppIcon.icns, rebuilt when it changed.
 if [[ -d "$here/Icon/AppIcon.icon" ]]; then
@@ -68,24 +77,36 @@ if [[ -d "$here/Icon/AppIcon.icon" ]]; then
   cp -X "$car" "$here/Resources/AppIcon.icns" "$app/Contents/Resources/"
 fi
 xattr -cr "$app"
-# Inside out: the helper first, under its own name, then the app around it.
-sign=(codesign --force --sign "$identity")
+# Inside out: Sparkle's own programs, the framework around them, the helper
+# under its own name, then the app around it all. One failed signature
+# stops the build: Sparkle arrives signed by nobody, and an app that is
+# half signed passes a check and then will not open.
+signing=(codesign --force --sign "$identity")
 if [[ "$identity" != - ]]; then
-  sign+=(--options runtime)
-  [[ "$identity" == "Developer ID"* ]] && sign+=(--timestamp)
+  signing+=(--options runtime)
+  [[ "$identity" == "Developer ID"* ]] && signing+=(--timestamp)
 fi
-# Sparkle's own programs, each signed before the framework around them.
+sign() {
+  local out
+  out=$("${signing[@]}" "$@" 2>&1) || { print -r -- "$out"; fail "signing ${@[-1]:t} failed"; }
+}
 sp="$app/Contents/Frameworks/Sparkle.framework/Versions/B"
-{
-  "${sign[@]}" "$sp/XPCServices/Installer.xpc"
-  "${sign[@]}" --preserve-metadata=entitlements "$sp/XPCServices/Downloader.xpc"
-  "${sign[@]}" "$sp/Autoupdate"
-  "${sign[@]}" "$sp/Updater.app"
-  "${sign[@]}" "$app/Contents/Frameworks/Sparkle.framework"
-} 2>&1 | grep -v "replacing existing signature" || true
-"${sign[@]}" --identifier app.hachibu.mac.helper "$app/Contents/MacOS/HachibuHelper" 2>&1 | grep -v "replacing existing signature" || true
-"${sign[@]}" "$app" 2>&1 | grep -v "replacing existing signature" || true
-codesign --verify --deep --strict "$app"
+sign "$sp/XPCServices/Installer.xpc"
+sign --preserve-metadata=entitlements "$sp/XPCServices/Downloader.xpc"
+sign "$sp/Autoupdate"
+sign "$sp/Updater.app"
+sign "$app/Contents/Frameworks/Sparkle.framework"
+sign --identifier app.hachibu.mac.helper "$app/Contents/MacOS/HachibuHelper"
+sign "$app"
+codesign --verify --deep --strict "$app" || fail "the signed app did not verify"
+if [[ "$identity" != - ]]; then
+  team() { codesign -dv "$1" 2>&1 | sed -n 's/^TeamIdentifier=//p'; }
+  [[ -n "$(team "$app")" && "$(team "$sp/Autoupdate")" == "$(team "$app")" ]] || fail "Sparkle is not signed by the app's team"
+fi
+mkdir -p "$dest"
+rm -rf "$final"
+mv "$app" "$final"
+app="$final"
 echo "installed $app (signed: ${identity%%:*})"
 
 if [[ " $* " == *" --notarize "* ]]; then

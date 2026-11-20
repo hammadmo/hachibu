@@ -11,13 +11,14 @@ enum TopUpShortcut {
     /// The keys, as Settings shows them.
     static let keys = "⌃⌥⌘T"
 
+    /// "HCHB": tells this hot key from any other in the process.
+    nonisolated static let signature: OSType = 0x4843_4842
     nonisolated(unsafe) private static var hotKey: EventHotKeyRef?
     nonisolated(unsafe) private static var handler: EventHandlerRef?
 
     static var canRegister: Bool { !Store.isOverridden && !Launch.isOneShot }
 
-    /// Registers or releases the shortcut. Returns false when macOS refused
-    /// it, which happens when another app holds the same keys.
+    /// Registers or releases the shortcut. Returns false when macOS refused it.
     @discardableResult
     static func set(enabled: Bool) -> Bool {
         if let hotKey {
@@ -27,13 +28,17 @@ enum TopUpShortcut {
         guard enabled, canRegister else { return true }
         if handler == nil {
             var pressed = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-            InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
+            InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
+                // Only Hachibu's own hot key: any other is left for whoever asked for it.
+                var pressed = EventHotKeyID()
+                GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
+                                  MemoryLayout<EventHotKeyID>.size, nil, &pressed)
+                guard pressed.signature == TopUpShortcut.signature else { return OSStatus(eventNotHandledErr) }
                 Task { @MainActor in TopUpShortcut.pressed() }
                 return noErr
             }, 1, &pressed, nil, &handler)
         }
-        // "HCHB": tells this hot key from any other in the process.
-        let id = EventHotKeyID(signature: 0x4843_4842, id: 1)
+        let id = EventHotKeyID(signature: signature, id: 1)
         let status = RegisterEventHotKey(UInt32(kVK_ANSI_T), UInt32(controlKey | optionKey | cmdKey), id,
                                          GetApplicationEventTarget(), 0, &hotKey)
         return status == noErr

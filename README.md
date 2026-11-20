@@ -27,8 +27,8 @@ it gets there.
 
 Hachibu runs on your Mac only, with no account and no server. The one
 thing it does on the network is ask GitHub, once a day, whether there is
-a newer version. Nothing about you or your Mac is sent, and you can
-switch the check off in Settings. It is free and open source.
+a newer version. The request says which version of Hachibu you have,
+nothing else, and you can switch the check off in Settings. It is free and open source.
 
 ## Why Hachibu
 
