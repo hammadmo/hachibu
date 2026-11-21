@@ -67,7 +67,8 @@ from sample data.
 ## Making a release
 
 1. Save a notary login once: `xcrun notarytool store-credentials hachibu`.
-2. Build, notarize, and staple:
+2. Write the version's entry at the top of `CHANGELOG.md`, then build,
+   notarize, and staple:
 
 ```bash
 ./build.sh --notarize
@@ -91,6 +92,9 @@ ditto -c -k --keepParent ~/Applications/Hachibu.app ~/Library/Developer/Hachibu/
 ~/Library/Developer/Hachibu/build/artifacts/sparkle/Sparkle/bin/generate_appcast --account hachibu --maximum-deltas 0 --download-url-prefix https://github.com/hammadmo/hachibu/releases/download/v<version>/ -o appcast.xml ~/Library/Developer/Hachibu/dist
 ```
 
+   Put the version's changes beside the zip first, as
+   `Hachibu-<version>.html` (headings and lists only, no `body` tag):
+   they go into `appcast.xml`, and the update window shows them.
    Keep only the newest zip in that folder when you run it: the address
    prefix is used for every zip it finds. Commit and push `appcast.xml`. Copies of Hachibu find the new version
    within a day.

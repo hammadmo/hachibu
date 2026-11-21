@@ -8,6 +8,11 @@
             <sparkle:version>202611210343</sparkle:version>
             <sparkle:shortVersionString>0.4</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>New</h2>
+<ul>
+<li><b>See charging at a glance.</b> The right end of the battery in the menu bar icon changes with the power source: the plain terminal on battery, two plug pins when the charger is connected but the battery is not charging, and a bolt while charging.</li>
+</ul>
+<p><a href="https://github.com/hammadmo/hachibu/blob/main/CHANGELOG.md">Every version's changes</a></p>]]></description>
             <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.4/Hachibu-0.4.zip" length="4114828" type="application/octet-stream" sparkle:edSignature="+nESLLVyQcmC6HEGwzJTuHNgVTy9OjOqmaaWavbr9rULMfi75V6szIQgGCI/ioG7UBegZe8mCEw7dNlrXWTuDw=="/>
         </item>
         <item>

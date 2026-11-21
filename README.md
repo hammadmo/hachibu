@@ -118,6 +118,8 @@ brew install --cask hammadmo/tap/hachibu
 
 The download is signed with a Developer ID and notarized by Apple.
 
+What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
+
 To build Hachibu from source or work on it, see
 [docs/BUILDING.md](docs/BUILDING.md).
 
