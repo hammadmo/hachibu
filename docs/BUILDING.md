@@ -114,3 +114,13 @@ from the date and time, so a later build is always newer.
 - [`design/KIT.md`](../design/KIT.md): the design kit.
 - [`docs/research/charge-control.md`](research/charge-control.md): what
   was measured about charging on macOS 27.
+
+## README pictures
+
+`docs/images/hero.png` and `docs/images/popover.gif` are made from the
+popover snapshots, each under a piece of menu bar with the icon for its
+state. After a change to the popover or the menu bar icon:
+
+```bash
+APP_SNAPSHOT_PAGES=popover tools/snap.sh && tools/readme-images.sh
+```

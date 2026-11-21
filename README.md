@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/hero.png" width="664" alt="The Hachibu popover in dark and light mode: battery at 80%, holding at the limit">
+  <img src="docs/images/hero.png" width="664" alt="The Hachibu popover under its menu bar icon. Dark: battery at 80%, holding at the limit, the icon with a plug's pins. Light: charging at 46%, the icon with a bolt">
 </p>
 
 The name comes from *hara hachi bu*: eat until you are eight parts full.
