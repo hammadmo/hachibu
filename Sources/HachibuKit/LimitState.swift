@@ -111,9 +111,9 @@ public struct FullChargeWatch: Equatable, Sendable {
     }
 }
 
-/// Where the Mac's power comes from, as the menu bar icon shows it inside
-/// the ring: nothing on battery, two plug pins on the charger without
-/// charging, a bolt while charging.
+/// Where the Mac's power comes from, as the menu bar icon shows it at the
+/// battery's terminal: the plain terminal on battery, two plug pins on the
+/// charger without charging, a bolt while charging.
 public enum PowerMark: Equatable, Sendable {
     case battery, plugged, charging
 

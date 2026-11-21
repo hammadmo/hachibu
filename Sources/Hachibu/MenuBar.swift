@@ -89,9 +89,10 @@ enum StatusItemAccess {
 /// Draws the menu bar glyph as a template image, so macOS colors it for a
 /// light or dark menu bar: a small battery whose charge is an enso, a brush
 /// ring that is thick where the brush lands and thin where it lifts, as long
-/// as the battery is full. The middle of the ring says where power comes
-/// from: empty on battery, two plug pins on the charger without charging,
-/// a bolt while charging. A warning adds an exclamation mark: never color alone.
+/// as the battery is full. The battery's terminal says where power comes
+/// from: the plain terminal on battery, two plug pins on the charger without
+/// charging (the battery becomes a plug), a bolt while charging. A warning
+/// adds an exclamation mark: never color alone.
 nonisolated enum MenuBarGlyph {
     // All sizes are in points inside a 16 pt tall menu bar icon.
     private static let height: CGFloat = 16
@@ -104,28 +105,40 @@ nonisolated enum MenuBarGlyph {
     private static let brushThin: CGFloat = 0.9
     private static let batteryWidth: CGFloat = 22
     private static let warningWidth: CGFloat = 6
-    private static let pinSize = NSSize(width: 1.3, height: 3.6) // grid: ok glyph strokes inside a 16 pt icon
-    private static let pinOffset: CGFloat = 1.25
+    // The pins leave the battery's right edge; the bolt sits across it.
+    private static let pin = NSSize(width: 4.9, height: 2) // grid: ok glyph strokes inside a 16 pt icon
+    private static let pinOffset: CGFloat = 3
+    private static let boltCenter = NSPoint(x: 20.2, y: 8) // grid: ok glyph strokes inside a 16 pt icon
+    private static let boltHalf: CGFloat = 6.5
+    private static let boltHalo: CGFloat = 1
     private static let bolt: [NSPoint] = [
-        NSPoint(x: 1.0, y: 2.5), NSPoint(x: -1.9, y: -0.6), NSPoint(x: -0.3, y: -0.6),
-        NSPoint(x: -1.0, y: -2.5), NSPoint(x: 1.9, y: 0.6), NSPoint(x: 0.3, y: 0.6),
+        NSPoint(x: 0.42, y: 1), NSPoint(x: -0.72, y: -0.18), NSPoint(x: -0.08, y: -0.18),
+        NSPoint(x: -0.42, y: -1), NSPoint(x: 0.72, y: 0.18), NSPoint(x: 0.08, y: 0.18),
     ]
+
+    /// How wide the battery is with its terminal, pins, or bolt.
+    private static func width(_ power: PowerMark) -> CGFloat {
+        switch power {
+        case .battery: batteryWidth
+        case .plugged: body.maxX + pin.width
+        case .charging: boltCenter.x + boltHalf * 0.72 + 0.4
+        }
+    }
 
     static func image(for mark: MenuBarMark, power: PowerMark = .battery) -> NSImage {
         let warning = mark.isWarning
         let percent = mark.percent
-        let size = NSSize(width: batteryWidth + (warning ? warningWidth : 0), height: height)
+        let glyphWidth = width(power).rounded(.up)
+        let size = NSSize(width: glyphWidth + (warning ? warningWidth : 0), height: height)
         let image = NSImage(size: size, flipped: false) { _ in
             NSColor.black.setStroke()
             NSColor.black.setFill()
             let outline = NSBezierPath(roundedRect: body, xRadius: bodyRadius, yRadius: bodyRadius)
             outline.lineWidth = bodyLine
             outline.stroke()
-            NSBezierPath(roundedRect: terminal, xRadius: terminal.width / 2, yRadius: terminal.width / 2).fill()
             let center = NSPoint(x: body.midX, y: body.midY)
             if let percent {
                 brush(center: center, percent: CGFloat(percent)).fill()
-                powerMark(power, center: center)?.fill()
             } else {
                 // No reading: a dotted ring where the charge would be.
                 let ring = NSBezierPath(ovalIn: NSRect(x: center.x - ringRadius, y: center.y - ringRadius,
@@ -134,8 +147,9 @@ nonisolated enum MenuBarGlyph {
                 ring.setLineDash([1.4, 2.4], count: 2, phase: 0)
                 ring.stroke()
             }
+            drawTerminal(power)
             if warning {
-                let x = batteryWidth + 1.6
+                let x = glyphWidth + 1.6
                 NSBezierPath(roundedRect: NSRect(x: x, y: 6, width: 2.4, height: 8), xRadius: 1.2, yRadius: 1.2).fill() // grid: ok glyph strokes inside a 16 pt icon
                 NSBezierPath(ovalIn: NSRect(x: x - 0.2, y: 2, width: 2.8, height: 2.8)).fill() // grid: ok glyph strokes inside a 16 pt icon
             }
@@ -145,27 +159,30 @@ nonisolated enum MenuBarGlyph {
         return image
     }
 
-    /// What sits in the middle of the ring. It stays inside a 2.5 pt circle,
-    /// clear of the brush at its thickest.
-    private static func powerMark(_ power: PowerMark, center: NSPoint) -> NSBezierPath? {
+    /// The right end of the battery: its terminal, a plug's pins, or a bolt
+    /// with a clear edge around it where it crosses the outline.
+    private static func drawTerminal(_ power: PowerMark) {
         switch power {
         case .battery:
-            return nil
+            NSBezierPath(roundedRect: terminal, xRadius: terminal.width / 2, yRadius: terminal.width / 2).fill()
         case .plugged:
-            // Two pins of a plug, which also read as "paused".
-            let path = NSBezierPath()
-            for x in [-pinOffset, pinOffset] {
-                path.appendRoundedRect(NSRect(x: center.x + x - pinSize.width / 2, y: center.y - pinSize.height / 2,
-                                              width: pinSize.width, height: pinSize.height),
-                                       xRadius: pinSize.width / 2, yRadius: pinSize.width / 2)
+            for y in [body.midY - pinOffset, body.midY + pinOffset] {
+                NSBezierPath(roundedRect: NSRect(x: body.maxX - 0.3, y: y - pin.height / 2, width: pin.width, height: pin.height),
+                             xRadius: pin.height / 2, yRadius: pin.height / 2).fill()
             }
-            return path
         case .charging:
             let path = NSBezierPath()
-            path.move(to: NSPoint(x: center.x + bolt[0].x, y: center.y + bolt[0].y))
-            bolt.dropFirst().forEach { path.line(to: NSPoint(x: center.x + $0.x, y: center.y + $0.y)) }
+            let points = bolt.map { NSPoint(x: boltCenter.x + $0.x * boltHalf, y: boltCenter.y + $0.y * boltHalf) }
+            path.move(to: points[0])
+            points.dropFirst().forEach(path.line(to:))
             path.close()
-            return path
+            path.lineWidth = boltHalo * 2
+            path.lineJoinStyle = .round
+            let context = NSGraphicsContext.current
+            context?.compositingOperation = .destinationOut
+            path.stroke()
+            context?.compositingOperation = .sourceOver
+            path.fill()
         }
     }
 

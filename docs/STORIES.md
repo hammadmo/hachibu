@@ -624,15 +624,16 @@ and VoiceOver speaking the labels aloud.
 As the user, I see from the menu bar icon alone whether the Mac is on
 battery, on the charger without charging, or charging.
 
-- [x] On battery the middle of the ring is empty; on the charger without
-  charging it has two plug pins; while charging it has a bolt.
+- [x] On battery the battery has its plain terminal; on the charger
+  without charging the terminal becomes two plug pins; while charging it
+  becomes a bolt as tall as the battery.
 - [x] The mark follows the same reading as the status line ("Charging"
   means current into the battery, not only a charger attached).
 - [manual] The real menu bar changes within a few seconds of plugging in
   and unplugging.
 
 UX:
-- Flow: plug in or unplug -> the middle of the ring changes; nothing to click
+- Flow: plug in or unplug -> the right end of the battery changes; nothing to click
 - Surface: menu bar item (changes one value already on screen)
 - States: battery, plugged, charging; no reading keeps the dotted ring with no mark; a warning keeps its exclamation mark beside the icon
 - Words: none on screen

@@ -169,10 +169,11 @@ A small battery, 22 by 16 pt, template: a rounded outline (radius 5,
 line 1.1) with a terminal on the right. Inside, the charge is an enso: a
 brush ring from 12 o'clock, clockwise, as long as the battery is full,
 2.9 pt where the brush lands and 0.9 pt where it lifts. No reading: a
-dotted ring. The middle of the ring says where power comes from, inside
-a 2.5 pt circle: empty on battery; two plug pins (1.3 by 3.6 pt), which
-also read as "paused", on the charger without charging; a bolt while
-charging. A warning adds an exclamation mark beside it, never color
+dotted ring. The terminal says where power comes from: the plain
+terminal on battery; two plug pins (4.9 by 2 pt) in its place on the
+charger without charging, so the battery reads as a plug; a 13 pt bolt
+across the right edge while charging, with 1 pt cleared around it. The
+icon is 22, 23, or 25 pt wide for the three. A warning adds an exclamation mark beside it, never color
 alone. The gallery draws it with the menu bar's own code (`MenuBarGlyph`).
 
 ### Button (`.buttonStyle(.kit(kind))`)
