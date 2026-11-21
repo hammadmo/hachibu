@@ -3,6 +3,21 @@
     <channel>
         <title>Hachibu</title>
         <item>
+            <title>0.4.1</title>
+            <pubDate>Sat, 21 Nov 2026 04:07:57 +0200</pubDate>
+            <sparkle:version>202611210407</sparkle:version>
+            <sparkle:shortVersionString>0.4.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Fixed</h2>
+<ul>
+<li><b>Heat protection acts sooner.</b> It pauses charging once the battery has been above the threshold for one minute, not three. macOS still takes a minute or two to stop charging after that.</li>
+<li><b>Reopening Hachibu no longer starts that wait again.</b> The time the battery was already hot is read from what History recorded, so a restart or an update while the battery is hot does not delay the pause.</li>
+</ul>
+<p><a href="https://github.com/hammadmo/hachibu/blob/main/CHANGELOG.md">Every version's changes</a></p>
+]]></description>
+            <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.4.1/Hachibu-0.4.1.zip" length="4124708" type="application/octet-stream" sparkle:edSignature="TcmfqFcYd4YXLGCRPXNHz9K5PguFjscxaKR10O5QkaKYKWLL1o7SWrkj+kP9pF+AMtMjp3ZCY2D+KUJOVwYvBA=="/>
+        </item>
+        <item>
             <title>0.4</title>
             <pubDate>Sat, 21 Nov 2026 03:43:54 +0200</pubDate>
             <sparkle:version>202611210343</sparkle:version>
@@ -22,14 +37,6 @@
             <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.3.1/Hachibu-0.3.1.zip" length="4111714" type="application/octet-stream" sparkle:edSignature="gT/cvCdwmT+KUuDK3AP0Z08DwJo9e3SaEg8nFFurSV4oEujCXi8B9D/woqZFwvfZfLlVSF5PWtwlTxopX7MtBg=="/>
-        </item>
-        <item>
-            <title>0.3</title>
-            <pubDate>Fri, 20 Nov 2026 17:17:34 +0200</pubDate>
-            <sparkle:version>202611201716</sparkle:version>
-            <sparkle:shortVersionString>0.3</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.3/Hachibu-0.3.zip" length="4103440" type="application/octet-stream" sparkle:edSignature="CrTh3pV6AV8TNf9E8dHZgYbrSPobHHlvyJzNmFMlJPA+sciY/N0NEQewd+0jGXTOfRI0FeoUSB+VwYDPhGgWDA=="/>
         </item>
     </channel>
 </rss>
