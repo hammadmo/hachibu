@@ -471,12 +471,20 @@ final class BatteryMonitor {
     /// Once, with the first reading of the limit: what Hachibu wrote down
     /// when it last ran decides whether a limit it left behind is undone
     /// (a Top Up, a calibration, a heat pause) or taken up again (sailing).
+    private static let heatLookBack: TimeInterval = 15 * 60
+
     private func launchModes() {
         guard !hasLaunchedModes else { return }
         hasLaunchedModes = true
         guard runsModes, !isPreview else { return }
         carryOut(modes.launched(record: Preferences.shared.modeRecord, system: limit.effective, saved: limit.saved,
                                 sailingRange: Capability.sailing ? Preferences.shared.sailingRange : 0, now: .now))
+        // A battery that was already hot before Hachibu was reopened does
+        // not wait the whole minute again.
+        let recent = history.store.samples(since: Date.now.addingTimeInterval(-Self.heatLookBack))
+        if let threshold = heatThreshold, let since = ChargeEngine.hotSince(in: recent, threshold: threshold, now: .now) {
+            modes.adoptHeat(since: since)
+        }
     }
 
     /// With a fresh reading of the limit and nothing under way: a limit

@@ -294,7 +294,7 @@ func heatPauseIsRecorded() {
     var rig = Rig()
     let hot = battery(60, temperature: 41, threshold: 40)
     rig.read(hot)
-    rig.now = t0.addingTimeInterval(180)
+    rig.now = t0.addingTimeInterval(ChargeEngine.heatSustain)
     rig.read(hot)
     #expect(rig.asked == [61])
     #expect(rig.modes.isPausedForHeat)
@@ -382,7 +382,7 @@ func heatHoldFails() {
     rig.now = rig.now.addingTimeInterval(500)
     rig.read(hot)
     #expect(rig.asked == [61])
-    // Ten minutes on it is still hot: after the three minutes again, the pause is asked for.
+    // Ten minutes on it is still hot: after the minute again, the pause is asked for.
     rig.now = t0.addingTimeInterval(ChargeEngine.heatSustain + ModeCoordinator.sailingPause)
     rig.read(hot)
     rig.now = rig.now.addingTimeInterval(ChargeEngine.heatSustain)

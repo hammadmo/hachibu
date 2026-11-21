@@ -101,9 +101,13 @@ public struct ChargeEngine: Equatable, Sendable {
     /// calibration, so 15% or "no limit" is never left in place for days.
     public static let calibrationStepLimit: TimeInterval = 12 * 3600
     /// The battery must stay above the heat threshold this long before
-    /// charging is paused: a pause takes a minute or more to take effect,
-    /// so a brief spike should not start one.
-    public static let heatSustain: TimeInterval = 180
+    /// charging is paused, so one odd reading does not start a pause.
+    /// It was three minutes; with macOS's own minute or two on top, that
+    /// left a hot battery charging for too long.
+    public static let heatSustain: TimeInterval = 60
+    /// Two recorded samples this far apart or less are one unbroken
+    /// stretch. History records about once a minute.
+    public static let heatRecordGap: TimeInterval = 150
 
     /// The thresholds a person can choose, and the one Hachibu starts with.
     /// Below 36 °C this kind of Mac would hardly ever charge; at 44 °C macOS
@@ -180,6 +184,28 @@ public struct ChargeEngine: Equatable, Sendable {
     /// Takes up a hold that Hachibu left in place when it last ran.
     public mutating func adopt(hold level: Int) {
         sailing.adopt(hold: level)
+    }
+
+    /// Since when the battery has been above the threshold without a
+    /// break, going by what History recorded: the newest sample must be
+    /// recent and hot, and the stretch ends at the first cooler sample,
+    /// sample without a temperature, or gap. nil when it is not hot now.
+    public static func hotSince(in samples: [HistorySample], threshold: Int, now: Date) -> Date? {
+        var since: Date?
+        var next = now
+        for sample in samples.sorted(by: { $0.time > $1.time }) where sample.time <= now {
+            guard next.timeIntervalSince(sample.time) <= heatRecordGap,
+                  let temperature = sample.temperatureC, temperature > Double(threshold) else { break }
+            since = sample.time
+            next = sample.time
+        }
+        return since
+    }
+
+    /// Carries the time above the threshold over a restart, so quitting
+    /// and reopening Hachibu does not start the wait again.
+    public mutating func adoptHeat(since: Date) {
+        heat.adopt(hotSince: since)
     }
 
     /// Forgets where sailing was, for when it is switched off or paused.

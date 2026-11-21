@@ -4,6 +4,17 @@ What changed in each version of Hachibu, newest first. Every version is
 on the [releases page](https://github.com/hammadmo/hachibu/releases)
 with its download.
 
+## Not released yet
+
+### Fixed
+
+- **Heat protection acts sooner.** It pauses charging once the battery
+  has been above the threshold for one minute, not three. macOS still
+  takes a minute or two to stop charging after that.
+- **Reopening Hachibu no longer starts that wait again.** The time the
+  battery was already hot is read from what History recorded, so a
+  restart or an update while the battery is hot does not delay the pause.
+
 ## 0.4 (2026-11-21)
 
 ### New

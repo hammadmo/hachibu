@@ -166,6 +166,12 @@ struct HeatRule: Equatable, Sendable {
     private(set) var hold: Int?
     private var hotSince: Date?
 
+    /// Takes an earlier start of the hot stretch, from before a restart.
+    mutating func adopt(hotSince since: Date) {
+        guard !isHot else { return }
+        hotSince = min(hotSince ?? since, since)
+    }
+
     mutating func protect(_ plan: ChargePlan, _ inputs: ChargeInputs, now: Date) -> ChargePlan {
         guard let threshold = inputs.heatThreshold, let temperature = inputs.temperatureC, inputs.helperRunning else {
             isHot = false

@@ -81,6 +81,12 @@ enum SelfTest {
                   && !HelperOffer.shouldShow(offered: true, state: .notInstalled)
                   && !HelperOffer.shouldShow(offered: false, state: .running))
         check("a test run never takes a keyboard shortcut", !TopUpShortcut.canRegister)
+        let hotBefore = [90.0, 30].map {
+            HistorySample(time: Date.now.addingTimeInterval(-$0), percent: 60, isPluggedIn: true, isCharging: true, temperatureC: 42, limit: 80)
+        }
+        check("heat protection counts the time the battery was hot before a restart",
+              ChargeEngine.hotSince(in: hotBefore, threshold: 40, now: .now).map { Date.now.timeIntervalSince($0) >= ChargeEngine.heatSustain } == true
+                  && ChargeEngine.hotSince(in: hotBefore, threshold: 43, now: .now) == nil)
         check("the menu bar icon tells battery, plugged, and charging apart",
               PowerMark.choose(BatteryReading(percent: 60, isPluggedIn: false, currentMA: -900)) == .battery
                   && PowerMark.choose(BatteryReading(percent: 80, isPluggedIn: true, currentMA: 0)) == .plugged

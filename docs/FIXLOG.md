@@ -233,3 +233,16 @@ Rule: check a control with the accessibility API from outside the app
 (role, label, value, and what a press does), not by reading the
 modifiers in the code. A modifier that is set is not a value that
 arrives.
+
+## A hot battery kept charging while Hachibu was reopened again and again
+
+On 2026-11-21 the battery stayed above 40 °C for twelve minutes, up to
+42.8 °C, and charging never paused. Heat protection waited three minutes
+above the threshold, counted in memory only; during those twelve minutes
+Hachibu was quit and reopened every one to three minutes by update and
+Homebrew trials, so no copy ever counted three minutes. Fixed: the wait
+is one minute, and at launch the time already spent above the threshold
+is read from History's samples (`ChargeEngine.hotSince`).
+
+Rule: a wait that protects the battery must not start again when the app
+restarts; take it from something recorded on disk.

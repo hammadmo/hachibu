@@ -295,25 +295,25 @@ private func paused(_ level: Int, mode: ChargeMode = .normal) -> ChargePlan {
     ChargePlan(mode: mode, limit: level, isPausedForHeat: true)
 }
 
-/// An engine that has already been over 40 °C for three minutes.
+/// An engine that has already been over 40 °C for a minute.
 private func hotEngine(_ percent: Int, topUp: Bool = false) -> ChargeEngine {
     var engine = ChargeEngine()
     if topUp { _ = engine.startTopUp(hot(percent, 35)) }
     _ = engine.step(hot(percent, 41), now: t0)
-    _ = engine.step(hot(percent, 41), now: t0.addingTimeInterval(180))
+    _ = engine.step(hot(percent, 41), now: t0.addingTimeInterval(60))
     return engine
 }
 
-@Test("Charging pauses only after three minutes above the threshold, and resumes 2 °C below it")
+@Test("Charging pauses only after a minute above the threshold, and resumes 2 °C below it")
 func heatPausesAndResumes() {
     var engine = ChargeEngine()
     #expect(engine.step(hot(60, 39.5), now: t0) == plain())
     #expect(engine.step(hot(60, 40.0), now: t0) == plain())
     // Above 40, but only just now: not yet.
     #expect(engine.step(hot(60, 40.1), now: t0) == plain())
-    #expect(engine.step(hot(60, 41), now: t0.addingTimeInterval(179)) == plain())
-    // Three minutes on: hold one percent above the level.
-    #expect(engine.step(hot(60, 41), now: t0.addingTimeInterval(180)) == paused(61))
+    #expect(engine.step(hot(60, 41), now: t0.addingTimeInterval(59)) == plain())
+    // A minute on: hold one percent above the level.
+    #expect(engine.step(hot(60, 41), now: t0.addingTimeInterval(60)) == paused(61))
     // Cooling, but not by two degrees yet: still paused.
     #expect(engine.step(hot(60, 39.0), now: t0.addingTimeInterval(300)) == paused(61))
     #expect(engine.step(hot(60, 38.1), now: t0.addingTimeInterval(320)) == paused(61))
@@ -321,15 +321,69 @@ func heatPausesAndResumes() {
     #expect(engine.step(hot(61, 39.9), now: t0.addingTimeInterval(360)) == plain())
 }
 
-@Test("A spike that cools again before three minutes starts nothing")
+@Test("A spike that cools again before a minute starts nothing")
 func heatIgnoresSpikes() {
     var engine = ChargeEngine()
     #expect(engine.step(hot(60, 42), now: t0) == plain())
-    #expect(engine.step(hot(60, 39), now: t0.addingTimeInterval(120)) == plain())
-    // Hot again: the three minutes start over.
-    #expect(engine.step(hot(60, 42), now: t0.addingTimeInterval(200)) == plain())
-    #expect(engine.step(hot(60, 42), now: t0.addingTimeInterval(370)) == plain())
-    #expect(engine.step(hot(60, 42), now: t0.addingTimeInterval(380)) == paused(61))
+    #expect(engine.step(hot(60, 39), now: t0.addingTimeInterval(40)) == plain())
+    // Hot again: the minute starts over.
+    #expect(engine.step(hot(60, 42), now: t0.addingTimeInterval(70)) == plain())
+    #expect(engine.step(hot(60, 42), now: t0.addingTimeInterval(125)) == plain())
+    #expect(engine.step(hot(60, 42), now: t0.addingTimeInterval(130)) == paused(61))
+}
+
+private func recorded(_ secondsAgo: TimeInterval, _ temperature: Double?) -> HistorySample {
+    HistorySample(time: t0.addingTimeInterval(-secondsAgo), percent: 60, isPluggedIn: true, isCharging: true,
+                  temperatureC: temperature, limit: 80)
+}
+
+@Test("The time above the threshold is read from History: recent, hot, and unbroken")
+func heatStretchFromHistory() {
+    func since(_ samples: [HistorySample]) -> TimeInterval? {
+        ChargeEngine.hotSince(in: samples, threshold: 40, now: t0).map { t0.timeIntervalSince($0) }
+    }
+    #expect(since([]) == nil)
+    // Hot for the last four samples; the cooler one before them ends the stretch.
+    #expect(since([recorded(300, 41), recorded(240, 39.5), recorded(180, 40.4), recorded(120, 41), recorded(60, 42), recorded(5, 42)]) == 180)
+    // Order on disk does not matter.
+    #expect(since([recorded(5, 42), recorded(120, 41), recorded(60, 42)]) == 120)
+    // Exactly at the threshold is not above it.
+    #expect(since([recorded(60, 42), recorded(5, 40.0)]) == nil)
+    // The newest sample is too old to say anything about now.
+    #expect(since([recorded(400, 42), recorded(300, 42)]) == nil)
+    // A gap in the record ends the stretch, and so does a sample with no temperature.
+    #expect(since([recorded(600, 42), recorded(120, 42), recorded(60, 42)]) == 120)
+    #expect(since([recorded(180, 42), recorded(120, nil), recorded(60, 42)]) == 60)
+    // A sample from after "now" (a clock set back) is left out.
+    #expect(since([recorded(-30, 42), recorded(60, 41)]) == 60)
+}
+
+@Test("A battery that was hot before a restart is paused on the first reading, not a minute later")
+func heatCarriesOverARestart() {
+    var fresh = ChargeEngine()
+    #expect(fresh.step(hot(60, 42), now: t0) == plain())
+
+    var reopened = ChargeEngine()
+    reopened.adoptHeat(since: t0.addingTimeInterval(-90))
+    #expect(reopened.step(hot(60, 42), now: t0) == paused(61))
+
+    // Hot for only twenty seconds before the restart: the rest of the minute is still waited.
+    var brief = ChargeEngine()
+    brief.adoptHeat(since: t0.addingTimeInterval(-20))
+    #expect(brief.step(hot(60, 42), now: t0) == plain())
+    #expect(brief.step(hot(60, 42), now: t0.addingTimeInterval(40)) == paused(61))
+
+    // Cool by the time it reopens: what was recorded counts for nothing.
+    var cooled = ChargeEngine()
+    cooled.adoptHeat(since: t0.addingTimeInterval(-90))
+    #expect(cooled.step(hot(60, 39), now: t0) == plain())
+    #expect(cooled.step(hot(60, 42), now: t0.addingTimeInterval(10)) == plain())
+
+    // A reading taken before the record is read does not hide the earlier start.
+    var late = ChargeEngine()
+    #expect(late.step(hot(60, 42), now: t0) == plain())
+    late.adoptHeat(since: t0.addingTimeInterval(-90))
+    #expect(late.step(hot(60, 42), now: t0.addingTimeInterval(1)) == paused(61))
 }
 
 @Test("The hold is never below the battery's level, and one percent of climb asks for nothing new")

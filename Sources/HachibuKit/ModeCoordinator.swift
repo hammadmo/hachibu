@@ -106,6 +106,11 @@ public struct ModeCoordinator: Equatable, Sendable {
 
     // MARK: Launch
 
+    /// At launch: the battery has been hot since then, by History's record.
+    public mutating func adoptHeat(since: Date) {
+        engine.adoptHeat(since: since)
+    }
+
     /// At launch, with the first reading of the limit. A Top Up, a
     /// calibration, or a heat pause that Hachibu did not get to undo is
     /// undone: if macOS still holds exactly what was asked, it is Hachibu's

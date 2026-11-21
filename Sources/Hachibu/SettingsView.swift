@@ -258,7 +258,7 @@ struct ChargingSettings: View {
             SettingsSection(title: "Heat protection") {
                 SettingsRow(title: "Pause charging when hot",
                             detail: monitor.helper.isRunning
-                                ? "Starts once the battery has been hot for three minutes; macOS then takes one to three minutes to stop charging. Charging resumes when the battery cools by 2 °C."
+                                ? "Starts once the battery has been hot for a minute; macOS then takes one to three minutes to stop charging. Charging resumes when the battery cools by 2 °C."
                                 : "Heat protection needs the helper.") {
                     Toggle("Pause charging when hot", isOn: $preferences.heatProtection).toggleStyle(.kit)
                 }
