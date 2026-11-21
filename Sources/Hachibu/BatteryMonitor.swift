@@ -471,7 +471,9 @@ final class BatteryMonitor {
     /// Once, with the first reading of the limit: what Hachibu wrote down
     /// when it last ran decides whether a limit it left behind is undone
     /// (a Top Up, a calibration, a heat pause) or taken up again (sailing).
-    private static let heatLookBack: TimeInterval = 15 * 60
+    /// How many of the newest History samples say whether the battery was
+    /// already hot: a quarter of an hour and more, at about one a minute.
+    private static let heatLookBack = 32
 
     private func launchModes() {
         guard !hasLaunchedModes else { return }
@@ -481,7 +483,7 @@ final class BatteryMonitor {
                                 sailingRange: Capability.sailing ? Preferences.shared.sailingRange : 0, now: .now))
         // A battery that was already hot before Hachibu was reopened does
         // not wait the whole minute again.
-        let recent = history.store.samples(since: Date.now.addingTimeInterval(-Self.heatLookBack))
+        let recent = history.store.latestSamples(Self.heatLookBack)
         if let threshold = heatThreshold, let since = ChargeEngine.hotSince(in: recent, threshold: threshold, now: .now) {
             modes.adoptHeat(since: since)
         }
@@ -581,6 +583,10 @@ final class BatteryMonitor {
             if outcome != .held || limit.effective != target {
                 return "The limit could not be set to \(target)%, so the helper was kept."
             }
+        } else {
+            // macOS already holds it. It is still the user's limit from
+            // now on, and no mode is left waiting to put another one back.
+            settle(target, .held, remember: true)
         }
         return await helper.unregister().map { "macOS did not remove the helper: \($0)" }
     }

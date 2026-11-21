@@ -165,11 +165,17 @@ enum DockIcon {
 enum Relaunch {
     static func now(showing tab: SettingsTab) {
         guard !Store.isOverridden else { return }
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        // -n: a new copy, started while this one is still quitting.
-        process.arguments = ["-n", Bundle.main.bundlePath, "--args", LaunchCommand.showSettingsFlag, tab.rawValue]
-        guard (try? process.run()) != nil else { return }
-        NSApp.terminate(nil)
+        Task { @MainActor in
+            // The user's limit goes back before the new copy starts. Started
+            // first, it could find a Top Up's limit still in place and say
+            // Hachibu had stopped in the middle of one.
+            await BatteryMonitor.current?.restoreBeforeQuit()
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            // -n: a new copy, started while this one is still quitting.
+            process.arguments = ["-n", Bundle.main.bundlePath, "--args", LaunchCommand.showSettingsFlag, tab.rawValue]
+            guard (try? process.run()) != nil else { return }
+            NSApp.terminate(nil)
+        }
     }
 }

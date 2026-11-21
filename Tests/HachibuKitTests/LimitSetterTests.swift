@@ -222,6 +222,21 @@ func generation() async {
 }
 
 @MainActor
+@Test("A newer request does not wait behind one whose limit macOS has not reported yet")
+func supersededWhileConfirming() async {
+    let mac = FakeMac()
+    mac.confirmAfter = .max
+    let setter = setter(mac)
+    let stalled = setter.request(85)
+    while mac.calls.isEmpty { await Task.yield() }
+    mac.confirmAfter = 1
+    let newer = setter.request(90)
+    #expect(await stalled.value == .superseded)
+    #expect(await newer.value == .held)
+    #expect(mac.calls == ["official 85", "official 90"])
+}
+
+@MainActor
 @Test("Superseding a running request without a new one leaves nothing pending")
 func supersedeWhileRunning() async {
     let mac = FakeMac()

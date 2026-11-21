@@ -431,9 +431,30 @@ func heatLeavesTheRestAlone() {
     // Too low to hold: charging is more important.
     engine = hotEngine(12)
     #expect(engine.step(hot(12, 45), now: later) == plain())
-    // One under the limit: the hold cannot pass the limit itself.
+    // One under the limit: nothing can be held below it, so nothing is
+    // asked and nothing is called a pause. The limit stops charging.
     engine = hotEngine(79)
-    #expect(engine.step(hot(79, 45), now: later) == paused(80))
+    #expect(engine.step(hot(79, 45), now: later) == plain())
+    #expect(engine.heatHold == nil)
+}
+
+@Test("A heat hold never ends up above the limit, and a hold reached by the level is kept")
+func heatHoldStaysUnderTheLimit() {
+    let later = t0.addingTimeInterval(400)
+    // Holding 71 under a limit of 80; the level sags to 69, the hold stays.
+    var engine = hotEngine(70)
+    #expect(engine.step(hot(70, 45), now: later) == paused(71))
+    #expect(engine.step(hot(69, 45), now: later) == paused(71))
+    // The user lowers the limit to 70: one under it, nothing is held or asked.
+    #expect(engine.step(hot(69, 45, limit: 70), now: later) == plain(70))
+    // Lowered to 75 while holding 78 at 73: the hold is chosen again, under the limit.
+    engine = hotEngine(77)
+    #expect(engine.step(hot(77, 45), now: later) == paused(78))
+    #expect(engine.step(hot(73, 45, limit: 75), now: later) == paused(74))
+    // The level reaches a hold that sits one under the limit: still paused there.
+    engine = hotEngine(78)
+    #expect(engine.step(hot(78, 45), now: later) == paused(79))
+    #expect(engine.step(hot(79, 45), now: later) == paused(79))
 }
 
 @Test("Heat protection takes over from sailing and gives back to it")
@@ -485,6 +506,22 @@ func calibrationTimesOut() {
     _ = engine.startCalibration(inputs(80))
     _ = engine.step(inputs(80), now: t0)
     #expect(engine.step(inputs(70, attached: false), now: t0.addingTimeInterval(13 * 3600)).mode == .normal)
+}
+
+@Test("A sleep that began off the charger is not counted as rest, even if the charger is back on waking")
+func calibrationRestSkipsUnseenTimeOffCharger() {
+    var engine = ChargeEngine()
+    _ = engine.startCalibration(inputs(10))
+    _ = engine.step(inputs(10), now: t0)
+    #expect(engine.step(inputs(100), now: t0).calibration == .resting)
+    #expect(engine.step(inputs(100), now: t0.addingTimeInterval(600)).calibration == .resting)
+    // Unplugged, then asleep for three hours: no readings. Plugged in again before waking.
+    #expect(engine.step(inputs(100, attached: false), now: t0.addingTimeInterval(620)).isWaitingForCharger)
+    #expect(engine.step(inputs(100), now: t0.addingTimeInterval(620 + 10_800)).calibration == .resting)
+    #expect(engine.rested == 600)
+    // Asleep on the charger is rest: the reading before the sleep saw the charger.
+    #expect(engine.step(inputs(100), now: t0.addingTimeInterval(620 + 10_800 + 6_600)).mode == .normal)
+    #expect(engine.lastEnd == .finished)
 }
 
 @Test("Only time at full on the charger counts as rest")

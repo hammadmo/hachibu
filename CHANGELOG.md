@@ -4,6 +4,24 @@ What changed in each version of Hachibu, newest first. Every version is
 on the [releases page](https://github.com/hammadmo/hachibu/releases)
 with its download.
 
+## Not released yet
+
+### Fixed
+
+- Heat protection no longer says "Paused for heat" one percent under
+  the limit, where it was asking macOS for nothing and charging went on.
+- Lowering the limit during a heat pause can no longer leave macOS
+  holding a level above the new limit.
+- The Remove Helper dialog now says where your limit goes for every
+  limit macOS does not offer by itself (82% to 85%, not only below 80%),
+  and uses your own limit while a Top Up or a pause is in place.
+- A new limit no longer waits up to ten seconds behind an earlier one
+  that macOS has not reported yet.
+- A calibration's two-hour rest no longer counts a sleep that began with
+  the charger off.
+- Restarting after the helper is allowed puts your limit back before the
+  new copy starts, so it cannot report an interrupted Top Up.
+
 ## 0.4.1 (2026-11-21)
 
 ### Fixed

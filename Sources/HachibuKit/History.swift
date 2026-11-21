@@ -248,6 +248,24 @@ public final class HistoryStore: @unchecked Sendable {
         return sorted.filter { $0.time >= since }
     }
 
+    /// The newest samples, at most `count`, read from the end of the file
+    /// without decoding what comes before them. In the order on disk.
+    public func latestSamples(_ count: Int) -> [HistorySample] {
+        lock.withLock {
+            guard count > 0, let handle = try? FileHandle(forReadingFrom: samplesURL) else { return [] }
+            defer { try? handle.close() }
+            let size = HistorySample.size
+            guard let end = try? handle.seekToEnd() else { return [] }
+            let whole = Int(end) / size
+            let first = max(whole - count, 0)
+            guard (try? handle.seek(toOffset: UInt64(first * size))) != nil,
+                  let data = try? handle.read(upToCount: (whole - first) * size) else { return [] }
+            return stride(from: 0, to: data.count - size + 1, by: size).compactMap { offset in
+                HistorySample(encoded: data.subdata(in: offset..<offset + size))
+            }
+        }
+    }
+
     /// Adds a health snapshot unless one was already saved today. True when added.
     @discardableResult
     public func appendHealth(_ snapshot: HealthSnapshot, calendar: Calendar = .current) -> Bool {

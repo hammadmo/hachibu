@@ -148,7 +148,8 @@ public final class LimitSetter {
             // confirms nothing.
             let target: Int? = limit >= 100 ? nil : limit
             var confirmed = false
-            for _ in 0..<Self.confirmTries where !confirmed {
+            // A newer request ends the wait: it must not sit behind this one.
+            for _ in 0..<Self.confirmTries where !confirmed && request == requested {
                 let state = await system.read()
                 confirmed = state.known && state.limit == target
                 if !confirmed { await pause(Self.confirmPause) }

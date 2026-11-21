@@ -82,6 +82,8 @@ struct CalibrationRule: Equatable, Sendable {
     private var stepSince: Date?
     private var nearSince: Date?
     private var lastTick: Date?
+    /// Whether the reading before this one was on the charger.
+    private var wasAttached = false
 
     mutating func start(at percent: Int) {
         reset()
@@ -93,6 +95,7 @@ struct CalibrationRule: Equatable, Sendable {
         stepSince = nil
         nearSince = nil
         lastTick = nil
+        wasAttached = false
         rested = 0
     }
 
@@ -101,6 +104,11 @@ struct CalibrationRule: Equatable, Sendable {
         var current = step ?? .charging
         let sinceLastReading = max(now.timeIntervalSince(lastTick ?? now), 0)
         lastTick = now
+        // Time since the last reading counts as rest only if that reading
+        // was on the charger too: after a sleep, nobody saw the time in
+        // between, and the charger may have been off for all of it.
+        let onChargerSince = wasAttached
+        wasAttached = inputs.chargerAttached
         if stepSince == nil { stepSince = now }
         if inputs.chargerAttached {
             switch current {
@@ -122,7 +130,7 @@ struct CalibrationRule: Equatable, Sendable {
                     startStep(now)
                 } else {
                     // Only time on the charger at full counts as rest.
-                    rested += sinceLastReading
+                    if onChargerSince { rested += sinceLastReading }
                     if rested >= ChargeEngine.calibrationRest { return .ended(.finished) }
                 }
             }
@@ -204,14 +212,19 @@ struct HeatRule: Equatable, Sendable {
         // climbs meanwhile. So the hold is one percent above the level: a
         // limit below the level would make macOS drain the battery, and
         // asking again for every percent would never let one take effect.
-        let headroom = min(inputs.percent + 1, plan.limit)
         if let held = hold {
-            if inputs.percent > held || inputs.percent <= held - 1 - ChargeEngine.sailingStep { hold = headroom }
-        } else {
-            hold = headroom
+            // A hold at or above the limit is no hold: the user lowered the
+            // limit. One the level has left behind is chosen again.
+            if held >= plan.limit || inputs.percent > held || inputs.percent <= held - 1 - ChargeEngine.sailingStep {
+                hold = nil
+            }
         }
+        if hold == nil, inputs.percent + 1 < plan.limit { hold = inputs.percent + 1 }
+        // One percent under the limit there is nothing to hold below it:
+        // the limit itself stops charging, and nothing is called a pause.
+        guard let hold else { return plan }
         var paused = plan
-        paused.limit = hold ?? inputs.percent
+        paused.limit = hold
         paused.isSailing = false
         paused.isPausedForHeat = true
         return paused

@@ -45,6 +45,24 @@ func sampleRoundTrip() {
     #expect(HistorySample(encoded: Data(count: 16)) == nil)
 }
 
+@Test("The newest samples are read from the end of the file")
+func storeReadsItsEnd() {
+    let url = temporaryFile()
+    defer { try? FileManager.default.removeItem(at: url) }
+    let store = HistoryStore(file: url)
+    #expect(store.latestSamples(5).isEmpty)
+    (0..<10).forEach { store.append(sample(Double($0), 60 + $0)) }
+    #expect(store.latestSamples(3).map(\.percent) == [67, 68, 69])
+    #expect(store.latestSamples(50).count == 10)
+    #expect(store.latestSamples(0).isEmpty)
+    // Half a record left by a write that was cut short is not read as one.
+    let handle = try? FileHandle(forWritingTo: url)
+    _ = try? handle?.seekToEnd()
+    handle?.write(Data(repeating: 1, count: 7))
+    try? handle?.close()
+    #expect(store.latestSamples(2).map(\.percent) == [68, 69])
+}
+
 @Test("Samples written to a store come back in time order")
 func storeKeepsOrder() {
     let url = temporaryFile()

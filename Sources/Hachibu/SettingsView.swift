@@ -406,9 +406,13 @@ struct HelperSettings: View {
     /// What removal changes, in the user's numbers.
     private var removalDetail: String {
         var changes = "The helper leaves macOS and Login Items."
-        if let held = monitor.limit.system, held < HelperNeed.lowestWithoutHelper {
-            let target = HelperNeed.limitAfterRemoval(current: held, official: monitor.officialStops)
-            changes += " Your limit goes from \(held)% to \(target)%, the lowest macOS holds by itself."
+        // The same two numbers removal itself uses: the user's limit, not
+        // what a mode has macOS holding, and where it goes without the helper.
+        let user = monitor.userLimit
+        let target = HelperNeed.limitAfterRemoval(current: user, official: monitor.officialStops)
+        if target != user {
+            let reason = user < HelperNeed.lowestWithoutHelper ? "the lowest macOS holds by itself" : "the next one macOS holds by itself"
+            changes += " Your limit goes from \(user)% to \(target)%, \(reason)."
         } else {
             changes += " Your limit stays as it is. Limits below 80% will not be available."
         }

@@ -246,3 +246,16 @@ is read from History's samples (`ChargeEngine.hotSince`).
 
 Rule: a wait that protects the battery must not start again when the app
 restarts; take it from something recorded on disk.
+
+## "Paused for heat" with nothing asked, and a hold above the limit
+
+Found by an outside review on 2026-11-22, in `HeatRule`. One percent
+under the limit the hold came out equal to the limit, so the plan said
+"paused" while nothing was asked of macOS and charging went on. And a
+hold kept from before the user lowered the limit could sit above the new
+limit and be asked for. Fixed: a hold is always below the limit; where
+none fits, there is no pause; a hold at or above the limit is dropped.
+
+Rule: a status may only be shown when the request that makes it true was
+made. Test the edges of every hold against the limit: one under it, and
+the limit moving under it.
