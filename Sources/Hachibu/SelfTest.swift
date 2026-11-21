@@ -81,6 +81,10 @@ enum SelfTest {
                   && !HelperOffer.shouldShow(offered: true, state: .notInstalled)
                   && !HelperOffer.shouldShow(offered: false, state: .running))
         check("a test run never takes a keyboard shortcut", !TopUpShortcut.canRegister)
+        check("the menu bar icon tells battery, plugged, and charging apart",
+              PowerMark.choose(BatteryReading(percent: 60, isPluggedIn: false, currentMA: -900)) == .battery
+                  && PowerMark.choose(BatteryReading(percent: 80, isPluggedIn: true, currentMA: 0)) == .plugged
+                  && PowerMark.choose(BatteryReading(percent: 60, isPluggedIn: true, currentMA: 1500)) == .charging)
 
         // S-005: the chosen limit is saved and read back.
         Preferences.shared.savedLimit = 85

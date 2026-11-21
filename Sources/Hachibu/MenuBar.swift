@@ -12,7 +12,7 @@ struct MenuBarLabel: View {
     var body: some View {
         let mark = MenuBarMark.choose(percent: monitor.reading?.percent, warning: monitor.isWarning)
         HStack(spacing: Space.xs) {
-            Image(nsImage: MenuBarGlyph.image(for: mark))
+            Image(nsImage: MenuBarGlyph.image(for: mark, power: PowerMark.choose(monitor.reading)))
             if let title = mark.title(showPercentage: preferences.showPercentage) {
                 Text(title)
             }
@@ -89,7 +89,9 @@ enum StatusItemAccess {
 /// Draws the menu bar glyph as a template image, so macOS colors it for a
 /// light or dark menu bar: a small battery whose charge is an enso, a brush
 /// ring that is thick where the brush lands and thin where it lifts, as long
-/// as the battery is full. A warning adds an exclamation mark: never color alone.
+/// as the battery is full. The middle of the ring says where power comes
+/// from: empty on battery, two plug pins on the charger without charging,
+/// a bolt while charging. A warning adds an exclamation mark: never color alone.
 nonisolated enum MenuBarGlyph {
     // All sizes are in points inside a 16 pt tall menu bar icon.
     private static let height: CGFloat = 16
@@ -102,8 +104,14 @@ nonisolated enum MenuBarGlyph {
     private static let brushThin: CGFloat = 0.9
     private static let batteryWidth: CGFloat = 22
     private static let warningWidth: CGFloat = 6
+    private static let pinSize = NSSize(width: 1.3, height: 3.6) // grid: ok glyph strokes inside a 16 pt icon
+    private static let pinOffset: CGFloat = 1.25
+    private static let bolt: [NSPoint] = [
+        NSPoint(x: 1.0, y: 2.5), NSPoint(x: -1.9, y: -0.6), NSPoint(x: -0.3, y: -0.6),
+        NSPoint(x: -1.0, y: -2.5), NSPoint(x: 1.9, y: 0.6), NSPoint(x: 0.3, y: 0.6),
+    ]
 
-    static func image(for mark: MenuBarMark) -> NSImage {
+    static func image(for mark: MenuBarMark, power: PowerMark = .battery) -> NSImage {
         let warning = mark.isWarning
         let percent = mark.percent
         let size = NSSize(width: batteryWidth + (warning ? warningWidth : 0), height: height)
@@ -117,6 +125,7 @@ nonisolated enum MenuBarGlyph {
             let center = NSPoint(x: body.midX, y: body.midY)
             if let percent {
                 brush(center: center, percent: CGFloat(percent)).fill()
+                powerMark(power, center: center)?.fill()
             } else {
                 // No reading: a dotted ring where the charge would be.
                 let ring = NSBezierPath(ovalIn: NSRect(x: center.x - ringRadius, y: center.y - ringRadius,
@@ -134,6 +143,30 @@ nonisolated enum MenuBarGlyph {
         }
         image.isTemplate = true
         return image
+    }
+
+    /// What sits in the middle of the ring. It stays inside a 2.5 pt circle,
+    /// clear of the brush at its thickest.
+    private static func powerMark(_ power: PowerMark, center: NSPoint) -> NSBezierPath? {
+        switch power {
+        case .battery:
+            return nil
+        case .plugged:
+            // Two pins of a plug, which also read as "paused".
+            let path = NSBezierPath()
+            for x in [-pinOffset, pinOffset] {
+                path.appendRoundedRect(NSRect(x: center.x + x - pinSize.width / 2, y: center.y - pinSize.height / 2,
+                                              width: pinSize.width, height: pinSize.height),
+                                       xRadius: pinSize.width / 2, yRadius: pinSize.width / 2)
+            }
+            return path
+        case .charging:
+            let path = NSBezierPath()
+            path.move(to: NSPoint(x: center.x + bolt[0].x, y: center.y + bolt[0].y))
+            bolt.dropFirst().forEach { path.line(to: NSPoint(x: center.x + $0.x, y: center.y + $0.y)) }
+            path.close()
+            return path
+        }
     }
 
     /// The brush ring: from 12 o'clock, clockwise, as far as the level,

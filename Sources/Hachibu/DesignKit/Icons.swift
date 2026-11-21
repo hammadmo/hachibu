@@ -38,9 +38,10 @@ struct EnsoGlyph: View {
     /// 0 to 100. nil draws the "no reading" glyph.
     var percent: Int?
     var isWarning = false
+    var power = PowerMark.battery
 
     var body: some View {
-        Image(nsImage: MenuBarGlyph.image(for: MenuBarMark.choose(percent: percent, warning: isWarning)))
+        Image(nsImage: MenuBarGlyph.image(for: MenuBarMark.choose(percent: percent, warning: isWarning), power: power))
             .renderingMode(.template)
             .accessibilityHidden(true)
     }

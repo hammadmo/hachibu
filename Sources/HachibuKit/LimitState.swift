@@ -111,6 +111,18 @@ public struct FullChargeWatch: Equatable, Sendable {
     }
 }
 
+/// Where the Mac's power comes from, as the menu bar icon shows it inside
+/// the ring: nothing on battery, two plug pins on the charger without
+/// charging, a bolt while charging.
+public enum PowerMark: Equatable, Sendable {
+    case battery, plugged, charging
+
+    public static func choose(_ reading: BatteryReading?) -> PowerMark {
+        guard let reading, reading.isPluggedIn else { return .battery }
+        return reading.isCharging ? .charging : .plugged
+    }
+}
+
 /// What the menu bar item shows.
 public enum MenuBarMark: Equatable, Sendable {
     case level(Int), warning(Int), unknown

@@ -620,6 +620,24 @@ controls behind it. Not seen: the Login Items steps after the dialog
 (macOS did not ask again on a Mac that had allowed the helper before),
 and VoiceOver speaking the labels aloud.
 
+### S-056 See where power comes from in the menu bar icon
+As the user, I see from the menu bar icon alone whether the Mac is on
+battery, on the charger without charging, or charging.
+
+- [x] On battery the middle of the ring is empty; on the charger without
+  charging it has two plug pins; while charging it has a bolt.
+- [x] The mark follows the same reading as the status line ("Charging"
+  means current into the battery, not only a charger attached).
+- [manual] The real menu bar changes within a few seconds of plugging in
+  and unplugging.
+
+UX:
+- Flow: plug in or unplug -> the middle of the ring changes; nothing to click
+- Surface: menu bar item (changes one value already on screen)
+- States: battery, plugged, charging; no reading keeps the dotted ring with no mark; a warning keeps its exclamation mark beside the icon
+- Words: none on screen
+- Access: the label already says the status, "Hachibu, Battery 80 percent, Holding at limit"
+
 ## Later
 
 - Shortcuts actions: Set Limit, Get State, Top Up.

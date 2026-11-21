@@ -152,6 +152,15 @@ func menuBarMark() {
     #expect(MenuBarMark.unknown.title(showPercentage: true) == "–")
 }
 
+@Test("The power mark says battery, plugged, or charging")
+func powerMark() {
+    #expect(PowerMark.choose(nil) == .battery)
+    #expect(PowerMark.choose(BatteryReading(percent: 60, isPluggedIn: false, currentMA: -900)) == .battery)
+    #expect(PowerMark.choose(BatteryReading(percent: 80, isPluggedIn: true, currentMA: 0)) == .plugged)
+    #expect(PowerMark.choose(BatteryReading(percent: 85, isPluggedIn: true, currentMA: -300)) == .plugged)
+    #expect(PowerMark.choose(BatteryReading(percent: 60, isPluggedIn: true, currentMA: 1500)) == .charging)
+}
+
 @Test("A full charge by macOS is announced once, when it starts")
 func fullChargeAnnouncedOnce() {
     var watch = FullChargeWatch()

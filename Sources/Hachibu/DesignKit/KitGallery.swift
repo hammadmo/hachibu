@@ -141,6 +141,10 @@ struct KitGallery: View {
                     ForEach([100, 90, 80, 50, 20, 5], id: \.self) { EnsoGlyph(percent: $0) }
                     EnsoGlyph(percent: nil)
                     EnsoGlyph(percent: 86, isWarning: true)
+                    EnsoGlyph(percent: 80, power: .plugged)
+                    EnsoGlyph(percent: 60, power: .charging)
+                    EnsoGlyph(percent: 20, power: .charging)
+                    EnsoGlyph(percent: 97, power: .charging)
                 }
                 .foregroundStyle(Ink.text)
                 HStack(spacing: Space.sm) {
