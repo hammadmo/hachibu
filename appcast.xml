@@ -3,6 +3,21 @@
     <channel>
         <title>Hachibu</title>
         <item>
+            <title>0.4.3</title>
+            <pubDate>Sun, 22 Nov 2026 01:01:16 +0200</pubDate>
+            <sparkle:version>202611220100</sparkle:version>
+            <sparkle:shortVersionString>0.4.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Fixed</h2>
+<ul>
+<li>Changing the sailing range or heat protection in Settings takes effect within a second, not up to twenty seconds later.</li>
+<li>Running Hachibu from the command line no longer asks for permission to send notifications.</li>
+</ul>
+<p><a href="https://github.com/hammadmo/hachibu/blob/main/CHANGELOG.md">Every version's changes</a></p>
+]]></description>
+            <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.4.3/Hachibu-0.4.3.zip" length="4129666" type="application/octet-stream" sparkle:edSignature="8GiRfNBE7+A1l5aLmEqmw/LG9yKT0E+CS5Z3u3ra0hAgoLF7T9XrFx4opj+70eozEwrbBYU1ed8ljZd5/jYJCA=="/>
+        </item>
+        <item>
             <title>0.4.2</title>
             <pubDate>Sun, 22 Nov 2026 00:29:51 +0200</pubDate>
             <sparkle:version>202611220028</sparkle:version>
@@ -35,19 +50,6 @@
 <p><a href="https://github.com/hammadmo/hachibu/blob/main/CHANGELOG.md">Every version's changes</a></p>
 ]]></description>
             <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.4.1/Hachibu-0.4.1.zip" length="4124708" type="application/octet-stream" sparkle:edSignature="TcmfqFcYd4YXLGCRPXNHz9K5PguFjscxaKR10O5QkaKYKWLL1o7SWrkj+kP9pF+AMtMjp3ZCY2D+KUJOVwYvBA=="/>
-        </item>
-        <item>
-            <title>0.4</title>
-            <pubDate>Sat, 21 Nov 2026 03:43:54 +0200</pubDate>
-            <sparkle:version>202611210343</sparkle:version>
-            <sparkle:shortVersionString>0.4</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>New</h2>
-<ul>
-<li><b>See charging at a glance.</b> The right end of the battery in the menu bar icon changes with the power source: the plain terminal on battery, two plug pins when the charger is connected but the battery is not charging, and a bolt while charging.</li>
-</ul>
-<p><a href="https://github.com/hammadmo/hachibu/blob/main/CHANGELOG.md">Every version's changes</a></p>]]></description>
-            <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.4/Hachibu-0.4.zip" length="4114828" type="application/octet-stream" sparkle:edSignature="+nESLLVyQcmC6HEGwzJTuHNgVTy9OjOqmaaWavbr9rULMfi75V6szIQgGCI/ioG7UBegZe8mCEw7dNlrXWTuDw=="/>
         </item>
     </channel>
 </rss>
