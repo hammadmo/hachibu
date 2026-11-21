@@ -4,6 +4,15 @@ What changed in each version of Hachibu, newest first. Every version is
 on the [releases page](https://github.com/hammadmo/hachibu/releases)
 with its download.
 
+## Not released yet
+
+### Fixed
+
+- Changing the sailing range or heat protection in Settings takes effect
+  within a second, not up to twenty seconds later.
+- Running Hachibu from the command line (`--helper-status` and the like)
+  no longer asks for permission to send notifications.
+
 ## 0.4.2 (2026-11-22)
 
 ### Fixed

@@ -5,8 +5,10 @@ import UserNotifications
 /// Notifications. Never sent in test runs. The words, and whether a kind
 /// is switched on, are in `Notice`.
 enum Notifier {
+    /// Not in a command-line run that does one thing and quits: it has
+    /// nothing to announce, and must not put macOS's prompt on screen.
     static func requestPermission() {
-        guard !Store.isOverridden else { return }
+        guard !Store.isOverridden, !Launch.isOneShot else { return }
         Task { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) }
     }
 

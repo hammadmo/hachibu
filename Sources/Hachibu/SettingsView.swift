@@ -272,7 +272,16 @@ struct ChargingSettings: View {
             }
             .disabled(!Capability.heatProtection || !monitor.helper.isRunning)
         }
+        // A change to sailing or heat protection takes effect now, not at
+        // the monitor's next reading up to twenty seconds later. The short
+        // wait lets a slider settle first.
+        .task(id: [preferences.sailingRange, preferences.heatThreshold, preferences.heatProtection ? 1 : 0]) {
+            guard (try? await Task.sleep(for: Self.settleDelay)) != nil else { return }
+            monitor.refresh()
+        }
     }
+
+    private static let settleDelay = Duration.milliseconds(600)
 
     private func valueSlider(_ value: Binding<Int>, stops: [Int], scale: ClosedRange<Int>,
                              label: String, unit: String = "percent", text: String) -> some View {

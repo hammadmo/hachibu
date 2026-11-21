@@ -97,6 +97,8 @@ bool hb_limit_set(int limit, char *error_text, int error_capacity) {
         NSError *error = nil;
         unsigned long long on = ((unsigned long long (*)(id, SEL, NSError **))objc_msgSend)(
             c, sel_registerName("isMCLCurrentlyEnabled:"), &error);
+        // If macOS cannot say whether the limit is on, it is not turned on
+        // here: the request below then fails, and that failure is reported.
         if (error == nil && on == 0) {
             BOOL enabled = ((BOOL (*)(id, SEL, NSError **))objc_msgSend)(c, sel_registerName("enableMCL:"), &error);
             if (!enabled || error != nil) { explain(error_text, error_capacity, error, @"macOS did not turn the limit on."); return false; }
