@@ -134,8 +134,10 @@ framework (PowerUI) that System Settings uses. They take effect at once.
 
 **2. Any limit from 20%, with the helper.** For limits macOS does not
 offer, a small helper that runs as root writes the limit into macOS's
-charging settings, and macOS enforces it, usually within two minutes
-(26 to 90 seconds when measured here). You install the helper from Settings >
+charging settings, and macOS enforces it. With the battery not
+charging, that happens at once. While it is charging, macOS waits until
+the level next changes by one percent: 26 to 90 seconds when measured
+here, and several minutes when the level is slow to move. You install the helper from Settings >
 Helper and approve it once in System Settings > General > Login Items.
 
 The helper accepts three requests and nothing else: set a limit,
