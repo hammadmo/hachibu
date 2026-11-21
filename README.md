@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/hammadmo/hachibu/releases/latest"><img src="https://img.shields.io/badge/download-0.3.1-b8934a" alt="Download 0.3.1"></a>
+  <a href="https://github.com/hammadmo/hachibu/releases/latest"><img src="https://img.shields.io/badge/download-0.4-b8934a" alt="Download 0.4"></a>
   <img src="https://img.shields.io/badge/macOS-27-1d1a17" alt="macOS 27">
   <img src="https://img.shields.io/badge/Apple%20silicon-only-1d1a17" alt="Apple silicon only">
   <img src="https://img.shields.io/badge/Swift-6-b8934a" alt="Swift 6">
@@ -100,7 +100,7 @@ The pictures show sample data, not a real battery.
 
 ## Install
 
-1. Download `Hachibu-0.3.1.zip` from the
+1. Download `Hachibu-0.4.zip` from the
    [latest release](https://github.com/hammadmo/hachibu/releases/latest)
    and unzip it.
 2. Move `Hachibu.app` to your Applications folder and open it. It lives
@@ -153,7 +153,7 @@ The release notes give the zip's SHA-256. To check it, and to see who
 signed the app and that Apple notarized it:
 
 ```bash
-shasum -a 256 ~/Downloads/Hachibu-0.3.1.zip
+shasum -a 256 ~/Downloads/Hachibu-0.4.zip
 ```
 
 ```bash
