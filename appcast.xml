@@ -3,6 +3,25 @@
     <channel>
         <title>Hachibu</title>
         <item>
+            <title>0.4.2</title>
+            <pubDate>Sun, 22 Nov 2026 00:29:51 +0200</pubDate>
+            <sparkle:version>202611220028</sparkle:version>
+            <sparkle:shortVersionString>0.4.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Fixed</h2>
+<ul>
+<li>Heat protection no longer says "Paused for heat" one percent under the limit, where it was asking macOS for nothing and charging went on.</li>
+<li>Lowering the limit during a heat pause can no longer leave macOS holding a level above the new limit.</li>
+<li>The Remove Helper dialog now says where your limit goes for every limit macOS does not offer by itself.</li>
+<li>A new limit no longer waits up to ten seconds behind an earlier one that macOS has not reported yet.</li>
+<li>A calibration's two-hour rest no longer counts a sleep that began with the charger off.</li>
+<li>Restarting after the helper is allowed puts your limit back before the new copy starts.</li>
+</ul>
+<p><a href="https://github.com/hammadmo/hachibu/blob/main/CHANGELOG.md">Every version's changes</a></p>
+]]></description>
+            <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.4.2/Hachibu-0.4.2.zip" length="4127393" type="application/octet-stream" sparkle:edSignature="VibV+e/gMc+DDqFQ0VUXPBHOMEe+7Aw0VW8zKTZR7IH28tn2Fm9UoxyRMfJhH8IcgerHv3s3k0oLPnNglg+2Aw=="/>
+        </item>
+        <item>
             <title>0.4.1</title>
             <pubDate>Sat, 21 Nov 2026 04:07:57 +0200</pubDate>
             <sparkle:version>202611210407</sparkle:version>
@@ -29,14 +48,6 @@
 </ul>
 <p><a href="https://github.com/hammadmo/hachibu/blob/main/CHANGELOG.md">Every version's changes</a></p>]]></description>
             <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.4/Hachibu-0.4.zip" length="4114828" type="application/octet-stream" sparkle:edSignature="+nESLLVyQcmC6HEGwzJTuHNgVTy9OjOqmaaWavbr9rULMfi75V6szIQgGCI/ioG7UBegZe8mCEw7dNlrXWTuDw=="/>
-        </item>
-        <item>
-            <title>0.3.1</title>
-            <pubDate>Fri, 20 Nov 2026 18:40:36 +0200</pubDate>
-            <sparkle:version>202611201839</sparkle:version>
-            <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.3.1/Hachibu-0.3.1.zip" length="4111714" type="application/octet-stream" sparkle:edSignature="gT/cvCdwmT+KUuDK3AP0Z08DwJo9e3SaEg8nFFurSV4oEujCXi8B9D/woqZFwvfZfLlVSF5PWtwlTxopX7MtBg=="/>
         </item>
     </channel>
 </rss>
