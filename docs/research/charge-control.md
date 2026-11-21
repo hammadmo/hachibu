@@ -517,3 +517,45 @@ awake. The log is `limit-70-run.log`, one line every five minutes.
 
 Not seen: a limit below 80% held through a night of sleep, or for days.
 The Mac did not sleep during this run.
+
+## When macOS takes up a helper limit, and a heat pause seen for real (2026-11-21)
+
+Read from the system log (`/usr/bin/log show`, process `PowerUIAgent`,
+subsystem `com.apple.powerui.smartcharging`, and `powerd`'s `charging`
+category) while Hachibu 0.4 and 0.4.1 were quit and reopened inside the
+sailing range (limit 80%, range 5, level 76 to 78%).
+
+What the helper's write does: it sets `mclLimitValue` and posts
+`com.apple.smartcharging.defaultschanged`. PowerUIAgent logs "Reloading
+defaults due to defaults-changed notification" within about 0.1 s every
+time. What it does next depends on the battery:
+
+- **Not charging** ("Charging Completed Limited"): it applies the new
+  limit in the same few milliseconds ("Limiting charging to 77% SoC", and
+  powerd logs "received SOC limit"). Seen at 04:05:53 and 04:08:13.
+- **Charging**: it reloads and then does nothing until its next battery
+  event, which in every case seen was the level changing by one percent.
+  Asked 76% at 03:55:48, applied 03:56:15 as the level went to 77 (27 s).
+  Asked 78% at 04:22:14, applied 04:22:49 as the level went to 78 (35 s).
+  Asked 77% at 04:17:57 with the level at 77 and rising slowly: not
+  applied in the 4 min 17 s before the next request replaced it. macOS
+  held 80% the whole time and the battery charged.
+
+So the "26 to 90 seconds" measured before is the time to the next percent
+at a normal charging rate, not a fixed delay. A hold asked for just after
+charging starts, with the level slow to move, can wait several minutes.
+That is why one relaunch inside the sailing range "took up" its hold and
+another seemed to go on charging: Hachibu asked for the hold both times
+(its log has "asked macOS for 77%: normal, sailing" both times).
+
+Not seen: what Hachibu shows when its four-minute wait for enforcement
+runs out in this case; the heat pause below started seconds after it
+would have. Not tried: whether anything makes PowerUIAgent apply the
+limit at once while charging.
+
+The same log shows heat protection pausing for real, with 0.4.1's
+one-minute wait: the battery was at 40.0 to 40.3 °C while charging from
+04:20:07; Hachibu asked for 78% at 04:22:14 (level 77); macOS applied it
+at 04:22:49; by 04:23:49 the battery was at 78%, 0 mA, "AC attached; not
+charging", and the menu bar item said "Paused for heat". Charging
+resuming at 38 °C has not been watched.
