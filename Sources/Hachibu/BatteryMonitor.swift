@@ -201,7 +201,12 @@ final class BatteryMonitor {
         Self.current = self
         refresh()
         restartTimer()
-        Task { await helper.refresh() }
+        Task {
+            // Modes wait for the helper's first answer; read again as soon
+            // as it is in, not at the timer's next turn.
+            await helper.refresh()
+            refresh()
+        }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification,
                                                           object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
@@ -489,7 +494,10 @@ final class BatteryMonitor {
     private static let heatLookBack = 32
 
     private func launchModes() {
-        guard !hasLaunchedModes else { return }
+        // Not before the helper has answered: a sailing hold left in place
+        // would look like one that cannot go on, the limit would be asked
+        // for, and the battery would charge until the hold was asked again.
+        guard !hasLaunchedModes, helper.state.isSettled else { return }
         hasLaunchedModes = true
         guard runsModes, !isPreview else { return }
         carryOut(modes.launched(record: Preferences.shared.modeRecord, system: limit.effective, saved: limit.saved,
@@ -520,7 +528,7 @@ final class BatteryMonitor {
 
     /// Hands the reading to the coordinator and carries out what it wants.
     private func runModes(now: Date = .now) {
-        guard !isPreview, runsModes, let reading = modeReading else { return }
+        guard !isPreview, runsModes, helper.state.isSettled, let reading = modeReading else { return }
         carryOut(modes.reading(reading, system: limit.effective, limitIsOwn: limitIsOwn,
                                canAsk: !isBusy && canChangeLimit, now: now))
     }

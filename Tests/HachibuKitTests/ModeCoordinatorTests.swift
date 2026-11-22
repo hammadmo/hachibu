@@ -485,3 +485,32 @@ func topUpFinishedWaits() {
     rig.read(battery(100))
     #expect(rig.notices.isEmpty && rig.modes.mode == .normal)
 }
+
+/// Hachibu reopened inside the sailing range, the level two under the hold
+/// it left: the new hold is asked for, never the limit, which would charge
+/// the battery until the hold was asked again.
+@Test
+func launchInsideSailingRangeAsksOnlyForTheHold() {
+    let sail = ModeRecord(asked: 68, user: 70, isSailingHold: true)
+    var rig = Rig(system: 68, record: sail)
+    rig.apply(rig.modes.launched(record: sail, system: 68, saved: 70, sailingRange: 5, now: t0))
+    rig.read(battery(66, range: 5), own: false)
+    #expect(rig.asked == [66])
+    #expect(rig.modes.isSailing)
+}
+
+/// Why the monitor waits for the helper's first answer: the same launch
+/// taken before it is known to run ends sailing and asks for the limit.
+@Test
+func launchBeforeTheHelperAnswersWouldAskForTheLimit() {
+    #expect(!HelperState.checking.isSettled)
+    for state in [HelperState.running, .notInstalled, .needsApproval, .failed("x"), .unavailable("x")] {
+        #expect(state.isSettled)
+    }
+    let sail = ModeRecord(asked: 68, user: 70, isSailingHold: true)
+    var rig = Rig(system: 68, record: sail)
+    // What the app passes while the helper is not known to run: no range.
+    rig.apply(rig.modes.launched(record: sail, system: 68, saved: 70, sailingRange: 0, now: t0))
+    rig.read(battery(66, range: 0, helper: false), own: false)
+    #expect(rig.asked == [70])
+}

@@ -273,3 +273,19 @@ closed: the unplug showed within 3 seconds.
 Rule: what the menu bar item shows must follow events, not only a timer.
 Try every state change with the popover closed; an open popover reads
 ten times as often and hides the delay.
+
+## A short charge when Hachibu started inside the sailing range
+
+Seen on 2026-11-23 during a night at 70%: the Mac restarted with a
+sailing hold of 68% in place and the battery at 66%. At launch Hachibu
+asked macOS for 70%, and 17 seconds later for a hold of 66%; the battery
+charged from 66% to 67% in between. Cause: the first reading of the
+limit arrives before the helper has answered, the helper counted as not
+running, so sailing counted as impossible and the hold as a leftover to
+undo. Fixed: modes are neither taken up nor run until the helper's
+first answer is in (`HelperState.isSettled`), and the battery is read
+again the moment it is. Tried for real: Hachibu killed with a 66% hold
+in place and reopened; nothing was asked, "Sailing", no charging.
+
+Rule: "not yet known" is not "no". Nothing that undoes a limit may be
+decided from a state that is still being checked.

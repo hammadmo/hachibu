@@ -95,6 +95,11 @@ public enum HelperState: Equatable, Sendable {
 
     public var isRunning: Bool { self == .running }
 
+    /// False until macOS and the helper have answered once. Before that
+    /// nothing may be decided from "not running": a mode that needs the
+    /// helper would be taken for over and the user's limit asked for.
+    public var isSettled: Bool { self != .checking }
+
     public var isFailure: Bool {
         if case .failed = self { return true }
         return false

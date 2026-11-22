@@ -4,6 +4,14 @@ What changed in each version of Hachibu, newest first. Every version is
 on the [releases page](https://github.com/hammadmo/hachibu/releases)
 with its download.
 
+## Unreleased
+
+### Fixed
+
+- After a restart of the Mac, Hachibu takes up sailing where it left it.
+  Before, it asked for your limit first and the battery charged for a
+  minute or two before the hold was back.
+
 ## 0.4.4 (2026-11-22)
 
 ### Fixed
