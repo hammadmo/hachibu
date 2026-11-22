@@ -3,6 +3,20 @@
     <channel>
         <title>Hachibu</title>
         <item>
+            <title>0.4.4</title>
+            <pubDate>Sun, 22 Nov 2026 14:25:08 +0200</pubDate>
+            <sparkle:version>202611221423</sparkle:version>
+            <sparkle:shortVersionString>0.4.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Fixed</h2>
+<ul>
+<li>The menu bar icon follows the charger within a few seconds of plugging or unplugging it, not up to twenty seconds later.</li>
+</ul>
+<p><a href="https://github.com/hammadmo/hachibu/blob/main/CHANGELOG.md">Every version's changes</a></p>
+]]></description>
+            <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.4.4/Hachibu-0.4.4.zip" length="4130377" type="application/octet-stream" sparkle:edSignature="LXA/4qVUq4L4+6gWnG7QpUzK01h4Tn/mJTLimZQ4lhepWT1DoMVDi0ILALJszKEcZ/9Q61KpPvPG2Nk/PGAWBQ=="/>
+        </item>
+        <item>
             <title>0.4.3</title>
             <pubDate>Sun, 22 Nov 2026 01:01:16 +0200</pubDate>
             <sparkle:version>202611220100</sparkle:version>
@@ -35,21 +49,6 @@
 <p><a href="https://github.com/hammadmo/hachibu/blob/main/CHANGELOG.md">Every version's changes</a></p>
 ]]></description>
             <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.4.2/Hachibu-0.4.2.zip" length="4127393" type="application/octet-stream" sparkle:edSignature="VibV+e/gMc+DDqFQ0VUXPBHOMEe+7Aw0VW8zKTZR7IH28tn2Fm9UoxyRMfJhH8IcgerHv3s3k0oLPnNglg+2Aw=="/>
-        </item>
-        <item>
-            <title>0.4.1</title>
-            <pubDate>Sat, 21 Nov 2026 04:07:57 +0200</pubDate>
-            <sparkle:version>202611210407</sparkle:version>
-            <sparkle:shortVersionString>0.4.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Fixed</h2>
-<ul>
-<li><b>Heat protection acts sooner.</b> It pauses charging once the battery has been above the threshold for one minute, not three. macOS still takes a minute or two to stop charging after that.</li>
-<li><b>Reopening Hachibu no longer starts that wait again.</b> The time the battery was already hot is read from what History recorded, so a restart or an update while the battery is hot does not delay the pause.</li>
-</ul>
-<p><a href="https://github.com/hammadmo/hachibu/blob/main/CHANGELOG.md">Every version's changes</a></p>
-]]></description>
-            <enclosure url="https://github.com/hammadmo/hachibu/releases/download/v0.4.1/Hachibu-0.4.1.zip" length="4124708" type="application/octet-stream" sparkle:edSignature="TcmfqFcYd4YXLGCRPXNHz9K5PguFjscxaKR10O5QkaKYKWLL1o7SWrkj+kP9pF+AMtMjp3ZCY2D+KUJOVwYvBA=="/>
         </item>
     </channel>
 </rss>
