@@ -558,4 +558,41 @@ one-minute wait: the battery was at 40.0 to 40.3 °C while charging from
 04:20:07; Hachibu asked for 78% at 04:22:14 (level 77); macOS applied it
 at 04:22:49; by 04:23:49 the battery was at 78%, 0 mA, "AC attached; not
 charging", and the menu bar item said "Paused for heat". Charging
-resuming at 38 °C has not been watched.
+resuming at 38 °C was watched the next day (below).
+
+## A heat pause watched to its end (2026-11-22)
+
+Version 0.4.3, threshold 40 °C, heat protection on. The battery sat at
+80% on an 80% limit at 41.1 °C, so there was nothing to pause. The limit
+was raised to 88% from the slider to make the plan charge, and a reading
+was taken every 30 seconds (level and charging from `pmset`, status and
+temperature from Hachibu's own window) until charging came back.
+
+| Time | What happened |
+| --- | --- |
+| 05:26:44 | Limit raised to 88%. Hachibu asked for 81% in the same second: the battery had been hot for more than a minute already. |
+| 05:27 to 05:30:19 | macOS went on charging; the level reached 81% by 05:29:49. Hachibu said "Paused for heat" the whole time. |
+| 05:30:49 | "AC attached; not charging" at 81%, 41.4 °C. About four minutes after the request. |
+| 05:30 to 06:24 | Held at 81%. The battery moved between 38.2 and 41.4 °C with the Mac in use and never reached 38.0 °C. Hachibu went on saying "Paused for heat. Charging resumes at 38 °C." and asked macOS for nothing. |
+| 06:24:40 | 38.1 °C in Hachibu's history, still held. |
+| 06:24:59.5 | Hachibu asked for 88%: the pause ended. PowerUIAgent logged "Limiting charging to 88%" 0.1 s later. |
+| 06:25:25 | Status "Not charging, 28 W from charger", 38.5 °C. |
+| 06:25:54 | "81%; charging". |
+
+So the resume works as written: the pause holds for as long as the
+battery is above 38.0 °C, 38.2 °C for several minutes is not enough, and
+the user's limit is asked for again once the battery is 2 °C under the
+threshold. macOS took the higher limit up at once, as it does whenever
+the battery is not charging, and charging was seen within 55 seconds.
+The battery warmed to 38.8 °C in the first minute of charging and no new
+pause began, as the one-minute wait above 40 °C intends.
+
+Afterwards the limit was put back to 80% from the slider at 06:26:25;
+PowerUIAgent logged "Limiting charging to 80%" in the same second and
+the battery stopped at 82%.
+
+Not seen: the exact reading at the resume. The last one before it is
+38.1 °C, 19 seconds earlier, from the history; the 30-second readings
+have a gap from 06:22:41 to 06:24:54 because the window they were read
+from was closed. Also seen and not looked into: the history samples
+taken during the pause carry a limit of 88, not the 81 that macOS held.
