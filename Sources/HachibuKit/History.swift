@@ -10,7 +10,9 @@ public struct HistorySample: Equatable, Sendable {
     public var temperatureC: Double?
     public var chargerWatts: Double?
     public var macWatts: Double?
-    /// The limit macOS held. 100 means none.
+    /// The user's limit at the time, not a hold asked for below it while
+    /// sailing or paused for heat: the chart draws one limit line. 100
+    /// means none.
     public var limit: Int
 
     public init(time: Date, percent: Int, isPluggedIn: Bool, isCharging: Bool, temperatureC: Double? = nil,

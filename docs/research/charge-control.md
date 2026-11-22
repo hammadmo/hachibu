@@ -594,5 +594,6 @@ the battery stopped at 82%.
 Not seen: the exact reading at the resume. The last one before it is
 38.1 °C, 19 seconds earlier, from the history; the 30-second readings
 have a gap from 06:22:41 to 06:24:54 because the window they were read
-from was closed. Also seen and not looked into: the history samples
-taken during the pause carry a limit of 88, not the 81 that macOS held.
+from was closed. The history samples taken during the pause carry a
+limit of 88, not the 81 that macOS held: history records the user's
+limit on purpose, so the chart keeps one limit line through a hold.
