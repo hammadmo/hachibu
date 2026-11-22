@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import HachibuKit
+import IOKit.ps
 import Observation
 import os
 
@@ -205,6 +206,18 @@ final class BatteryMonitor {
                                                           object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
+        watchPowerSource()
+    }
+
+    /// Reads at once when macOS says the power source changed: the charger
+    /// plugged or unplugged, charging started or stopped. The timer alone
+    /// left the menu bar item up to twenty seconds behind.
+    private func watchPowerSource() {
+        let changed: IOPowerSourceCallbackType = { _ in
+            MainActor.assumeIsolated { BatteryMonitor.current?.refresh() }
+        }
+        guard let source = IOPSNotificationCreateRunLoopSource(changed, nil)?.takeRetainedValue() else { return }
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
     }
 
     func refresh() {

@@ -4,6 +4,13 @@ What changed in each version of Hachibu, newest first. Every version is
 on the [releases page](https://github.com/hammadmo/hachibu/releases)
 with its download.
 
+## Unreleased
+
+### Fixed
+
+- The menu bar icon follows the charger within a few seconds of plugging
+  or unplugging it, not up to twenty seconds later.
+
 ## 0.4.3 (2026-11-22)
 
 ### Fixed

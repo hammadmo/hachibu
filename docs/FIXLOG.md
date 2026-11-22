@@ -259,3 +259,17 @@ none fits, there is no pause; a hold at or above the limit is dropped.
 Rule: a status may only be shown when the request that makes it true was
 made. Test the edges of every hold against the limit: one under it, and
 the limit moving under it.
+
+## The menu bar icon stayed on the plug with the charger out
+
+Seen on 2026-11-22 while trying the plug and bolt marks for real: with
+Hachibu's window closed, the charger was out for 18 seconds and the item
+kept its pins and "Holding at limit" the whole time. The monitor read
+the battery only on its timer, every 20 seconds with the window closed.
+Fixed: it also reads when macOS reports a power source change
+(`IOPSNotificationCreateRunLoopSource`). Tried again with the window
+closed: the unplug showed within 3 seconds.
+
+Rule: what the menu bar item shows must follow events, not only a timer.
+Try every state change with the popover closed; an open popover reads
+ten times as often and hides the delay.
