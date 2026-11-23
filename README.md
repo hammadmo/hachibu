@@ -30,6 +30,13 @@ thing it does on the network is ask GitHub, once a day, whether there is
 a newer version. The request says which version of Hachibu you have,
 nothing else, and you can switch the check off in Settings. It is free and open source.
 
+**Sibling app: [Kakeibo](https://github.com/hammadmo/kakeibo)**, a menu bar ledger of your
+Claude usage (plan limits, tokens, cost, and projects) in the same lacquer-and-gold look:
+
+```bash
+brew install --cask hammadmo/tap/kakeibo
+```
+
 ## Why Hachibu
 
 macOS can already stop charging at 80%, and for many people that is
