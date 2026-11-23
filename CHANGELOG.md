@@ -4,7 +4,7 @@ What changed in each version of Hachibu, newest first. Every version is
 on the [releases page](https://github.com/hammadmo/hachibu/releases)
 with its download.
 
-## Unreleased
+## 0.4.5 (2026-11-23)
 
 ### Fixed
 
