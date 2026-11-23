@@ -127,7 +127,15 @@ final class BatteryMonitor {
     }
 
     /// The limit the user chose: what a mode goes back to. 100 means none.
-    var userLimit: Int { modes.userLimit(system: limit.effective) }
+    var userLimit: Int {
+        // Before the modes are taken up at launch, a hold left in place is
+        // still what macOS reports; the record says whose limit it stands for.
+        if runsModes, !hasLaunchedModes, !isPreview,
+           let user = Preferences.shared.modeRecord?.userLimit(system: limit.effective, saved: limit.saved) {
+            return user
+        }
+        return modes.userLimit(system: limit.effective)
+    }
 
     /// The limit to draw on the gauge. nil means none.
     var shownLimit: Int? { userLimit >= 100 ? nil : userLimit }

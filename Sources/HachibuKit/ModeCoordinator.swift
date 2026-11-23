@@ -16,6 +16,17 @@ public struct ModeRecord: Equatable, Sendable {
         self.user = user
         self.isSailingHold = isSailingHold
     }
+
+    /// The user's limit while this record has not been taken up yet (the
+    /// app waits for the helper's first answer at launch): if macOS still
+    /// holds exactly what was asked, that is not the user's limit, and
+    /// nothing may show or record it as such. nil when the record says
+    /// nothing about what macOS holds now.
+    public func userLimit(system: Int, saved: Int?) -> Int? {
+        guard system == asked else { return nil }
+        let user = isSailingHold ? saved : self.user
+        return user == asked ? nil : user
+    }
 }
 
 public enum ModeNotice: Equatable, Sendable {

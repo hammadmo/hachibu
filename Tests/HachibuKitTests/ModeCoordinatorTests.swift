@@ -514,3 +514,18 @@ func launchBeforeTheHelperAnswersWouldAskForTheLimit() {
     rig.read(battery(66, range: 0, helper: false), own: false)
     #expect(rig.asked == [70])
 }
+
+/// Until a record is taken up at launch, the hold macOS still reports is
+/// not shown or recorded as the user's limit.
+@Test
+func recordNamesTheUsersLimitBeforeItIsTakenUp() {
+    let sail = ModeRecord(asked: 66, user: 70, isSailingHold: true)
+    #expect(sail.userLimit(system: 66, saved: 70) == 70)
+    // macOS holds something else, or nothing is saved: the record is silent.
+    #expect(sail.userLimit(system: 70, saved: 70) == nil)
+    #expect(sail.userLimit(system: 66, saved: nil) == nil)
+    #expect(sail.userLimit(system: 66, saved: 66) == nil)
+    let topUp = ModeRecord(asked: 100, user: 80, isSailingHold: false)
+    #expect(topUp.userLimit(system: 100, saved: 80) == 80)
+    #expect(topUp.userLimit(system: 80, saved: 80) == nil)
+}

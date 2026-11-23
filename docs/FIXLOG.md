@@ -289,3 +289,16 @@ in place and reopened; nothing was asked, "Sailing", no charging.
 
 Rule: "not yet known" is not "no". Nothing that undoes a limit may be
 decided from a state that is still being checked.
+
+## The hold recorded as the user's limit for a moment at launch
+
+Seen on 2026-11-23 in the History: one sample with limit 66 among
+samples with 70, taken just after a launch with a 66% sailing hold in
+place. The fix above it in this file made the modes wait for the
+helper's first answer, and until they were taken up the user's limit was
+read as whatever macOS held: the hold. Fixed: until then the record of
+the hold says whose limit it stands in for.
+
+Rule: a fix that delays a step must be checked for everything that read
+the step's result in the meantime. Here that was the user's limit, read
+by the History, the slider and the gauge.
